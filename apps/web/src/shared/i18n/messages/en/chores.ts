@@ -85,6 +85,9 @@ export default {
 		doneUnassigned: '{title} is done. Next due {date}, nobody assigned yet.',
 		doneNext:
 			'{title} is done. {assignee, select, self {You are} other {{name} is}} up next on {date}.',
+		undone: '{title} is open again.',
+		undoUnavailable: 'Already changed, undo no longer possible',
+		undoFailed: 'Could not undo. The task stays done.',
 	},
 	completeDialog: {
 		trigger: {
@@ -93,7 +96,7 @@ export default {
 		},
 		title: 'Mark “{title}” as done?',
 		description:
-			'{upNext, select, self {You are up next. } named {{name} is up next. } nobody {Nobody is available for the next round. } other {}}This cannot be undone.',
+			'{upNext, select, self {You are up next. } named {{name} is up next. } nobody {Nobody is available for the next round. } other {}}You can undo it right after.',
 		cancel: 'Cancel',
 		saving: 'Saving…',
 		confirm: { complete: 'Confirm done', catchUp: 'Confirm catch-up' },

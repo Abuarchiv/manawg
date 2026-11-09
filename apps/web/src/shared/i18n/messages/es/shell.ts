@@ -102,6 +102,7 @@ export default {
 		showPassword: 'Mostrar contraseña',
 		hidePassword: 'Ocultar contraseña',
 		dismissToast: 'Descartar notificación',
+		undo: 'Deshacer',
 		toasts: 'Notificaciones',
 		scrollToEnd: 'Desplazarse al final',
 		scrollToStart: 'Desplazarse al principio',

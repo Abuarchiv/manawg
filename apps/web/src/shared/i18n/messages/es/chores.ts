@@ -92,6 +92,9 @@ export default {
 		doneUnassigned: 'Completado: {title}. Próxima fecha: {date}, aún sin asignar.',
 		doneNext:
 			'Completado: {title}. {assignee, select, self {Te toca a ti} other {Le toca a {name}}} el {date}.',
+		undone: '{title} vuelve a estar pendiente.',
+		undoUnavailable: 'Ya se modificó, no se puede deshacer',
+		undoFailed: 'No se pudo deshacer. La tarea sigue completada.',
 	},
 	completeDialog: {
 		trigger: {
@@ -100,7 +103,7 @@ export default {
 		},
 		title: '¿Dar por completada la tarea “{title}”?',
 		description:
-			'{upNext, select, self {La próxima vez te toca a ti. } named {La próxima vez le toca a {name}. } nobody {Nadie está disponible para la próxima ronda. } other {}}Esta acción no se puede deshacer.',
+			'{upNext, select, self {La próxima vez te toca a ti. } named {La próxima vez le toca a {name}. } nobody {Nadie está disponible para la próxima ronda. } other {}}Podrás deshacerlo justo después.',
 		cancel: 'Cancelar',
 		saving: 'Guardando…',
 		confirm: { complete: 'Confirmar', catchUp: 'Confirmar recuperación' },

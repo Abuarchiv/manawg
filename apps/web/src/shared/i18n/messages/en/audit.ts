@@ -32,6 +32,7 @@ export default {
 	choreUpdated: { feed: same('updated {title}.') },
 	choreDeleted: { feed: same('removed {title} from the cleaning rota.') },
 	choreCompleted: { feed: same('marked {title} as done.') },
+	choreCompletionUndone: { feed: same('undid marking {title} as done.') },
 	eventCreated: { feed: same('added the event “{title}”.') },
 	eventUpdated: {
 		feed: same(

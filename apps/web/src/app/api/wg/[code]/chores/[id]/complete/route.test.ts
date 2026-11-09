@@ -451,6 +451,31 @@ test('a completion is credited to the caller, not to the chore assignee', async 
 	assert.equal(completion?.completedByMemberId, memberA);
 });
 
+test('the response carries the completion id and the chore as it was before, for the undo', async () => {
+	const state = makeState();
+	const route = makeRoute(state);
+	const response = await route.post(
+		route.request({
+			expectedNextDueAt: originalDueAt.toISOString(),
+			expectedAssignedMemberId: memberA,
+		}),
+		route.context,
+	);
+	assert.equal(response.status, 200);
+	const body = (await response.json()) as {
+		completion: {
+			id: string;
+			previous: { nextDueAt: string; assignedMemberId: string | null; anchorAt: string };
+		};
+	};
+	assert.equal(body.completion.id, 'completion-1');
+	assert.deepEqual(body.completion.previous, {
+		nextDueAt: originalDueAt.toISOString(),
+		assignedMemberId: memberA,
+		anchorAt: originalDueAt.toISOString(),
+	});
+});
+
 test('the chore lookup is scoped to the caller WG', async () => {
 	const state = makeState();
 	const route = makeRoute(state);

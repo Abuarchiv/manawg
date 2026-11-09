@@ -31,7 +31,7 @@ export default function WgHomePage() {
 		shareCode: wg.shareCode,
 		memberId: identity.memberId,
 		memberName: identity.name,
-		queuedOccurrences: completion.queuedOccurrences,
+		hiddenOccurrences: completion.hiddenOccurrences,
 	});
 
 	// Entries do not make the WG complete: until a second person lives in it, the invitation

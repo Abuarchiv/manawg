@@ -49,8 +49,8 @@ interface HomeViewInput {
 	shareCode: string;
 	memberId: string;
 	memberName: string;
-	/** Chore occurrences completed offline; they stay hidden until the server has them. */
-	queuedOccurrences: ReadonlySet<string>;
+	/** Chore occurrences completed here, offline or just now; they stay hidden until the server has them. */
+	hiddenOccurrences: ReadonlySet<string>;
 }
 
 /** Derives the start page sections from the dashboard read. */
@@ -61,15 +61,15 @@ export function useHomeView({
 	shareCode,
 	memberId,
 	memberName,
-	queuedOccurrences,
+	hiddenOccurrences,
 }: HomeViewInput) {
 	const locale = useLocale() as Locale;
 	const dueChores = useMemo(
 		() =>
 			(data?.dueChores ?? []).filter(
-				(chore) => !queuedOccurrences.has(completionRequestKey(chore)),
+				(chore) => !hiddenOccurrences.has(completionRequestKey(chore)),
 			),
-		[data?.dueChores, queuedOccurrences],
+		[data?.dueChores, hiddenOccurrences],
 	);
 	const forYouItems = useMemo(
 		() =>

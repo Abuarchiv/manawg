@@ -75,6 +75,7 @@ const EVENTS: Readonly<Record<string, AuditEventDef>> = {
 	'chore.updated': TITLE,
 	'chore.deleted': TITLE,
 	'chore.completed': TITLE,
+	'chore.completion_undone': TITLE,
 	'event.created': TITLE,
 	'event.updated': {
 		...TITLE,

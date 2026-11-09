@@ -5,15 +5,23 @@ import { useTranslations } from 'next-intl';
 import { useCallback, useEffect, useRef, useSyncExternalStore } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/shared/lib/cn';
 import { haptic } from '@/shared/lib/haptics';
 import { pushToast } from './toast-queue';
 
 type ToastVariant = 'success' | 'error' | 'info';
 
+/** A text button next to the message, e.g. "Undo". The toast closes once it is pressed. */
+export interface ToastAction {
+	label: string;
+	onAction: () => void;
+}
+
 interface Toast {
 	id: string;
 	message: string;
 	variant: ToastVariant;
+	action?: ToastAction;
 	/** Fading out; removed from the store once the exit animation has run. */
 	leaving?: boolean;
 }
@@ -21,8 +29,9 @@ interface Toast {
 // WCAG 2.2.1: a toast must give enough time to read it. The auto-dismiss timer
 // lives in ToastItem (not here) so it can pause while hovered or focused.
 const TOAST_DURATION_MS = 4000;
-// Errors are long sentences that say what to do next; touch users cannot hover to pause them.
-const ERROR_TOAST_DURATION_MS = 8000;
+// Errors are long sentences that say what to do next, and an action needs time to be found and
+// pressed; touch users cannot hover to pause them.
+const LONG_TOAST_DURATION_MS = 8000;
 const TOAST_EXIT_MS = 150;
 
 /** Module-level store: toasts survive route changes and any component may raise one. */
@@ -45,11 +54,17 @@ function subscribe(listener: () => void): () => void {
 // More than two stacked toasts cover the list and sit next to the FAB; the oldest non-error gives way.
 const MAX_TOASTS = 2;
 
-function addToast(message: string, variant: ToastVariant): void {
+function addToast(message: string, variant: ToastVariant, action?: ToastAction): void {
 	const id = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 	// The same message again restarts one toast (new id = fresh timer) instead of stacking copies.
 	const rest = toasts.filter((t) => !(t.message === message && t.variant === variant));
-	setToasts(pushToast(rest, { id, message, variant }, MAX_TOASTS));
+	setToasts(
+		pushToast(
+			rest,
+			action ? { id, message, variant, action } : { id, message, variant },
+			MAX_TOASTS,
+		),
+	);
 	haptic(variant === 'error' ? 'heavy' : variant === 'success' ? 'medium' : 'light');
 }
 
@@ -60,9 +75,11 @@ function removeToast(id: string): void {
 }
 
 const toastApi = {
-	success: (message: string) => addToast(message, 'success'),
+	success: (message: string, options?: { action?: ToastAction }) =>
+		addToast(message, 'success', options?.action),
 	error: (message: string) => addToast(message, 'error'),
-	info: (message: string) => addToast(message, 'info'),
+	info: (message: string, options?: { action?: ToastAction }) =>
+		addToast(message, 'info', options?.action),
 };
 
 /** True while any toast is on screen, so fixed bottom chrome can step aside. */
@@ -98,9 +115,9 @@ function ToastItem({ toast }: { toast: Toast }) {
 		clearTimer();
 		timerRef.current = setTimeout(
 			() => removeToast(toast.id),
-			toast.variant === 'error' ? ERROR_TOAST_DURATION_MS : TOAST_DURATION_MS,
+			toast.variant === 'error' || toast.action ? LONG_TOAST_DURATION_MS : TOAST_DURATION_MS,
 		);
-	}, [clearTimer, toast.id, toast.variant]);
+	}, [clearTimer, toast.id, toast.variant, toast.action]);
 
 	useEffect(() => {
 		if (toast.leaving) return;
@@ -122,19 +139,41 @@ function ToastItem({ toast }: { toast: Toast }) {
 			onBlur={scheduleTimer}
 		>
 			<Icon className="shrink-0" aria-hidden="true" />
-			<AlertDescription className="min-w-[10ch] flex-1 basis-[10ch] wrap-break-word">
+			<AlertDescription
+				// With an action the message keeps a readable width; narrow screens move the buttons below it.
+				className={cn(
+					'min-w-[10ch] flex-1 wrap-break-word',
+					toast.action ? 'basis-[16ch]' : 'basis-[10ch]',
+				)}
+			>
 				{toast.message}
 			</AlertDescription>
-			<Button
-				type="button"
-				onClick={() => removeToast(toast.id)}
-				variant="ghost"
-				size="icon"
-				className="ml-auto size-11"
-				aria-label={t('dismissToast')}
-			>
-				<X aria-hidden="true" />
-			</Button>
+			{/* Action and dismiss wrap together, so a narrow toast never strands the close button. */}
+			<div className="ml-auto flex shrink-0 items-center gap-1">
+				{toast.action && (
+					<Button
+						type="button"
+						onClick={() => {
+							toast.action?.onAction();
+							removeToast(toast.id);
+						}}
+						variant="ghost"
+						className="font-semibold"
+					>
+						{toast.action.label}
+					</Button>
+				)}
+				<Button
+					type="button"
+					onClick={() => removeToast(toast.id)}
+					variant="ghost"
+					size="icon"
+					className="size-11"
+					aria-label={t('dismissToast')}
+				>
+					<X aria-hidden="true" />
+				</Button>
+			</div>
 		</Alert>
 	);
 }

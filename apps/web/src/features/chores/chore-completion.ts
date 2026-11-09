@@ -23,9 +23,17 @@ interface ConfirmedChore extends Partial<Chore> {
 	assignedMemberId: string | null;
 }
 
+/** What `POST /chores/<id>/complete/undo` needs to take a completion back. */
+export interface ChoreCompletionReceipt {
+	completionId: string;
+	previous: { nextDueAt: string; assignedMemberId: string | null; anchorAt: string };
+	/** The chore as the completion left it. */
+	after: { nextDueAt: string; assignedMemberId: string | null };
+}
+
 export type ChoreCompletionOutcome =
-	| { kind: 'completed'; next: ConfirmedChore | null }
-	| { kind: 'queued' }
+	| { kind: 'completed'; next: ConfirmedChore | null; receipt?: ChoreCompletionReceipt | null }
+	| { kind: 'queued'; queuedActionId: string }
 	| { kind: 'queue_blocked' }
 	| { kind: 'key_unavailable' }
 	| { kind: 'not_found' }
@@ -69,7 +77,10 @@ export async function submitChoreCompletion(
 	// still records when the member actually did the chore.
 	const tappedAt = Date.now();
 
-	const result = await apiFetch<{ chore?: ConfirmedChore }>(
+	const result = await apiFetch<{
+		chore?: ConfirmedChore;
+		completion?: { id?: unknown; previous?: Partial<ChoreCompletionReceipt['previous']> };
+	}>(
 		`/api/wg/${encodeURIComponent(ctx.shareCode)}/chores/${encodeURIComponent(chore.id)}/complete`,
 		{
 			method: 'POST',
@@ -87,26 +98,43 @@ export async function submitChoreCompletion(
 		ctx.keys.delete(requestKey);
 		const next = result.data.chore;
 		const confirmed = next?.id === chore.id && parseTimestamp(next.nextDueAt) !== null;
-		return { kind: 'completed', next: confirmed && next ? next : null };
+		const completion = result.data.completion;
+		const previous = completion?.previous;
+		const receipt =
+			confirmed &&
+			next &&
+			typeof completion?.id === 'string' &&
+			typeof previous?.nextDueAt === 'string' &&
+			typeof previous.anchorAt === 'string' &&
+			previous.assignedMemberId !== undefined
+				? {
+						completionId: completion.id,
+						previous: {
+							nextDueAt: previous.nextDueAt,
+							assignedMemberId: previous.assignedMemberId,
+							anchorAt: previous.anchorAt,
+						},
+						after: { nextDueAt: next.nextDueAt, assignedMemberId: next.assignedMemberId },
+					}
+				: null;
+		return { kind: 'completed', next: confirmed && next ? next : null, receipt };
 	}
 
 	if (result.status === 0) {
-		const queuedCount = await enqueueOfflineAction(
-			createQueuedChoreCompletion({
-				wgId: ctx.wgId,
-				shareCode: ctx.shareCode,
-				memberId: ctx.memberId,
-				idempotencyKey,
-				choreId: chore.id,
-				expectedNextDueAt: chore.nextDueAt,
-				expectedAssignedMemberId: chore.assignedMemberId,
-				now: tappedAt,
-			}),
-		);
-		if (queuedCount === 0) return { kind: 'queue_blocked' };
+		const queuedAction = createQueuedChoreCompletion({
+			wgId: ctx.wgId,
+			shareCode: ctx.shareCode,
+			memberId: ctx.memberId,
+			idempotencyKey,
+			choreId: chore.id,
+			expectedNextDueAt: chore.nextDueAt,
+			expectedAssignedMemberId: chore.assignedMemberId,
+			now: tappedAt,
+		});
+		if ((await enqueueOfflineAction(queuedAction)) === 0) return { kind: 'queue_blocked' };
 		// The queued action carries the key from here on.
 		ctx.keys.delete(requestKey);
-		return { kind: 'queued' };
+		return { kind: 'queued', queuedActionId: queuedAction.id };
 	}
 
 	if (shouldReleaseIdempotencyKey(result.status, result.error)) ctx.keys.delete(requestKey);
@@ -124,6 +152,34 @@ export async function submitChoreCompletion(
 	if (isReadOnlyMode(result.error)) return { kind: 'read_only' };
 	if (isSessionExpired(result.error)) return { kind: 'session_expired' };
 	return { kind: 'failed' };
+}
+
+export type ChoreUndoResult = 'undone' | 'unavailable' | 'failed';
+
+/**
+ * Takes a completion back while the server still allows it. A 409 means the chore moved on
+ * (or the window passed) and the completion stands; anything else leaves it standing too.
+ */
+export async function undoChoreCompletion(
+	ctx: Pick<ChoreCompletionContext, 'shareCode' | 'memberId'>,
+	choreId: string,
+	receipt: ChoreCompletionReceipt,
+): Promise<ChoreUndoResult> {
+	const result = await apiFetch<{ chore?: unknown }>(
+		`/api/wg/${encodeURIComponent(ctx.shareCode)}/chores/${encodeURIComponent(choreId)}/complete/undo`,
+		{
+			method: 'POST',
+			memberId: ctx.memberId,
+			body: JSON.stringify({
+				completionId: receipt.completionId,
+				previous: receipt.previous,
+				expectedNextDueAt: receipt.after.nextDueAt,
+				expectedAssignedMemberId: receipt.after.assignedMemberId,
+			}),
+		},
+	);
+	if (result.ok) return 'undone';
+	return result.status === 409 || result.status === 404 ? 'unavailable' : 'failed';
 }
 
 export interface ChoreCompletionFeedback {

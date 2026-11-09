@@ -40,6 +40,7 @@ const GERMAN_SUMMARIES: Case[] = [
 	['chore.updated', { title: 'Bad' }, 'Anna hat Bad aktualisiert.'],
 	['chore.deleted', { title: 'Bad' }, 'Anna hat Bad aus dem Putzplan entfernt.'],
 	['chore.completed', { title: 'Bad' }, 'Anna hat Bad erledigt.'],
+	['chore.completion_undone', { title: 'Bad' }, 'Anna hat Bad als erledigt zurückgenommen.'],
 	['event.created', { title: 'Grillen' }, 'Anna hat den Termin „Grillen“ angelegt.'],
 	['event.updated', { title: 'Grillen' }, 'Anna hat den Termin „Grillen“ aktualisiert.'],
 	[
