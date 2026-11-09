@@ -129,6 +129,8 @@ nginx 1.30.6 (`nginx:stable-alpine`, in a container on the host network, reachin
 `wg.example.com`. In both, `./docker/smoke.sh` passed through the proxy (sign-up
 with the confirmation link, a WG, a signed image upload, the scheduled jobs, backup and restore),
 and so did sign-up and the 8-digit code in a browser, which kept its sign-in cookies as `Secure`.
+nginx ran as a container, not as a package on a Linux host, and no Let's Encrypt resolver was
+tried; those parts follow the configuration below but were not run.
 
 What ManaWG needs from any proxy:
 
@@ -143,13 +145,16 @@ What ManaWG needs from any proxy:
 - No `Upgrade` headers: the app opens no WebSocket connections.
 
 Both examples use these values in `.env` (then `docker compose up -d`). `HTTP_BIND=127.0.0.1:`
-keeps the gateway off the network, so nobody can skip the proxy, and a port other than 80 leaves
-80 and 443 to the proxy. `TRUSTED_PROXIES` depends on the proxy and is given below.
+keeps the gateway off the network, so nobody can skip the proxy. The gateway publishes both its
+HTTP and its HTTPS port even when it serves HTTP only, so `HTTP_PORT` and `HTTPS_PORT` must both
+be free ports other than 80 and 443, which belong to the proxy. `TRUSTED_PROXIES` depends on the
+proxy and is given below.
 
 ```sh
 APP_URL=https://wg.example.com
 SITE_ADDRESS=:80
 HTTP_PORT=8080
+HTTPS_PORT=8443
 HTTP_BIND=127.0.0.1:
 ```
 
@@ -189,8 +194,8 @@ server {
 ```
 
 Run `nginx -t` and reload. If nginx runs as a container, attach it to the Compose network of the
-stack (`docker network ls` shows it as `<checkout folder>_default`) and use
-`proxy_pass http://gateway:80;`; that was tested as well.
+stack (`docker network ls` shows it as `manawg_default`, or `<COMPOSE_PROJECT_NAME>_default` if
+you set that variable) and use `proxy_pass http://gateway:80;`; that was tested as well.
 
 #### Traefik
 
