@@ -12,7 +12,9 @@ const SOLO_SNOOZE_DAYS = 7;
 export function isWelcomeHidden(raw: string | null, now: number, solo: boolean): boolean {
 	if (raw === null) return false;
 	if (!solo) return raw === '1';
-	return now < Number(raw) + SOLO_SNOOZE_DAYS * MS_PER_DAY;
+	const snoozedAt = Number(raw);
+	// A timestamp from the future (the clock was corrected) must not hide the card for over a week.
+	return snoozedAt <= now && now < snoozedAt + SOLO_SNOOZE_DAYS * MS_PER_DAY;
 }
 
 /** The value to store when the card is dismissed. */

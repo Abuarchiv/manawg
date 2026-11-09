@@ -136,6 +136,9 @@ test.describe('Start card', () => {
 			`/wg/${FIXTURE_WG.shareCode}/expenses?new=1`,
 		);
 		await expect(page.getByRole('link', { name: 'Einkauf öffnen' })).toBeVisible();
+		await expect(
+			page.getByRole('button', { name: 'Mitbewohner einladen', exact: true }),
+		).toBeVisible();
 
 		await page.getByRole('button', { name: 'Einstiegshinweis dauerhaft ausblenden' }).click();
 		await page.reload();

@@ -46,7 +46,6 @@ export default {
 	welcome: {
 		title: 'Eure WG ist bereit',
 		descriptionAlone: 'Lade deine Mitbewohner ein und starte gemeinsam mit ihnen.',
-		descriptionWithRoommates: 'Startet mit eurem ersten Eintrag.',
 		dismiss: 'Einstiegshinweis dauerhaft ausblenden',
 		openShopping: 'Einkauf öffnen',
 		descriptionRoommateIn: '{name} ist dabei. Startet mit der ersten Ausgabe oder dem Einkauf.',

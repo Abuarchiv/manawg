@@ -20,9 +20,10 @@ settled.
 
 ### Changed
 
-- Dismissing the Start card while you are alone in the flat only hides it for a week; with
-  flatmates it stays hidden for good as before. Once a flatmate has joined and nothing has been
-  entered yet, the card names them and links to "Add expense" and "Open shopping".
+- While you are alone in the flat, the Start card's dismiss button reads "Remind me later" and
+  hides it only for a week; with flatmates it stays hidden for good as before. Once a flatmate has
+  joined and nothing has been entered yet, the card names them, links to "Add expense" and "Open
+  shopping" and keeps the invite button.
 
 ### Fixed
 

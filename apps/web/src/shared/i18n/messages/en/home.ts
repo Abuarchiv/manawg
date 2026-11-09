@@ -49,7 +49,6 @@ export default {
 	welcome: {
 		title: 'Your flat is ready',
 		descriptionAlone: 'Invite your flatmates and get started together.',
-		descriptionWithRoommates: 'Start with your first entry.',
 		dismiss: 'Hide this welcome notice for good',
 		openShopping: 'Open shopping',
 		descriptionRoommateIn: '{name} is in. Start with the first expense or shopping item.',

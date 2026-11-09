@@ -32,3 +32,7 @@ test('without a stored value the card shows', () => {
 test('a garbled value does not hide the card', () => {
 	assert.equal(isWelcomeHidden('abc', NOW, true), false);
 });
+
+test('a snooze timestamp from the future does not hide the card', () => {
+	assert.equal(isWelcomeHidden(String(NOW + 30 * DAY), NOW, true), false);
+});

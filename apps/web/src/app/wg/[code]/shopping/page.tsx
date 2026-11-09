@@ -138,7 +138,7 @@ export default function ShoppingPage() {
 						</EmptyDescription>
 					</EmptyHeader>
 					<EmptyContent>
-						<SoloInviteRow className="justify-center" />
+						<SoloInviteRow centered />
 					</EmptyContent>
 				</Empty>
 			) : (

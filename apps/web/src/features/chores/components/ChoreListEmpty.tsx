@@ -63,7 +63,7 @@ export function ChoreListEmpty({
 					);
 				})}
 			</EmptyContent>
-			<SoloInviteRow className="justify-center" />
+			<SoloInviteRow centered />
 		</Empty>
 	);
 }

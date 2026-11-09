@@ -60,22 +60,25 @@ export function StartWelcome({ dismissedFallback }: { dismissedFallback?: React.
 						<h2 id="new-wg-heading">{t('title')}</h2>
 					</CardTitle>
 					<CardDescription>
-						{newest
-							? t('descriptionRoommateIn', { name: newest.name })
-							: hasRoommates
-								? t('descriptionWithRoommates')
-								: t('descriptionAlone')}
+						{newest ? t('descriptionRoommateIn', { name: newest.name }) : t('descriptionAlone')}
 					</CardDescription>
 					<CardAction>
-						<Button
-							variant="ghost"
-							size="icon"
-							className="size-8"
-							onClick={dismiss}
-							aria-label={hasRoommates ? t('dismiss') : t('dismissSolo')}
-						>
-							<X aria-hidden />
-						</Button>
+						{hasRoommates ? (
+							<Button
+								variant="ghost"
+								size="icon"
+								className="size-8"
+								onClick={dismiss}
+								aria-label={t('dismiss')}
+							>
+								<X aria-hidden />
+							</Button>
+						) : (
+							// Alone, dismissing only snoozes the card: say so instead of showing a close icon.
+							<Button variant="ghost" size="sm" onClick={dismiss}>
+								{t('dismissSolo')}
+							</Button>
+						)}
 					</CardAction>
 				</CardHeader>
 				<CardContent className="flex flex-col gap-2">
@@ -90,6 +93,7 @@ export function StartWelcome({ dismissedFallback }: { dismissedFallback?: React.
 							>
 								{t('openShopping')}
 							</Link>
+							<InviteButton code={wg.shareCode} memberId={identity.memberId} wgName={wg.name} />
 						</>
 					) : (
 						<InviteButton

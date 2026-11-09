@@ -99,7 +99,7 @@ export function ExpenseHistory({
 						<EmptyDescription>{t('emptyBody')}</EmptyDescription>
 					</EmptyHeader>
 					<EmptyContent>
-						<SoloInviteRow className="justify-center" />
+						<SoloInviteRow centered />
 					</EmptyContent>
 				</Empty>
 			) : (

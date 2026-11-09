@@ -50,16 +50,15 @@ export default {
 	welcome: {
 		title: 'Tu piso está listo',
 		descriptionAlone: 'Invita a tus compañeros de piso y empezad juntos.',
-		descriptionWithRoommates: 'Empieza con tu primer registro.',
 		dismiss: 'Ocultar este aviso de bienvenida para siempre',
 		openShopping: 'Abrir compras',
 		descriptionRoommateIn:
 			'{name} ya está dentro. Empezad con el primer gasto o la primera compra.',
-		dismissSolo: 'Recordármelo más tarde',
+		dismissSolo: 'Avísame más tarde',
 		addExpense: 'Añadir gasto',
 	},
 	soloInvite: {
-		text: 'Todavía estás solo en el piso.',
+		text: 'Todavía no vive nadie más en el piso.',
 	},
 	invite: {
 		shareFailed: 'No se pudo compartir la invitación.',
