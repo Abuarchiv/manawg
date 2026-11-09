@@ -32,13 +32,13 @@ import {
 	PRIMARY_MODULE_SLUGS,
 	type PublicModuleSlug,
 } from '@/components/entry/public-modules';
+import { RetryNotice } from '@/components/entry/RetryNotice';
 import { SignOutActions } from '@/components/entry/SignOutActions';
 import { InvitationNotice, WgWelcome } from '@/components/entry/WgWelcome';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Button, buttonVariants } from '@/components/ui/button';
+import { buttonVariants } from '@/components/ui/button';
 import { LogoMark } from '@/components/ui/LogoMark';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Spinner } from '@/components/ui/spinner';
 import { NavItem } from '@/components/wg/NavItem';
 import { SubNav } from '@/components/wg/SubNav';
 import { hasSessionCookie } from '@/core/auth/session-hint';
@@ -304,24 +304,14 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 						</output>
 					)}
 					{(membershipState === 'error' || (retried && membershipState === 'loading')) && (
-						<div className="flex flex-col gap-2">
-							<ErrorBox>{t('public.loadFailed')}</ErrorBox>
-							<Button
-								type="button"
-								variant="outline"
-								focusableWhenDisabled
-								disabled={retried}
-								aria-busy={retried}
-								className="aria-disabled:pointer-events-none aria-disabled:opacity-50"
-								onClick={() => {
-									setRetried(true);
-									setRetryNonce((value) => value + 1);
-								}}
-							>
-								{retried && <Spinner data-icon="inline-start" aria-hidden />}
-								{retried ? t('public.rechecking') : t('public.recheck')}
-							</Button>
-						</div>
+						<RetryNotice
+							message={t('public.loadFailed')}
+							loading={retried}
+							onRetry={() => {
+								setRetried(true);
+								setRetryNonce((value) => value + 1);
+							}}
+						/>
 					)}
 					{membershipState === 'authenticated-empty' && (
 						<SignOutActions
