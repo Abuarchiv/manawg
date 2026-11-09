@@ -5,7 +5,7 @@ import type {
 	ReactionKey,
 } from '@/features/announcements/components/announcement-types';
 
-/** Optimistic card edits; pure so the board can apply and roll them back field by field. */
+// Optimistic card edits; pure so the board can apply and roll them back field by field.
 
 interface Reactor {
 	memberId: string;
