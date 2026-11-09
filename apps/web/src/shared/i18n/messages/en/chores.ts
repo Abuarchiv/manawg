@@ -253,7 +253,7 @@ export default {
 	actions: {
 		stillQueued: 'This task is still queued offline and can only be edited after syncing.',
 		swapPost:
-			'{name} would like to swap: “{title}” ({status}). Can someone take it over, or shall we have a quick word?',
+			'{name} would like to swap: “{title}”. Can someone take it over, or shall we have a quick word?',
 		swapDuplicate: 'There is already an open swap request for this task on the noticeboard.',
 		swapPosted: 'The swap request was posted on the noticeboard.',
 		takenOver: 'You are now assigned to the task.',

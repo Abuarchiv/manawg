@@ -258,7 +258,7 @@ export default {
 	actions: {
 		stillQueued:
 			'Diese Aufgabe ist noch offline vorgemerkt und lässt sich erst nach der Synchronisierung bearbeiten.',
-		swapPost: '{name} bittet um Tausch: „{title}“ ({status}). Übernehmen oder kurz absprechen?',
+		swapPost: '{name} bittet um Tausch: „{title}“. Übernehmen oder kurz absprechen?',
 		swapDuplicate: 'Für diese Aufgabe gibt es schon eine offene Tauschanfrage auf der Pinnwand.',
 		swapPosted: 'Tauschanfrage wurde auf der Pinnwand gepostet.',
 		takenOver: 'Du bist jetzt für die Aufgabe eingetragen.',

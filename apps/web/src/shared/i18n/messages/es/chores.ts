@@ -261,7 +261,7 @@ export default {
 		stillQueued:
 			'Esta tarea sigue en cola sin conexión y solo se podrá editar después de sincronizar.',
 		swapPost:
-			'{name} quiere hacer un cambio: “{title}” ({status}). ¿Alguien puede encargarse o lo hablamos un momento?',
+			'{name} quiere hacer un cambio: “{title}”. ¿Alguien puede encargarse o lo hablamos un momento?',
 		swapDuplicate: 'Ya hay una solicitud de cambio abierta para esta tarea en el tablón.',
 		swapPosted: 'La solicitud de cambio se ha publicado en el tablón.',
 		takenOver: 'Ahora tienes asignada la tarea.',
