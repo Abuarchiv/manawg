@@ -13,14 +13,10 @@ const BASE64URL_PATTERN = /^[A-Za-z0-9_-]+$/;
  * internal service) and trigger the request at will. Same reasoning as
  * `image-url.ts`, which only accepts this app's own image route for the same class of problem.
  *
- * Exact hosts where the service uses one, suffixes where it shards across
- * subdomains (Edge's `wns2-*.notify.windows.com`, Apple's regional hosts).
+ * FCM uses one exact host; the others shard across subdomains (Edge's
+ * `wns2-*.notify.windows.com`, Apple's regional hosts), so they match by suffix.
  */
-const ALLOWED_HOSTS = new Set([
-	'fcm.googleapis.com',
-	'updates.push.services.mozilla.com',
-	'web.push.apple.com',
-]);
+const ALLOWED_HOSTS = new Set(['fcm.googleapis.com']);
 
 const ALLOWED_HOST_SUFFIXES = [
 	'.notify.windows.com',

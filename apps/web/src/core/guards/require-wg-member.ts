@@ -67,7 +67,7 @@ export async function requireWgMembership(
  * Returns either:
  *   - `{ ok: true, wg, member }` — the WG row plus the caller's membership
  *   - `{ ok: false, response }` — a 404 (`wg_not_found`) or the failure from
- *     {@link requireMember}, ready to be returned as-is
+ *     {@link requireAccount}, ready to be returned as-is
  */
 export function requireWgMember(
 	req: NextRequest,
