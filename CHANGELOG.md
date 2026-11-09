@@ -8,6 +8,11 @@ settled.
 
 ## [Unreleased]
 
+### Fixed
+
+- Spanish shopping entries such as "2 kg de arroz" or "2 l de leche" no longer keep the "de" in the
+  item name after a metric unit.
+
 ## [0.2.0] - 2026-11-09
 
 ### Added
