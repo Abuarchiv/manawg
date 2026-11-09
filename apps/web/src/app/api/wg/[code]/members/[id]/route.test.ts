@@ -84,7 +84,6 @@ mock.module('@/core/db/member-names', {
 		releaseMemberName: async () => true,
 	},
 });
-mock.module('@/core/db/schema', { namedExports: { LIMITS: { NAME_MAX: 40 } } });
 mock.module('@/core/guards/api-auth', { namedExports: { UUID_PATTERN: /^[0-9a-f-]{36}$/i } });
 mock.module('@/core/guards/require-wg-member', {
 	namedExports: {

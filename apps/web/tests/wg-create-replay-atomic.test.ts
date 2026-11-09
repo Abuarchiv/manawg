@@ -158,7 +158,6 @@ mock.module('@/core/db/account-deletion', {
 		},
 	},
 });
-mock.module('@/core/db/schema', { namedExports: { LIMITS: { NAME_MAX: 100 } } });
 mock.module('@/core/db/transaction', { namedExports: { TransactionAbort, withTransaction } });
 mock.module('@/core/idempotency-store', {
 	namedExports: {

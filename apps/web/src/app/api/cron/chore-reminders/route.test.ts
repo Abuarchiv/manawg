@@ -164,6 +164,9 @@ mock.module('@/core/notifications/notification-dispatch', {
 		},
 	},
 });
+mock.module('@/features/events/event-reminder-dispatch', {
+	namedExports: { DISPATCH_BATCH_SIZE: 10 },
+});
 mock.module('@/core/utils/berlin-day', {
 	namedExports: {
 		startOfBerlinDay: () => new Date('2026-09-24T22:00:00.000Z'),
