@@ -13,7 +13,6 @@ import {
 	ItemTitle,
 } from '@/components/ui/item';
 import { useToast } from '@/components/ui/Toast';
-import { NETWORK_ERROR_CODE } from '@/core/http/error-codes';
 import { createIdempotencyKey, shouldReleaseIdempotencyKey } from '@/core/http/idempotency-key';
 import { apiFetch } from '@/core/infra/api-client';
 import { formatEuroCents } from '@/core/utils/money';
@@ -129,8 +128,6 @@ function CashPaymentRow({
 			}
 			keyRef.current = null;
 			onSettled(t('voided', { amount, from: fromName, to: toName }));
-		} catch {
-			toast.error(message(cashVoidError(NETWORK_ERROR_CODE)));
 		} finally {
 			voidingRef.current = false;
 			setVoiding(false);
