@@ -23,6 +23,7 @@ import {
 	expenseSaveError,
 	splitInputError,
 } from '@/features/expenses/expense-errors';
+import { savedExpenseMessage } from '@/features/expenses/expense-impact';
 import { manualSplitsFingerprint } from '@/features/expenses/expense-split-input';
 import type { Expense, RecurringExpense } from '@/features/expenses/expense-types';
 import {
@@ -58,6 +59,7 @@ export function useExpenseSubmit(
 	const {
 		wg,
 		identity,
+		members,
 		notify,
 		pending,
 		expenses,
@@ -355,12 +357,20 @@ export function useExpenseSubmit(
 			reportError(t({ key: 'expenses-form.notices.draftCleanupFailed' }));
 			return;
 		}
+		form.rememberCategory(form.category);
 		form.resetForm();
 		if (pushWarning) {
 			notify.warning(t(pushWarning));
 		} else {
+			const nameOf = (id: string) => members.find((member) => member.id === id)?.name ?? '?';
+			const impactText = t(
+				savedExpenseMessage(savedExpense, identity.memberId, nameOf, locale, isEdit),
+			);
+			// The reminder that nothing is paid out here is only news for the flat's first expense.
 			notify.success(
-				t({ key: isEdit ? 'expenses-form.notices.updated' : 'expenses-form.notices.saved' }),
+				isFirstExpense
+					? `${impactText} ${t({ key: 'expenses-form.notices.noMoneyMoved' })}`
+					: impactText,
 			);
 		}
 		if (recurringSourceId) {

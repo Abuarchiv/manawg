@@ -271,6 +271,7 @@ export const ShoppingItemRow = memo(function ShoppingItemRow({
 												<Link
 													href={expensePrefillHref(shareCode, {
 														desc: item.name,
+														category: 'groceries',
 														source: 'shopping',
 														...(item.boughtByMemberId ? { paidBy: item.boughtByMemberId } : {}),
 													})}

@@ -97,10 +97,14 @@ export function useExpensesPage() {
 		shareCode: wg.shareCode,
 		members,
 		identityMemberId: identity.memberId,
-		prefillDescription: searchParams.get('desc'),
-		prefillAmount: searchParams.get('amount'),
-		prefillPaidBy: searchParams.get('paidBy'),
+		prefill: {
+			description: searchParams.get('desc'),
+			amount: searchParams.get('amount'),
+			paidBy: searchParams.get('paidBy'),
+			category: searchParams.get('category'),
+		},
 		recurringId,
+		expenses,
 		recurringExpenses,
 	});
 	const { setShowForm } = form;
@@ -145,7 +149,7 @@ export function useExpensesPage() {
 		if (!wasOpen || form.showForm) return;
 		const next = new URLSearchParams(searchParams.toString());
 		let changed = false;
-		for (const key of ['new', 'desc', 'amount', 'paidBy', 'recurring']) {
+		for (const key of ['new', 'desc', 'amount', 'paidBy', 'category', 'recurring']) {
 			if (next.has(key)) {
 				next.delete(key);
 				changed = true;

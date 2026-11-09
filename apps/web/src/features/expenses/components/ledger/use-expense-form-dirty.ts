@@ -13,6 +13,8 @@ interface ExpenseFormDirtyInput {
 	participantIds: string[] | null;
 	recurringIntervalMonths: number;
 	identityMemberId: string;
+	/** The category an untouched new expense starts on. */
+	emptyCategory: string;
 	/** Which record the form edits; a new mode takes a new baseline. */
 	formModeKey: string;
 	/** Editing starts from the record's values, a new expense from the empty form. */
@@ -32,6 +34,7 @@ export function useExpenseFormDirty({
 	participantIds,
 	recurringIntervalMonths,
 	identityMemberId,
+	emptyCategory,
 	formModeKey,
 	startsFromCurrentValues,
 }: ExpenseFormDirtyInput): boolean {
@@ -49,7 +52,7 @@ export function useExpenseFormDirty({
 	});
 	const emptyFormStateKey = JSON.stringify({
 		description: '',
-		category: 'other',
+		category: emptyCategory,
 		amountStr: '',
 		paidByMemberId: identityMemberId,
 		splitMode: 'equal',

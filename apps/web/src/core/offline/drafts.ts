@@ -118,10 +118,15 @@ export function isEmptyModuleDraft(
 	};
 	// The cleaning rota page keeps its absence form in the same draft as the chore form.
 	const known = module === 'chore' ? { ...defaults.chore, ...defaults.absence } : defaults[module];
+	// A new expense starts on the last used category, so that one is untouched too.
+	if (module === 'expense' && typeof draft.lastCategory === 'string') {
+		known.category = draft.lastCategory;
+	}
 	return Object.entries(draft).every(
 		([key, value]) =>
 			// An expense date alone is no content: an untouched form from yesterday is still empty.
-			(module === 'expense' && key === 'occurredOn') ||
+			// The remembered category is bookkeeping, not input.
+			(module === 'expense' && (key === 'occurredOn' || key === 'lastCategory')) ||
 			(Object.hasOwn(known, key) && JSON.stringify(value) === JSON.stringify(known[key])),
 	);
 }

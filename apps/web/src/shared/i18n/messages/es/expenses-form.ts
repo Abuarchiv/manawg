@@ -112,8 +112,13 @@ export default {
 			'Este gasto ha cambiado mientras tanto. Recarga la lista y decide qué versión es la correcta.',
 		templateUnavailable:
 			'La plantilla de gasto fijo no está disponible. Actualiza la página e inténtalo de nuevo.',
-		saved: 'Gasto guardado. Aquí no se transfiere dinero.',
-		updated: 'Gasto actualizado. Aquí no se transfiere dinero.',
+		saved: 'Gasto guardado.',
+		updated: 'Gasto actualizado.',
+		savedLent:
+			'{count, plural, one {Guardado. Te devuelven {amount} ({name}).} other {Guardado. Te devuelven {amount} de {count} personas.}}',
+		savedOwe: 'Guardado. Debes {amount} a {payer}.',
+		savedOwn: 'Guardado. Solo para ti, nada que repartir.',
+		noMoneyMoved: 'Aquí no se transfiere dinero.',
 		keyUnavailableExpense: 'No se pudo enviar el gasto de forma fiable. Inténtalo de nuevo.',
 		keyUnavailableRecurring: 'No se pudo enviar el gasto fijo de forma fiable. Inténtalo de nuevo.',
 		keyUnavailableTemplate:

@@ -110,8 +110,13 @@ export default {
 			'Diese Ausgabe wurde inzwischen geändert. Lade die Liste neu und entscheide dann, welche Version stimmt.',
 		templateUnavailable:
 			'Fixkosten-Vorlage ist nicht verfügbar. Aktualisiere die Seite und versuche es erneut.',
-		saved: 'Ausgabe gespeichert. Hier wird kein Geld überwiesen.',
-		updated: 'Ausgabe aktualisiert. Hier wird kein Geld überwiesen.',
+		saved: 'Ausgabe gespeichert.',
+		updated: 'Ausgabe aktualisiert.',
+		savedLent:
+			'{count, plural, one {Gespeichert. Du bekommst {amount} zurück ({name}).} other {Gespeichert. Du bekommst {amount} von {count} Personen zurück.}}',
+		savedOwe: 'Gespeichert. Du schuldest {payer} {amount}.',
+		savedOwn: 'Gespeichert. Nur für dich, nichts zu verrechnen.',
+		noMoneyMoved: 'Hier wird kein Geld überwiesen.',
 		keyUnavailableExpense: 'Ausgabe konnte nicht sicher gesendet werden. Versuche es erneut.',
 		keyUnavailableRecurring:
 			'Fixkosten-Ausgabe konnte nicht sicher gesendet werden. Versuche es erneut.',

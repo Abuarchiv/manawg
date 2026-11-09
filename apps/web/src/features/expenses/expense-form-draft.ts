@@ -41,6 +41,8 @@ export type ExpenseDraft = {
 	editingExpense?: unknown;
 	description?: string;
 	category?: string;
+	/** The category last saved in this flat; a new expense starts on it. */
+	lastCategory?: string;
 	amountStr?: string;
 	imageUrl?: string | null;
 	paidByMemberId?: string;

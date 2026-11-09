@@ -112,8 +112,13 @@ export default {
 			'This expense has been changed in the meantime. Reload the list, then decide which version is right.',
 		templateUnavailable:
 			'The fixed-cost template is not available. Refresh the page and try again.',
-		saved: 'Expense saved. No money is transferred here.',
-		updated: 'Expense updated. No money is transferred here.',
+		saved: 'Expense saved.',
+		updated: 'Expense updated.',
+		savedLent:
+			'{count, plural, one {Saved. You get {amount} back ({name}).} other {Saved. You get {amount} back from {count} people.}}',
+		savedOwe: 'Saved. You owe {payer} {amount}.',
+		savedOwn: 'Saved. Just for you, nothing to split.',
+		noMoneyMoved: 'No money is transferred here.',
 		keyUnavailableExpense: 'The expense could not be sent reliably. Try again.',
 		keyUnavailableRecurring: 'The fixed-cost expense could not be sent reliably. Try again.',
 		keyUnavailableTemplate: 'The fixed-cost template could not be saved reliably. Try again.',
