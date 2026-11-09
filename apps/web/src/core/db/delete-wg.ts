@@ -1,4 +1,4 @@
-import { eq, inArray, like, or, sql } from 'drizzle-orm';
+import { eq, inArray, like, sql } from 'drizzle-orm';
 import { recordWgImageDeletions } from './private-image-deletions';
 import {
 	announcements,
@@ -64,15 +64,9 @@ function raiseClientReadTimeout(tx: DbTransaction, ms: number): () => void {
 async function deleteWgRows(tx: DbTransaction, wgId: string): Promise<boolean> {
 	await tx.delete(wgChatMessages).where(eq(wgChatMessages.wgId, wgId));
 	await tx.delete(auditEvents).where(eq(auditEvents.wgId, wgId));
-	// Stored replays of absence and chat creates carry the free text; they have no foreign key.
-	await tx
-		.delete(idempotencyResponses)
-		.where(
-			or(
-				like(idempotencyResponses.scope, `absences-create:${wgId}:%`),
-				like(idempotencyResponses.scope, `chat-message:${wgId}:%`),
-			),
-		);
+	// Stored replays hold the posted text and have no foreign key. Every WG-scoped replay uses the
+	// scope `<route>:<wgId>:...`, and a UUID contains no LIKE wildcard.
+	await tx.delete(idempotencyResponses).where(like(idempotencyResponses.scope, `%:${wgId}:%`));
 	await tx
 		.delete(wgInventoryLog)
 		.where(

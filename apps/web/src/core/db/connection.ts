@@ -43,11 +43,11 @@ function isQueryReadTimeout(error: unknown): boolean {
 }
 
 /**
- * `POSTGRES_URL`/`DATABASE_URL` are supported aliases — Vercel sets one,
- * other platforms the other — so a winner is picked by design. Two non-empty values that *differ* mean the deployment carries
- * two databases' configuration and one of them is silently ignored, which is
- * exactly the drift that surfaces as "works in Preview, missing table in
- * production". Report which variable wins instead.
+ * `POSTGRES_URL`/`DATABASE_URL` are supported aliases: Vercel sets one, other platforms the
+ * other, so a winner is picked by design. Two non-empty values that differ mean the deployment
+ * carries two databases' configuration and one of them is silently ignored, which is exactly the
+ * drift that surfaces as "works in Preview, missing table in production". Report which variable
+ * wins instead.
  */
 function warnOnAmbiguousUrlPair(primary: string, secondary: string): void {
 	const first = process.env[primary]?.trim();
@@ -55,7 +55,7 @@ function warnOnAmbiguousUrlPair(primary: string, secondary: string): void {
 	if (!first || !second || first === second || warnedUrlPairs.has(primary)) return;
 	warnedUrlPairs.add(primary);
 	console.warn(
-		`[db] ${primary} and ${secondary} are both set but differ — ${primary} takes precedence. Unset ${secondary} to remove the ambiguity.`,
+		`[db] ${primary} and ${secondary} are both set but differ. ${primary} takes precedence. Unset ${secondary} to remove the ambiguity.`,
 	);
 }
 
