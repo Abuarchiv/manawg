@@ -15,19 +15,10 @@ import {
 	readImportJsonBody,
 } from '@/features/expenses/import-body';
 import { importMemberMappingSchema } from '@/features/expenses/import-member-mapping-schema';
-import {
-	findMappingConflicts,
-	type ParsedExpense,
-	parseSettleUpCsv,
-	parseSplidCsv,
-	parseSplitwiseCsv,
-	parseTricountCsv,
-	type RejectedRow,
-} from '@/features/expenses/import-parsers';
-import { parseOcrText } from '@/features/expenses/ocr';
+import { findMappingConflicts } from '@/features/expenses/import-parsers';
 import { commitImport } from '@/features/expenses/server/import-commit';
 import { hashPayload } from '@/features/expenses/server/import-hash';
-import type { Locale } from '@/shared/i18n/locale';
+import { parseImportSource } from '../parse-source';
 
 const commitSchema = z.object({
 	source: z.enum(['splitwise_csv', 'splid_csv', 'tricount_csv', 'settleup_csv', 'ocr_text']),
@@ -37,19 +28,6 @@ const commitSchema = z.object({
 	skipDuplicates: z.boolean().optional().default(true),
 	skipIndexes: z.array(z.number().int().min(0)).optional().default([]),
 });
-
-function parseFor(source: string, payload: string, locale: Locale) {
-	// Rejected rows are already listed in the preview, so the commit must skip
-	// them the same way instead of aborting on the first one.
-	const rejected: RejectedRow[] = [];
-	let expenses: ParsedExpense[];
-	if (source === 'splitwise_csv') expenses = parseSplitwiseCsv(payload, rejected, locale);
-	else if (source === 'splid_csv') expenses = parseSplidCsv(payload, rejected, locale);
-	else if (source === 'tricount_csv') expenses = parseTricountCsv(payload, rejected);
-	else if (source === 'settleup_csv') expenses = parseSettleUpCsv(payload, rejected);
-	else expenses = parseOcrText(payload).expenses;
-	return { expenses, rejected };
-}
 
 export const POST = withWgRoute('imports/commit', async (req, { code }) => {
 	// Authenticate before reading the body (up to MAX_CSV_BYTES).
@@ -87,7 +65,11 @@ export const POST = withWgRoute('imports/commit', async (req, { code }) => {
 			);
 			if (limited) return { stop: limited };
 
-			const { expenses: parsedExpenses, rejected } = parseFor(source, payload, requestLocale(req));
+			const { expenses: parsedExpenses, rejected } = parseImportSource(
+				source,
+				payload,
+				requestLocale(req),
+			);
 			// A parse that stopped at the row limit must never be committed truncated.
 			if (parsedExpenses.length > MAX_IMPORT_ROWS || rejected.length > MAX_IMPORT_ROWS) {
 				return { stop: badRequest('too_many_rows') };
