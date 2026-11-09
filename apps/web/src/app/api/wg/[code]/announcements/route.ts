@@ -51,6 +51,7 @@ import {
 	summarizeAnnouncementReactions,
 } from '@/features/announcements/announcement-workflow';
 import { CONTENT_MAX } from '@/features/announcements/constants';
+import { choreSwapPath } from '@/features/chores/server/resolve-swap-request';
 
 const CONTENT_MIN = 1;
 const ANNOUNCEMENTS_LIST_LIMIT = 300;
@@ -97,10 +98,6 @@ function requestedSwapChoreId(
 ): string | null {
 	if (source !== 'chore_swap') return null;
 	return choreId ?? CHORE_SWAP_PATH_RE.exec(sourcePath ?? '')?.[1] ?? null;
-}
-
-function choreSwapSourcePath(choreId: string): string {
-	return `/chores?highlight=${encodeURIComponent(choreId)}`;
 }
 
 export const GET = withWgRoute('announcements GET', async (req, { code }) => {
@@ -284,7 +281,7 @@ export const POST = withWgRoute('announcements POST', async (req, { code }) => {
 						.for('update');
 					if (chore) {
 						safeSource = 'chore_swap';
-						safeSourcePath = choreSwapSourcePath(chore.id);
+						safeSourcePath = choreSwapPath(chore.id);
 						// One open swap request per chore: a repeated request (other member,
 						// second tab, offline retry) returns the existing post instead of a duplicate.
 						const [existing] = await tx
