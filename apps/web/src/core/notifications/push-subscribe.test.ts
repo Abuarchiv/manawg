@@ -50,7 +50,7 @@ test('turning push off in the last WG that uses it unsubscribes the browser', as
 
 test('a failed server opt-out keeps the browser subscription other WGs may share', async () => {
 	assert.equal(
-		await disablePushInOneWg(false, { ok: false, status: 0, error: 'Netzwerkfehler' }),
+		await disablePushInOneWg(false, { ok: false, status: 0, error: 'network_error' }),
 		false,
 	);
 });

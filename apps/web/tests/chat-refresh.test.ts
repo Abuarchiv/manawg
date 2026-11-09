@@ -53,7 +53,7 @@ test('8-second polling accepts a 10-second response and reports a slow failure',
 					resolve(
 						request === 1
 							? { ok: true, data: { messages: [message], reactions: [] } }
-							: { ok: false, error: 'Netzwerkfehler', status: 0 },
+							: { ok: false, error: 'network_error', status: 0 },
 					),
 				10_000,
 			),
@@ -143,7 +143,7 @@ test('a failed first load is followed by a successful poll that reports true', a
 	const message = { id: 'm1', createdAt: '2026-09-24T10:00:00.000Z' };
 	const { state, refresher } = refreshHarness(async () =>
 		++requests === 1
-			? { ok: false, status: 0, error: 'Netzwerkfehler' }
+			? { ok: false, status: 0, error: 'network_error' }
 			: { ok: true, data: { messages: [message], reactions: [] } },
 	);
 	// useChatRoom clears its bootstrap error screen on the first `true`.
@@ -165,7 +165,7 @@ test('the read marker is requested until the first successful refresh reports it
 		fetchJson: (async (url: string) => {
 			urls.push(url);
 			return ++requests === 1
-				? { ok: false, status: 0, error: 'Netzwerkfehler' }
+				? { ok: false, status: 0, error: 'network_error' }
 				: { ok: true, data: { messages: [{ id: 'm1' }], reactions: [], readMarker: marker } };
 		}) as never,
 		getMessages: () => [],

@@ -4,7 +4,7 @@ import test from 'node:test';
 const { importActionErrorMessage, recoveryActionFor } = await import('./import-errors');
 
 test('shared error buckets get the import wording', () => {
-	assert.equal(importActionErrorMessage('Netzwerkfehler').key, 'common.errors.network');
+	assert.equal(importActionErrorMessage('network_error').key, 'common.errors.network');
 	assert.equal(
 		importActionErrorMessage('wg_not_found').key,
 		'expenses-import.errors.wgUnavailable',

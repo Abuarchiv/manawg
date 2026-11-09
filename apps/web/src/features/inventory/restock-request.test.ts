@@ -20,7 +20,7 @@ const requests: { body: string; headers: Record<string, string> }[] = [];
 let reply: { ok: false; status: number; error: string } = {
 	ok: false,
 	status: 0,
-	error: 'Netzwerkfehler',
+	error: 'network_error',
 };
 mock.module('@/core/infra/api-client', {
 	namedExports: {
@@ -48,7 +48,7 @@ test('purchase retries retain their intent and stop offering a purchase that cha
 
 test('ordinary quick restock does not acquire a purchase body', async () => {
 	requests.length = 0;
-	reply = { ok: false, status: 0, error: 'Netzwerkfehler' };
+	reply = { ok: false, status: 0, error: 'network_error' };
 	await restockItem({ shareCode: 'TEST1234', memberId: 'member', item, keys: new Map() });
 	assert.deepEqual(JSON.parse(requests[0]?.body ?? '{}'), { quantityDelta: 1 });
 });

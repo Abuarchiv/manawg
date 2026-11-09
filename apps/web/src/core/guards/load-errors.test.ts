@@ -7,7 +7,7 @@ const LEAD = { key: 'common.loadError.lead.expenses' } as const;
 
 const CASES: [number, string | null, string | null][] = [
 	[0, null, 'common.errors.network'],
-	[0, 'Netzwerkfehler', 'common.errors.network'],
+	[0, 'network_error', 'common.errors.network'],
 	[404, null, 'common.errors.wgUnavailable'],
 	[404, 'wg_not_found', 'common.errors.wgUnavailable'],
 	[400, 'invalid_share_code', 'common.errors.invalidShareCode'],
