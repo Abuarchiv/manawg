@@ -62,13 +62,14 @@ mock.module('@/core/auth/local-account', {
 mock.module('@/core/offline/offline-images', {
 	namedExports: { clearPendingImages: async () => true },
 });
-const queue = { unsent: 0, synced: [] as string[] };
+const queue = { unsent: 0, synced: [] as string[], syncFails: false };
 mock.module('@/core/offline/offline-client', {
 	namedExports: {
 		readOfflineQueue: () =>
 			queue.unsent > 0 ? [{ shareCode: 'ABCD2345', memberId: 'member-a' }] : [],
 		syncOfflineActions: async (code: string) => {
 			queue.synced.push(code);
+			if (queue.syncFails) throw new Error('sync failed');
 			return 0;
 		},
 		countOfflineActions: () => queue.unsent,
@@ -243,6 +244,27 @@ test('logout with unsent actions asks first and keeps the session when declined'
 		assert.equal(state.events.at(-1)?.type, 'sign-out');
 	} finally {
 		queue.unsent = 0;
+		state.cleanup();
+	}
+});
+
+test('logout still asks before discarding when the pre-logout sync throws', async () => {
+	const state = harness();
+	queue.unsent = 2;
+	queue.syncFails = true;
+	try {
+		const asked: number[] = [];
+		const result = await state.client.signOutSocialAccount([], {
+			confirmDiscard: async (count) => {
+				asked.push(count);
+				return false;
+			},
+		});
+		assert.deepEqual(result, { pushCleanup: 'none', cancelled: true });
+		assert.deepEqual(asked, [2]);
+	} finally {
+		queue.unsent = 0;
+		queue.syncFails = false;
 		state.cleanup();
 	}
 });

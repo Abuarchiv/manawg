@@ -24,7 +24,7 @@ export async function isWgAdmin(wgId: string, memberId: string): Promise<boolean
 /**
  * Owner-or-admin gate for resource handlers that let either the resource's
  * creator/author or the WG admin act on it. `member` is the caller resolved by
- * `requireMember`, so matching ids already prove ownership.
+ * `requireWgMember`, so matching ids already prove ownership.
  *
  * Returns `null` when the caller may proceed, or the `forbidden` response to
  * return immediately otherwise.

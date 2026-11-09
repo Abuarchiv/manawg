@@ -3,11 +3,12 @@ import { badRequest } from '@/core/http/api-errors';
 import type { RouteCtx } from '@/core/infra/api-types';
 import { isValidShareCode, normalizeShareCode } from '@/core/utils/share-code';
 
-/** The share-code step every `/api/wg/[code]/...` handler runs before its own logic; one shared copy so the checks cannot drift between routes. */
 type ShareCodeResult<P> = ({ ok: true; code: string } & P) | { ok: false; response: NextResponse };
 
 /**
- * Read `code` from the route params, normalize it, and reject malformed input.
+ * The share-code step every `/api/wg/[code]/...` handler runs before its own logic, in one shared
+ * copy so the checks cannot drift between routes: read `code` from the route params, normalize
+ * it, and reject malformed input.
  *
  * The remaining params are passed through, so nested routes get their `id`
  * from the same call: `const { code, id } = result`.

@@ -39,7 +39,7 @@ export type AuthRouteContext<T> = {
 
 /**
  * Turn a Supabase Auth error into the JSON error format of the API. The Supabase error code is
- * passed through as `error` and `code` so the client can keep mapping it to German texts.
+ * passed through as `error` and `code` so the client can keep mapping it to localized texts.
  * An unreachable GoTrue and its 5xx answers are logged; 4xx answers are not.
  */
 function authErrorResponse(error: unknown): NextResponse {

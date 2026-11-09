@@ -5,17 +5,16 @@ import type { User } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 import { type NextRequest, NextResponse } from 'next/server';
 import { authCookieOptions } from './cookie-options';
-import { applySessionHint } from './session-hint-cookie';
+import { applySessionHint, isAuthTokenCookie } from './session-hint-cookie';
 import { getSupabaseEnv, hasSupabaseEnv } from './supabase-env';
 import { supabaseFetch } from './supabase-fetch';
 import { readVerifiedUser } from './verified-user';
 
-const SUPABASE_AUTH_TOKEN_COOKIE = /^sb-[A-Za-z0-9-]+-auth-token(?:\.\d+)?$/;
 const BEARER = /^Bearer ([\w.~+/=-]+)$/;
 const WG_ROOT = /^\/api\/wg\/[^/]+$/;
 
 function hasSessionCookie(request: NextRequest): boolean {
-	return request.cookies.getAll().some(({ name }) => SUPABASE_AUTH_TOKEN_COOKIE.test(name));
+	return request.cookies.getAll().some(({ name }) => isAuthTokenCookie(name));
 }
 
 /**
