@@ -22,7 +22,7 @@ export default {
 	invite: {
 		title: 'You have been invited to a flat',
 		description:
-			'Join your flat on ManaWG: expenses, cleaning rota, shopping and noticeboard. Free, in the browser, hosted in Germany.',
+			'Join your flat on ManaWG: expenses, cleaning rota, shopping and noticeboard. Free, in the browser.',
 	},
 	discover: {
 		description:
