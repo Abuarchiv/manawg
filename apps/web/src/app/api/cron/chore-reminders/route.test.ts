@@ -45,6 +45,8 @@ const state = {
 	maxInFlight: 0,
 	dispatched: [] as string[],
 	dispatchSent: 1,
+	dispatchError: null as Error | null,
+	captured: [] as unknown[],
 	payloads: [] as { choreId: string; nextDueAt?: string; unassigned?: boolean }[],
 	targets: [] as (string[] | undefined)[],
 	stamped: null as unknown[] | null,
@@ -139,7 +141,10 @@ mock.module('@/core/db', {
 });
 mock.module('@/core/infra/cron-auth', { namedExports: { requireCronSecret: () => null } });
 mock.module('@/core/infra/observability', {
-	namedExports: { withCronLogging: (_name: string, handler: unknown) => handler },
+	namedExports: {
+		withCronLogging: (_name: string, handler: unknown) => handler,
+		captureException: (err: unknown) => state.captured.push(err),
+	},
 });
 mock.module('@/core/notifications/notification-dispatch', {
 	namedExports: {
@@ -151,6 +156,7 @@ mock.module('@/core/notifications/notification-dispatch', {
 			state.maxInFlight = Math.max(state.maxInFlight, state.inFlight);
 			await new Promise((resolve) => setImmediate(resolve));
 			state.inFlight -= 1;
+			if (state.dispatchError) throw state.dispatchError;
 			state.dispatched.push(notification.payload.choreId);
 			state.payloads.push(notification.payload);
 			state.targets.push(notification.targetMemberIds);
@@ -218,6 +224,8 @@ function harness({
 		maxInFlight: 0,
 		dispatched: [],
 		dispatchSent: 1,
+		dispatchError: null,
+		captured: [],
 		payloads: [],
 		targets: [],
 		stamped: null,
@@ -429,5 +437,19 @@ test('a dispatch that reaches nobody releases its claim and does not stamp the c
 
 	assert.equal(state.dispatched.length, 2, 'both chores were attempted');
 	assert.equal(state.stamped, null, 'no lastReminderAt is written for an undelivered reminder');
+	assert.equal(state.claims.size, 0, 'the claims are released so the next run can retry');
+});
+
+test('a dispatch that throws is reported, releases its claim and answers 503', async (t) => {
+	t.mock.timers.enable({ apis: ['Date'], now });
+	const { state, get } = harness({ choreCount: 2 });
+	state.dispatchError = new Error('db down');
+	await withCronSecret(async () => {
+		const response = await get();
+		assert.equal(response.status, 503);
+		assert.deepEqual(await response.json(), { ok: false, sent: 0, failed: 2 });
+	});
+
+	assert.equal(state.captured.length, 2, 'every thrown dispatch error reaches error reporting');
 	assert.equal(state.claims.size, 0, 'the claims are released so the next run can retry');
 });
