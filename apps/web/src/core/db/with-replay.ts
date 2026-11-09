@@ -33,10 +33,10 @@ const replayCodec: ReplayCodec<unknown> = {
 };
 
 /**
- * A write whose outcome is stored as `{ status, body }` behind the shared claim (pinnwand posts,
+ * A write whose outcome is stored as `{ status, body }` behind the shared claim (announcement posts,
  * comments, reactions, shopping item updates).
- * Every outcome except a rate limit is stored, so a retry of a rejected write replays the
- * rejection; a rate-limited write can run again once the limit clears. `wgId` takes the WG's
+ * Every outcome except a rate limit (429) or outage (503) is stored, so a retry of a rejected
+ * write replays the rejection; a rate-limited write can run again once the limit clears. `wgId` takes the WG's
  * payment lock first, in the same order as expense writes.
  */
 export async function withIdempotentReplay<T>(
