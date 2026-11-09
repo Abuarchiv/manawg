@@ -18,7 +18,6 @@ let storedStatus = 'open';
 let storedContent = 'Alt';
 let storedVersion: Date | undefined;
 let takeActive = true;
-let reactionReads = 0;
 let deactivateAfterGuard = false;
 let deletedAnnouncements = 0;
 let dispatched = 0;
@@ -58,10 +57,6 @@ const db = {
 												},
 											]
 										: [{ id: announcementId }];
-						if (table === announcementReactions) {
-							reactionReads += 1;
-							if (reactionReads === 1) takeActive = false;
-						}
 						return Object.assign(Promise.resolve(rows), { for: async () => rows });
 					},
 				}),
@@ -220,7 +215,6 @@ function setup() {
 	storedContent = 'Alt';
 	storedVersion = undefined;
 	takeActive = true;
-	reactionReads = 0;
 	dispatched = 0;
 }
 
@@ -327,6 +321,7 @@ test('a status change is rejected after the take reaction is removed', async () 
 	setup();
 	caller = { deactivatedAt: null, role: 'member' };
 	authorMemberId = authorId;
+	takeActive = false;
 
 	const response = await patch({ status: 'resolved' });
 	assert.equal(response.status, 403);

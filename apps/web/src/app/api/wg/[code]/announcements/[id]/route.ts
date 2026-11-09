@@ -6,7 +6,7 @@ import { lockActiveAccountMember } from '@/core/db/account-deletion';
 import { revokePrivateImageIfUnreferenced } from '@/core/db/private-image-deletions';
 import { rowHoldsPatch } from '@/core/db/row-holds-patch';
 import { lockExpensePayments, withTransaction } from '@/core/db/transaction';
-import { isWgAdmin, requireOwnerOrAdmin } from '@/core/guards/admin';
+import { requireOwnerOrAdmin } from '@/core/guards/admin';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
@@ -97,21 +97,6 @@ export const PATCH = withWgRoute<{ id: string }>(
 			patch.pinnedAt = parsed.data.pinned ? now : null;
 		}
 		if (parsed.data.status) {
-			const hasTaken = await db
-				.select({ id: announcementReactions.id })
-				.from(announcementReactions)
-				.where(
-					and(
-						eq(announcementReactions.announcementId, id),
-						eq(announcementReactions.memberId, auth.member.memberId),
-						eq(announcementReactions.reaction, 'take'),
-					),
-				)
-				.limit(1);
-			// Admins close posts nobody owns anymore, e.g. open asks of members who moved out.
-			if (!isAuthor && hasTaken.length === 0 && !(await isWgAdmin(wg.id, auth.member.memberId))) {
-				return forbidden('status_change_not_allowed', 'status_change_not_allowed');
-			}
 			patch.status = parsed.data.status;
 			patch.resolvedAt = parsed.data.status === 'resolved' ? now : null;
 			patch.resolvedByMemberId = parsed.data.status === 'resolved' ? auth.member.memberId : null;
@@ -274,8 +259,10 @@ export const DELETE = withWgRoute<{ id: string }>(
 				.limit(1)
 				.for('update');
 			if (!row) return { ok: false as const, response: notFound('announcement_not_found') };
-			const denied = await requireOwnerOrAdmin(wgId, auth.member, row.authorMemberId);
-			if (denied) return { ok: false as const, response: denied };
+			// The role comes from the locked actor row: another pool connection here could exhaust the pool.
+			if (row.authorMemberId !== auth.member.memberId && actor.role !== 'admin') {
+				return { ok: false as const, response: forbidden('not_owner', 'not_owner') };
+			}
 
 			const deleted = await tx
 				.delete(announcements)
