@@ -21,7 +21,8 @@ export default async function PasswordResetPage({
 }) {
 	const [cookieStore, user, t, { choose, next }] = await Promise.all([
 		cookies(),
-		getAuthenticatedUserFromCookies(),
+		// An unreachable auth server shows the "request a new link" form instead of failing the page.
+		getAuthenticatedUserFromCookies().catch(() => null),
 		getTranslations('entry'),
 		searchParams,
 	]);
