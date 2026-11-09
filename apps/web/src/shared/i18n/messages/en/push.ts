@@ -29,6 +29,15 @@ export default {
 		title: 'New expense',
 		body: '{actorName} added {title} for {amount} in {wgName}.',
 	},
+	expenseUpdated: {
+		title: 'Expense changed',
+		share: '{actorName} changed {title}: your share {from} → {to}',
+		same: '{actorName} changed {title}. Your share stays {amount}.',
+	},
+	expenseDeleted: {
+		title: 'Expense deleted',
+		body: '{actorName} deleted {title}. Your balance changes by {amount}.',
+	},
 	recurringCharged: {
 		title: 'New fixed-cost entry',
 		body: 'New fixed-cost entry: {description} {amount}',
@@ -63,6 +72,10 @@ export default {
 	announcementResolved: {
 		title: 'Noticeboard post resolved',
 		body: '{actorName} marked a post as resolved: {title}',
+	},
+	memberJoined: {
+		title: 'New in your WG',
+		body: '{actorName} joined {wgName}.',
 	},
 	choreDue: {
 		title: 'Cleaning rota',

@@ -34,6 +34,24 @@ function withAmount(metadata: Record<string, unknown>, locale: Locale): Values |
 	return { amount: formatEuroCents(metadata.amountCents, currency, { locale }) };
 }
 
+/** An edited expense shows "old → new" when the amount changed; older rows carry no previous amount. */
+function withAmountChange(metadata: Record<string, unknown>, locale: Locale): Values {
+	const { amountCents, previousAmountCents } = metadata;
+	if (
+		typeof amountCents !== 'number' ||
+		typeof previousAmountCents !== 'number' ||
+		amountCents === previousAmountCents
+	) {
+		return { amountChange: 'no', from: '', to: '' };
+	}
+	const currency = typeof metadata.currency === 'string' ? metadata.currency : 'EUR';
+	return {
+		amountChange: 'yes',
+		from: formatEuroCents(previousAmountCents, currency, { locale }),
+		to: formatEuroCents(amountCents, currency, { locale }),
+	};
+}
+
 const TITLE = { keys: ['title'] } as const;
 const NAME = { keys: ['name'] } as const;
 const DESCRIPTION = { keys: ['description'] } as const;
@@ -84,7 +102,7 @@ const EVENTS: Readonly<Record<string, AuditEventDef>> = {
 	},
 	'event.deleted': TITLE,
 	'expense.created': DESCRIPTION,
-	'expense.updated': DESCRIPTION,
+	'expense.updated': { ...DESCRIPTION, derive: withAmountChange },
 	'expense.deleted': DESCRIPTION,
 	'expense.split.settled': DESCRIPTION,
 	'expense.split.reopened': DESCRIPTION,

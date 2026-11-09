@@ -45,6 +45,7 @@ export default {
 		delete: 'Eliminar',
 		cancel: 'Cancelar',
 		pendingNote: 'Esperando conexión; después se podrá editar',
+		editedAt: 'Editado el {date}',
 		openReceipt: 'Abrir justificante',
 		sharesAria: 'Partes del gasto',
 		you: 'Tú',

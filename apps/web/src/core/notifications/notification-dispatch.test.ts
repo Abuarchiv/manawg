@@ -114,6 +114,37 @@ test('an urgent push reaches a member in quiet hours, a normal one does not', as
 	}
 });
 
+test('a join push skips the joiner and honours the announcements opt-out', async () => {
+	const base = { ...member(true), notifyAnnouncements: true };
+	memberRows = [
+		{ ...base, id: 'joiner' },
+		{ ...base, id: 'inviter' },
+		{ ...base, id: 'muted', notifyAnnouncements: false },
+	];
+	subscriptionRows = [
+		{
+			id: 'sub-1',
+			endpoint: 'https://push.test',
+			p256dh: 'p',
+			authKey: 'a',
+			createdAt: new Date(0),
+		},
+	];
+	try {
+		await withEnv(VAPID_ENV, async () => {
+			const result = await dispatchNotification({
+				wg: input.wg,
+				event: 'member.joined',
+				payload: { actorName: 'Mina' },
+				excludeMemberId: 'joiner',
+			});
+			assert.equal(result.sent, 1);
+		});
+	} finally {
+		subscriptionRows = [];
+	}
+});
+
 test('without VAPID_SUBJECT push is skipped outside production and refused in production', async () => {
 	memberRows = [{ ...member(true), notifyEvents: true }];
 	subscriptionRows = [

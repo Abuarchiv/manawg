@@ -29,6 +29,15 @@ export default {
 		title: 'Gasto nuevo',
 		body: '{actorName} añadió {title} por {amount} en {wgName}.',
 	},
+	expenseUpdated: {
+		title: 'Gasto modificado',
+		share: '{actorName} cambió {title}: tu parte {from} → {to}',
+		same: '{actorName} cambió {title}. Tu parte sigue en {amount}.',
+	},
+	expenseDeleted: {
+		title: 'Gasto eliminado',
+		body: '{actorName} eliminó {title}. Tu saldo cambia en {amount}.',
+	},
 	recurringCharged: {
 		title: 'Nuevo cargo de gasto fijo',
 		body: 'Nuevo cargo de gasto fijo: {description} {amount}',
@@ -63,6 +72,10 @@ export default {
 	announcementResolved: {
 		title: 'Publicación del tablón resuelta',
 		body: '{actorName} marcó una publicación como resuelta: {title}',
+	},
+	memberJoined: {
+		title: 'Novedad en tu piso',
+		body: '{actorName} se ha unido a {wgName}.',
 	},
 	choreDue: {
 		title: 'Plan de limpieza',

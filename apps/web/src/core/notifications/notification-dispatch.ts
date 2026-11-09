@@ -85,7 +85,8 @@ async function mapInBatches<T, R>(
  */
 function buildNotificationUrl(shareCode: string, urlPath: string): string {
 	const normalizedPath = urlPath.startsWith('/') ? urlPath : `/${urlPath}`;
-	return `/wg/${encodeURIComponent(shareCode)}${normalizedPath}`;
+	// The WG start page has no trailing slash.
+	return `/wg/${encodeURIComponent(shareCode)}${normalizedPath === '/' ? '' : normalizedPath}`;
 }
 
 const SECONDS_PER_HOUR = 60 * 60;

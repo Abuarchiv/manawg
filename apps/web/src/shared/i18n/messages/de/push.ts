@@ -26,6 +26,15 @@ export default {
 		title: 'Neue Ausgabe',
 		body: '{actorName} hat in {wgName} {title} für {amount} eingetragen.',
 	},
+	expenseUpdated: {
+		title: 'Ausgabe geändert',
+		share: '{actorName} hat {title} geändert: dein Anteil {from} → {to}',
+		same: '{actorName} hat {title} geändert. Dein Anteil bleibt bei {amount}.',
+	},
+	expenseDeleted: {
+		title: 'Ausgabe gelöscht',
+		body: '{actorName} hat {title} gelöscht. Dein Saldo ändert sich um {amount}.',
+	},
 	recurringCharged: {
 		title: 'Neue Fixkosten-Buchung',
 		body: 'Neue Fixkosten-Buchung: {description} {amount}',
@@ -60,6 +69,10 @@ export default {
 	announcementResolved: {
 		title: 'Pinnwand geklärt',
 		body: '{actorName} hat einen Beitrag als geklärt markiert: {title}',
+	},
+	memberJoined: {
+		title: 'Neu in deiner WG',
+		body: '{actorName} ist {wgName} beigetreten.',
 	},
 	choreDue: {
 		title: 'Putzplan',

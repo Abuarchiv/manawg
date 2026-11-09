@@ -211,6 +211,8 @@ test('English pushes use the catalog, en-GB money and Berlin dates', (t) => {
 test('every event has a complete message in every locale', () => {
 	const events = [
 		'expense.created',
+		'expense.updated',
+		'expense.deleted',
 		'expense.recurring_charged',
 		'expense.reminder',
 		'expense.debt_settled',
@@ -220,6 +222,7 @@ test('every event has a complete message in every locale', () => {
 		'announcement.posted',
 		'announcement.commented',
 		'announcement.resolved',
+		'member.joined',
 		'chore.due',
 		'shopping.added',
 		'event.created',
@@ -252,5 +255,45 @@ test('counts of 1000 or more stay ungrouped', () => {
 	assert.doesNotMatch(
 		formatNotificationMessage('chore.due', { nextDueAt: '2020-01-01T10:00:00.000Z' }, 'de').body,
 		/\d\.\d{3}/,
+	);
+});
+
+test('a join push opens the WG start page and follows the announcements setting', () => {
+	assert.equal(notificationCategoryForEvent('member.joined'), 'announcements');
+	assert.equal(notificationPriorityForEvent('member.joined'), 'normal');
+	const message = formatNotificationMessage(
+		'member.joined',
+		{ wgName: 'Altbau', actorName: 'Mina' },
+		'en',
+	);
+	assert.deepEqual(message, {
+		title: 'New in your WG',
+		body: 'Mina joined Altbau.',
+		urlPath: '/',
+	});
+});
+
+test('edit and delete pushes tell the recipient their own share and balance', () => {
+	const base = { wgName: 'Flat', actorName: 'Anna', title: 'Pizza', currency: 'EUR' };
+	assert.equal(notificationCategoryForEvent('expense.updated'), 'expenses');
+	assert.equal(notificationCategoryForEvent('expense.deleted'), 'expenses');
+	const changed = formatNotificationMessage(
+		'expense.updated',
+		{ ...base, expenseId: 'e1', shareFromCents: 500, shareToCents: 800 },
+		'en',
+	);
+	assert.equal(changed.body, 'Anna changed Pizza: your share €5.00 → €8.00');
+	assert.equal(changed.urlPath, '/expenses?highlight=e1');
+	assert.equal(
+		formatNotificationMessage(
+			'expense.updated',
+			{ ...base, shareFromCents: 500, shareToCents: 500 },
+			'en',
+		).body,
+		'Anna changed Pizza. Your share stays €5.00.',
+	);
+	assert.match(
+		formatNotificationMessage('expense.deleted', { ...base, amountCents: 800 }, 'de').body,
+		/^Anna hat Pizza gelöscht\. Dein Saldo ändert sich um 8,00\s€\.$/,
 	);
 });

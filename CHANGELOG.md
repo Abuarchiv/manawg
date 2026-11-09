@@ -10,6 +10,12 @@ settled.
 
 ### Added
 
+- Members get a push when a new flatmate joins ("Mina joined your WG"). It follows the
+  noticeboard notification setting; the person who joined does not get it.
+- Debtors get a push when an expense changes in amount, share or date ("your share 5.00 EUR to
+  8.00 EUR") and when it is deleted. Edits to category, description or receipt stay quiet. The
+  activity log shows the old and the new amount of an edit, and an edited expense shows "Edited" with
+  its time in the details.
 - Receipt scanning recognises Spanish text: with the interface in Spanish, the scanner loads the
   Spanish model as well, so `ñ` and accents are kept. Other languages do not download it.
 - The self-hosting guide has tested nginx and Traefik reverse-proxy examples with the `.env` values,

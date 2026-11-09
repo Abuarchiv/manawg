@@ -7,6 +7,7 @@ const future = new Date(Date.now() + 86_400_000);
 const invite = { id: 'inv-1', expiresAt: future, revokedAt: null, useCount: 0, maxUses: 5 };
 const member = { id: 'm-1', name: 'Mina' };
 let fake = queryFake([]);
+const dispatched: Array<Record<string, unknown>> = [];
 const offsets: unknown[] = [];
 const listing: object = new Proxy(function listingRoot() {}, {
 	get: (_target, key) => {
@@ -24,7 +25,7 @@ const listing: object = new Proxy(function listingRoot() {}, {
 mock.module('@/core/audit', { namedExports: { recordAuditEvent: async () => undefined } });
 mock.module('@/core/db', {
 	namedExports: {
-		db: { query: { wgs: { findFirst: async () => ({ id: 'wg-1' }) } }, select: () => listing },
+		db: { query: { wgs: { findFirst: async () => ({ id: 'wg-1', name: 'Altbau' }) } }, select: () => listing },
 		wgInvites: {},
 		wgMembers: {},
 		wgs: {},
@@ -64,6 +65,14 @@ mock.module('@/core/idempotency-store', { namedExports: { readIdempotencyKey: ()
 mock.module('@/core/infra/observability', {
 	namedExports: { captureException: () => undefined, logApiError: () => undefined },
 });
+mock.module('@/core/notifications/notification-dispatch', {
+	namedExports: {
+		dispatchNotificationSafely: async (input: Record<string, unknown>) => {
+			dispatched.push(input);
+			return { sent: 0, warning: null };
+		},
+	},
+});
 mock.module('@/core/rate-limit', {
 	namedExports: {
 		checkRateLimit: async () => ({ success: true }),
@@ -102,6 +111,19 @@ test('a German request stores German', async () => {
 	const res = await join({ 'accept-language': 'de-DE' });
 	assert.equal(res.status, 200);
 	assert.equal(fake.values[0]?.locale, 'de');
+});
+
+test('a join tells the existing members, never the joiner', async () => {
+	dispatched.length = 0;
+	const res = await join({});
+	assert.equal(res.status, 200);
+	assert.equal(dispatched.length, 1);
+	assert.deepEqual(dispatched[0], {
+		wg: { id: 'wg-1', name: 'Altbau', shareCode: 'ABCD2345' },
+		event: 'member.joined',
+		payload: { actorName: 'Mina' },
+		excludeMemberId: 'm-1',
+	});
 });
 
 test('a huge offset is clamped to the member row cap instead of reaching the database', async () => {

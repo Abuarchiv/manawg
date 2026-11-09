@@ -53,6 +53,13 @@ const IMPACT_KEY = {
 	none: 'impactNone',
 } as const satisfies Record<ExpenseImpact['kind'], string>;
 
+const EDITED_AFTER_MS = 60_000;
+
+/** An edit shows only when it came clearly after creation; a fresh row has both stamps equal. */
+function wasEdited({ createdAt, updatedAt }: Pick<Expense, 'createdAt' | 'updatedAt'>): boolean {
+	return Date.parse(updatedAt) - Date.parse(createdAt) > EDITED_AFTER_MS;
+}
+
 interface ExpenseRowProps {
 	expense: Expense;
 	expanded: boolean;
@@ -232,6 +239,14 @@ export const ExpenseRow = memo(function ExpenseRow({
 							<time dateTime={expense.occurredAt}>
 								{formatTimeFull(expense.occurredAt, locale)}
 							</time>
+							{wasEdited(expense) && (
+								<>
+									{' · '}
+									<time dateTime={expense.updatedAt}>
+										{t('editedAt', { date: formatTimeFull(expense.updatedAt, locale) })}
+									</time>
+								</>
+							)}
 							{expense.id.startsWith('pending:') && ` · ${t('pendingNote')}`}
 						</p>
 						{/* An offline receipt is still a local token without a URL to open. */}

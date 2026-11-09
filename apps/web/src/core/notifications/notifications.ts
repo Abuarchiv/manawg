@@ -8,6 +8,8 @@ import type { Locale } from '@/shared/i18n/locale';
 
 export type NotificationEvent =
 	| 'expense.created'
+	| 'expense.updated'
+	| 'expense.deleted'
 	| 'expense.recurring_charged'
 	| 'expense.reminder'
 	| 'expense.debt_settled'
@@ -17,6 +19,7 @@ export type NotificationEvent =
 	| 'announcement.posted'
 	| 'announcement.commented'
 	| 'announcement.resolved'
+	| 'member.joined'
 	| 'chore.due'
 	| 'shopping.added'
 	| 'event.created'
@@ -59,7 +62,7 @@ function text(value: unknown, fallback: string): string {
 }
 
 export function notificationCategoryForEvent(event: NotificationEvent): NotificationCategory {
-	if (event === 'notification.test') return 'announcements';
+	if (event === 'notification.test' || event === 'member.joined') return 'announcements';
 	if (event === 'expense.reminder') return 'reminders';
 	if (event.startsWith('announcement.')) return 'announcements';
 	if (event.startsWith('expense.') || event === 'import.completed') return 'expenses';
@@ -190,6 +193,29 @@ export function formatNotificationMessage(
 				}),
 				urlPath: expenseUrlPath(payload),
 			};
+		case 'expense.updated': {
+			const title = text(payload.title, t('fallback.expense'));
+			const shareFrom = money(payload.shareFromCents, payload.currency, locale);
+			const shareTo = money(payload.shareToCents, payload.currency, locale);
+			return {
+				title: t('expenseUpdated.title'),
+				body:
+					payload.shareFromCents === payload.shareToCents
+						? t('expenseUpdated.same', { actorName, title, amount: shareTo })
+						: t('expenseUpdated.share', { actorName, title, from: shareFrom, to: shareTo }),
+				urlPath: expenseUrlPath(payload),
+			};
+		}
+		case 'expense.deleted':
+			return {
+				title: t('expenseDeleted.title'),
+				body: t('expenseDeleted.body', {
+					actorName,
+					title: text(payload.title, t('fallback.expense')),
+					amount: amount(),
+				}),
+				urlPath: '/expenses',
+			};
 		case 'expense.recurring_charged':
 			return {
 				title: t('recurringCharged.title'),
@@ -264,6 +290,12 @@ export function formatNotificationMessage(
 					title: text(payload.title, t('fallback.post')),
 				}),
 				urlPath: announcementUrlPath(payload),
+			};
+		case 'member.joined':
+			return {
+				title: t('memberJoined.title'),
+				body: t('memberJoined.body', { actorName, wgName }),
+				urlPath: '/',
 			};
 		case 'chore.due':
 			return {

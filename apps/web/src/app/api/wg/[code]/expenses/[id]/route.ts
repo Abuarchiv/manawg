@@ -30,6 +30,11 @@ import {
 	expenseSplitSchema,
 	occurredAtSchema,
 } from '@/features/expenses/expense-schemas';
+import {
+	notifyExpenseDeleted,
+	notifyExpenseUpdated,
+} from '@/features/expenses/server/expense-change-notify';
+import type { ExpenseShare } from '@/features/expenses/expense-change-notices';
 import { expenseCategoryValueSchema } from '@/features/expenses/server/expense-category-schema';
 import { storedExpenseHoldingEdit } from '@/features/expenses/server/expense-held-edit';
 import { withExpensePaymentLock } from '@/features/expenses/server/expense-payments';
@@ -69,6 +74,7 @@ export const DELETE = withWgRoute<{ id: string }>('expense DELETE', async (req, 
 				paidByMemberId: expenses.paidByMemberId,
 				description: expenses.description,
 				amountCents: expenses.amountCents,
+				currency: expenses.currency,
 				imageUrl: expenses.imageUrl,
 			})
 			.from(expenses)
@@ -105,6 +111,13 @@ export const DELETE = withWgRoute<{ id: string }>('expense DELETE', async (req, 
 		if (settledShare.length > 0) {
 			return { ok: false as const, response: conflict('expense_has_settled_shares') };
 		}
+		const shares = await tx
+			.select({
+				debtorMemberId: expenseSplits.debtorMemberId,
+				amountCents: expenseSplits.amountCents,
+			})
+			.from(expenseSplits)
+			.where(eq(expenseSplits.expenseId, id));
 		const deleted = await tx
 			.delete(expenses)
 			.where(and(eq(expenses.id, id), eq(expenses.wgId, wgId)))
@@ -115,10 +128,10 @@ export const DELETE = withWgRoute<{ id: string }>('expense DELETE', async (req, 
 		await revokePrivateImageIfUnreferenced(tx, wgId, row.imageUrl);
 		// The chat notice "X hat Y eingetragen" would otherwise announce an expense that is gone.
 		await withdrawExpenseChatNotice(tx, wgId, id);
-		return { ok: true as const, row };
+		return { ok: true as const, row, shares };
 	});
 	if (!deletion.ok) return deletion.response;
-	const { row } = deletion;
+	const { row, shares } = deletion;
 	await recordAuditEvent({
 		wgId,
 		memberId: auth.member.memberId,
@@ -130,6 +143,14 @@ export const DELETE = withWgRoute<{ id: string }>('expense DELETE', async (req, 
 			description: row.description,
 			amountCents: row.amountCents,
 		},
+	});
+	await notifyExpenseDeleted({
+		wg: auth.wg,
+		actor: { memberId: auth.member.memberId, name: auth.member.name },
+		title: row.description,
+		currency: row.currency,
+		payerId: row.paidByMemberId,
+		shares,
 	});
 	return NextResponse.json({ deleted: true });
 });
@@ -191,6 +212,7 @@ export const PATCH = withWgRoute<{ id: string }>('expense PATCH', async (req, { 
 		.select({
 			paidByMemberId: expenses.paidByMemberId,
 			amountCents: expenses.amountCents,
+			occurredAt: expenses.occurredAt,
 			updatedAt: expenses.updatedAt,
 		})
 		.from(expenses)
@@ -226,6 +248,8 @@ export const PATCH = withWgRoute<{ id: string }>('expense PATCH', async (req, { 
 
 	// The amount change and the replaced splits are one edit, so they are written in one
 	// transaction: a failure leaves the old splits in place instead of an expense with none.
+	// The shares before an edit that replaces them; null when the edit leaves them alone.
+	const replaced: { shares: ExpenseShare[] | null } = { shares: null };
 	try {
 		await withExpensePaymentLock(wgId, async (tx) => {
 			let previousImageUrl: string | null = null;
@@ -250,6 +274,7 @@ export const PATCH = withWgRoute<{ id: string }>('expense PATCH', async (req, { 
 						.where(eq(expenseSplits.expenseId, id))
 				: [];
 			if (splits) {
+				replaced.shares = previousSplits;
 				const relevantDebtorIds = Array.from(
 					new Set([
 						...previousSplits.map((split) => split.debtorMemberId),
@@ -374,7 +399,31 @@ export const PATCH = withWgRoute<{ id: string }>('expense PATCH', async (req, { 
 		metadata: {
 			description: updatedRow.description,
 			amountCents: updatedRow.amountCents,
+			currency: updatedRow.currency,
 			splitCount: updatedSplits.length,
+			previousAmountCents: row.amountCents,
+			...(replaced.shares && {
+				previousShares: Object.fromEntries(
+					replaced.shares.map((share) => [share.debtorMemberId, share.amountCents]),
+				),
+			}),
+		},
+	});
+	await notifyExpenseUpdated({
+		wg: auth.wg,
+		actor: { memberId: auth.member.memberId, name: auth.member.name },
+		title: updatedRow.description,
+		currency: updatedRow.currency,
+		expenseId: id,
+		before: {
+			amountCents: row.amountCents,
+			occurredAt: row.occurredAt,
+			shares: replaced.shares ?? updatedSplits,
+		},
+		after: {
+			amountCents: updatedRow.amountCents,
+			occurredAt: updatedRow.occurredAt,
+			shares: updatedSplits,
 		},
 	});
 
