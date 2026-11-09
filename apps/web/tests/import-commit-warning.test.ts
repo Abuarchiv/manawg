@@ -190,7 +190,7 @@ test('immediate response preserves a known warning when persistence fails', asyn
 
 // Releasing the claim after a failed commit is the primitive's job (tests/idempotent-write).
 test('a failed commit answers with the real error on every same-key retry', async () => {
-	const failing = () => Promise.reject(new Error('member_not_in_wg'));
+	const failing = () => Promise.reject(new TransactionAbort('member_not_in_wg'));
 	assert.equal((await postWith('saved', failing)).response.status, 400);
 	assert.equal((await postWith('saved', failing)).response.status, 400);
 

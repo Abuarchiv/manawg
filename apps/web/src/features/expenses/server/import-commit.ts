@@ -4,6 +4,7 @@ import { recordAuditEvent } from '@/core/audit';
 import { db, expenseImports, expenseSplits, expenses, wgMembers } from '@/core/db';
 import { bodyCodec, type Prepared, withIdempotentWrite } from '@/core/db/idempotent-write';
 import type { DbTransaction } from '@/core/db/transaction';
+import { TransactionAbort } from '@/core/db/transaction-abort';
 import {
 	dispatchNotificationSafely,
 	type NotificationDispatchWarning,
@@ -75,7 +76,7 @@ async function assertMembersInWg(
 		);
 	const validIds = new Set(memberRows.map((m) => m.id));
 	for (const id of memberIdsList) {
-		if (!validIds.has(id)) throw new Error('member_not_in_wg');
+		if (!validIds.has(id)) throw new TransactionAbort('member_not_in_wg');
 	}
 }
 

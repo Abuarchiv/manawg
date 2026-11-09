@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
+import { TransactionAbort } from '@/core/db/transaction-abort';
 import { isWgAdmin } from '@/core/guards/admin';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
@@ -129,7 +130,7 @@ export const POST = withWgRoute('imports/commit', async (req, { code }) => {
 		}
 		return NextResponse.json(result);
 	} catch (err) {
-		if (err instanceof Error && err.message === 'member_not_in_wg') {
+		if (err instanceof TransactionAbort && err.code === 'member_not_in_wg') {
 			return badRequest('member_not_in_wg');
 		}
 		throw err;

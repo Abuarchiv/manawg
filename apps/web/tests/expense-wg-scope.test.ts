@@ -166,7 +166,7 @@ test('writeImport refuses a name mapped to a member of another flat and writes n
 		const input = importInput(wgId, member, { Ann: stranger }, [importRow('Rent', 400, 'Ann')]);
 		await assert.rejects(
 			database.transaction((tx) => writeImport(tx as unknown as DbTransaction, input)),
-			{ message: 'member_not_in_wg' },
+			{ code: 'member_not_in_wg' },
 		);
 		assert.equal(await expenseCount(database, wgId), 0);
 		const imports = await database
