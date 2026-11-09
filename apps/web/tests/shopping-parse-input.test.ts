@@ -64,3 +64,19 @@ test('Spanish unit words stay in the quantity and the "de" after them is dropped
 		quantity: '2',
 	});
 });
+
+test('the Spanish "de" is also dropped after metric units, a capitalised "De" brand stays', () => {
+	assert.deepEqual(parseShoppingInput('2 kg de arroz'), { name: 'arroz', quantity: '2 kg' });
+	assert.deepEqual(parseShoppingInput('2 l de leche'), { name: 'leche', quantity: '2 l' });
+	assert.deepEqual(parseShoppingInput('500 ml de aceite'), { name: 'aceite', quantity: '500 ml' });
+	assert.deepEqual(parseShoppingInput('2 g de sal'), { name: 'sal', quantity: '2 g' });
+	assert.deepEqual(parseShoppingInput('2 kilos de patatas'), {
+		name: 'patatas',
+		quantity: '2 kilos',
+	});
+	assert.deepEqual(parseShoppingInput('2 kg De Cecco Spaghetti'), {
+		name: 'De Cecco Spaghetti',
+		quantity: '2 kg',
+	});
+	assert.deepEqual(parseShoppingInput('2 kg dessert'), { name: 'dessert', quantity: '2 kg' });
+});
