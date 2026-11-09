@@ -48,8 +48,6 @@ export default {
 	},
 	pushPriming: {
 		enabled: 'Benachrichtigungen sind aktiv.',
-		activationFailed:
-			'Aktivierung fehlgeschlagen. Prüfe die Browser-Einstellungen und versuche es erneut.',
 		label: 'Benachrichtigungen aktivieren',
 		title: 'Benachrichtigungen',
 		description: 'Push für fällige Aufgaben und Chat.',

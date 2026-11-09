@@ -10,7 +10,7 @@ import { getWgSection } from '@/components/app/navigation';
 import { segmentCountStatus } from '@/components/wg/segment-count-status';
 import { subNavBadgeColor } from '@/components/wg/sub-nav-badge';
 import type { CountHint, SegmentCountState } from '@/components/wg/use-wg-counts';
-import { useChatUnreadCount, useDashboardCounts } from '@/components/wg/use-wg-counts';
+import { countState, useChatUnreadCount, useDashboardCounts } from '@/components/wg/use-wg-counts';
 import { useMessage } from '@/shared/i18n/message';
 import { cn } from '@/shared/lib/cn';
 
@@ -114,14 +114,7 @@ function ChatSubNav({
 	className: string | undefined;
 }) {
 	const chat = useChatUnreadCount();
-	const state: SegmentCountState =
-		chat.data !== undefined
-			? chat.error
-				? 'stale'
-				: 'ready'
-			: chat.error
-				? 'unavailable'
-				: 'loading';
+	const state = countState(chat.data, chat.error);
 	const links = section.pages.map((page) => ({
 		href: `${section.baseHref}/${page.slug}`,
 		label: page.label,

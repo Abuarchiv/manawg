@@ -3,10 +3,11 @@
 import { AlertCircle, WifiOff } from 'lucide-react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { useToast } from '@/components/ui/Toast';
+import { usePublishHeight } from '@/components/wg/use-publish-height';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { subscribeConnectivity, useOnlineStatus } from '@/core/hooks/use-online-status';
 import {
@@ -56,21 +57,7 @@ export function OfflineBanner() {
 
 	// The bar wraps instead of truncating, so its real height (small phones, large text) feeds
 	// the sticky offsets of settings tabs and the chat frame via --offline-banner-height.
-	const observerRef = useRef<ResizeObserver | null>(null);
-	const bannerRef = useCallback((el: HTMLElement | null) => {
-		observerRef.current?.disconnect();
-		observerRef.current = null;
-		const root = document.documentElement;
-		if (!el) {
-			root.style.removeProperty('--offline-banner-height');
-			return;
-		}
-		const measure = () =>
-			root.style.setProperty('--offline-banner-height', `${el.getBoundingClientRect().height}px`);
-		measure();
-		observerRef.current = new ResizeObserver(measure);
-		observerRef.current.observe(el);
-	}, []);
+	const bannerRef = usePublishHeight('--offline-banner-height');
 
 	useEffect(() => {
 		const update = (options?: { clearNotice?: boolean }) => {
