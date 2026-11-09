@@ -210,7 +210,9 @@ self.addEventListener('push', (event) => {
 	};
 	if (typeof data.tag === 'string' && data.tag.length > 0) {
 		notificationOptions.tag = data.tag;
-		notificationOptions.renotify = true;
+		// A burst of shopping or chat entries replaces its notification without buzzing again;
+		// every other tagged notification (chores, money) alerts anew.
+		notificationOptions.renotify = !/^(shopping|chat):/.test(data.tag);
 	}
 	event.waitUntil(self.registration.showNotification(data.title || 'ManaWG', notificationOptions));
 });

@@ -1,13 +1,15 @@
 import { serverT } from '@/core/i18n/server-t';
 import { formatDecimal } from '@/core/utils/amount';
-import { berlinCalendarDayDistance } from '@/core/utils/berlin-day';
 import { formatEuroCents } from '@/core/utils/money';
 import { dayMonthOptions, formatShortDate } from '@/core/utils/time';
 import { dateTimeFormat } from '@/shared/i18n/intl';
 import type { Locale } from '@/shared/i18n/locale';
+import { choreDueBody } from './chore-due-message';
 
 export type NotificationEvent =
 	| 'expense.created'
+	| 'expense.updated'
+	| 'expense.deleted'
 	| 'expense.recurring_charged'
 	| 'expense.reminder'
 	| 'expense.debt_settled'
@@ -17,6 +19,7 @@ export type NotificationEvent =
 	| 'announcement.posted'
 	| 'announcement.commented'
 	| 'announcement.resolved'
+	| 'member.joined'
 	| 'chore.due'
 	| 'shopping.added'
 	| 'event.created'
@@ -45,7 +48,7 @@ export interface NotificationMessage {
 	urlPath: string;
 }
 
-type PushT = ReturnType<typeof serverT<'push'>>;
+export type PushT = ReturnType<typeof serverT<'push'>>;
 
 function money(amountCents: unknown, currency: unknown, locale: Locale): string {
 	const cents = typeof amountCents === 'number' ? amountCents : 0;
@@ -59,7 +62,7 @@ function text(value: unknown, fallback: string): string {
 }
 
 export function notificationCategoryForEvent(event: NotificationEvent): NotificationCategory {
-	if (event === 'notification.test') return 'announcements';
+	if (event === 'notification.test' || event === 'member.joined') return 'announcements';
 	if (event === 'expense.reminder') return 'reminders';
 	if (event.startsWith('announcement.')) return 'announcements';
 	if (event.startsWith('expense.') || event === 'import.completed') return 'expenses';
@@ -123,35 +126,6 @@ function formatEventTime(t: PushT, locale: Locale, value: unknown, allDay = fals
 	}).format(date);
 }
 
-// Reminders also fire for chores overdue up to a week and for new chores due
-// tomorrow, so the copy follows the Berlin calendar distance to nextDueAt.
-function choreDueBody(
-	t: PushT,
-	locale: Locale,
-	payload: Record<string, unknown>,
-	wgName: string,
-): string {
-	const body = choreDueSentence(t, locale, payload, wgName);
-	return payload.unassigned === true ? `${body} ${t('choreDue.unassigned')}` : body;
-}
-
-function choreDueSentence(
-	t: PushT,
-	locale: Locale,
-	payload: Record<string, unknown>,
-	wgName: string,
-): string {
-	const title = text(payload.title, t('fallback.task'));
-	const dueAt = typeof payload.nextDueAt === 'string' ? new Date(payload.nextDueAt) : null;
-	if (!dueAt || Number.isNaN(dueAt.getTime())) return t('choreDue.today', { title, wgName });
-	const diffDays = berlinCalendarDayDistance(new Date(), dueAt);
-	if (diffDays < 0) return t('choreDue.overdue', { title, wgName, days: -diffDays });
-	if (diffDays === 0) return t('choreDue.today', { title, wgName });
-	if (diffDays === 1) return t('choreDue.tomorrow', { title, wgName });
-	const date = formatShortDate(dueAt.toISOString(), 'Europe/Berlin', locale);
-	return t('choreDue.onDate', { title, wgName, date });
-}
-
 function inventoryUrlPath(payload: Record<string, unknown>): string {
 	const id = typeof payload.inventoryItemId === 'string' ? payload.inventoryItemId.trim() : '';
 	return id ? `/supplies?highlight=${encodeURIComponent(id)}` : '/supplies';
@@ -189,6 +163,29 @@ export function formatNotificationMessage(
 					amount: amount(),
 				}),
 				urlPath: expenseUrlPath(payload),
+			};
+		case 'expense.updated': {
+			const title = text(payload.title, t('fallback.expense'));
+			const shareFrom = money(payload.shareFromCents, payload.currency, locale);
+			const shareTo = money(payload.shareToCents, payload.currency, locale);
+			return {
+				title: t('expenseUpdated.title'),
+				body:
+					payload.shareFromCents === payload.shareToCents
+						? t('expenseUpdated.same', { actorName, title, amount: shareTo })
+						: t('expenseUpdated.share', { actorName, title, from: shareFrom, to: shareTo }),
+				urlPath: expenseUrlPath(payload),
+			};
+		}
+		case 'expense.deleted':
+			return {
+				title: t('expenseDeleted.title'),
+				body: t(payload.payer === true ? 'expenseDeleted.payer' : 'expenseDeleted.debtor', {
+					actorName,
+					title: text(payload.title, t('fallback.expense')),
+					amount: amount(),
+				}),
+				urlPath: '/expenses',
 			};
 		case 'expense.recurring_charged':
 			return {
@@ -265,13 +262,28 @@ export function formatNotificationMessage(
 				}),
 				urlPath: announcementUrlPath(payload),
 			};
+		case 'member.joined':
+			return {
+				title: t('memberJoined.title'),
+				body: t('memberJoined.body', { actorName, wgName }),
+				urlPath: '/',
+			};
 		case 'chore.due':
 			return {
 				title: t('choreDue.title'),
 				body: choreDueBody(t, locale, payload, wgName),
-				urlPath: choreUrlPath(payload),
+				urlPath: Array.isArray(payload.titles) ? '/chores' : choreUrlPath(payload),
 			};
-		case 'shopping.added':
+		case 'shopping.added': {
+			// A burst of adds by one member shows its running count instead of the last item.
+			const count = typeof payload.addedCount === 'number' ? payload.addedCount : 1;
+			if (count > 1) {
+				return {
+					title: t('shoppingAdded.title'),
+					body: t('shoppingAdded.bodyMany', { actorName, count }),
+					urlPath: '/shopping',
+				};
+			}
 			return {
 				title: t('shoppingAdded.title'),
 				body: t('shoppingAdded.body', {
@@ -281,6 +293,7 @@ export function formatNotificationMessage(
 				}),
 				urlPath: shoppingUrlPath(payload),
 			};
+		}
 		case 'event.created':
 			return {
 				title: t('eventCreated.title'),

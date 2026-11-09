@@ -29,6 +29,11 @@ export interface DispatchInput {
 	bypassPreferences?: boolean;
 	/** Delivers through quiet hours, e.g. a change to an event that starts within a day. */
 	urgent?: boolean;
+	/**
+	 * Same-tag notifications replace each other on the device. The service worker keeps a
+	 * replacement silent for `shopping:` and `chat:` tags (see `burstTag`); any other tag buzzes again.
+	 */
+	tag?: string;
 }
 
 export type NotificationDispatchWarning =
@@ -85,7 +90,8 @@ async function mapInBatches<T, R>(
  */
 function buildNotificationUrl(shareCode: string, urlPath: string): string {
 	const normalizedPath = urlPath.startsWith('/') ? urlPath : `/${urlPath}`;
-	return `/wg/${encodeURIComponent(shareCode)}${normalizedPath}`;
+	// The WG start page has no trailing slash.
+	return `/wg/${encodeURIComponent(shareCode)}${normalizedPath === '/' ? '' : normalizedPath}`;
 }
 
 const SECONDS_PER_HOUR = 60 * 60;
@@ -130,7 +136,7 @@ async function configureWebPush(): Promise<typeof import('web-push') | null> {
 
 async function sendWebPush(
 	memberId: string,
-	payload: { title: string; body: string; url: string },
+	payload: { title: string; body: string; url: string; tag?: string },
 	priority: 'urgent' | 'normal',
 ): Promise<WebPushResult> {
 	const webPush = await configureWebPush();
@@ -163,6 +169,7 @@ async function sendWebPush(
 								body: payload.body,
 								url: payload.url,
 								icon: '/icon-192.png',
+								...(payload.tag ? { tag: payload.tag } : {}),
 							}),
 							{
 								TTL: PUSH_TTL_SECONDS[priority],
@@ -309,7 +316,11 @@ export async function dispatchNotification(
 		if (!member.pushOptIn) return { sent: 0, failures: [] };
 		const message = messageFor(isLocale(member.locale) ? member.locale : 'de');
 		const url = buildNotificationUrl(input.wg.shareCode, message.urlPath);
-		return sendWebPush(member.id, { title: message.title, body: message.body, url }, priority);
+		return sendWebPush(
+			member.id,
+			{ title: message.title, body: message.body, url, ...(input.tag ? { tag: input.tag } : {}) },
+			priority,
+		);
 	});
 
 	const sentTotal = pushResults

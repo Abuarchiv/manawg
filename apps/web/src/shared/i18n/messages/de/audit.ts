@@ -73,7 +73,7 @@ export default {
 		feed: '{self, select, yes {hast} other {hat}} {description} eingetragen.',
 	},
 	expenseUpdated: {
-		feed: '{self, select, yes {hast} other {hat}} {description} aktualisiert.',
+		feed: '{self, select, yes {hast} other {hat}} {description} aktualisiert{amountChange, select, yes { ({from} → {to})} other {}}.',
 	},
 	expenseDeleted: {
 		feed: '{self, select, yes {hast} other {hat}} {description} entfernt.',

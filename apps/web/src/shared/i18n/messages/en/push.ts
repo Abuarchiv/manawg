@@ -29,6 +29,16 @@ export default {
 		title: 'New expense',
 		body: '{actorName} added {title} for {amount} in {wgName}.',
 	},
+	expenseUpdated: {
+		title: 'Expense changed',
+		share: '{actorName} changed {title}: your share {from} → {to}',
+		same: '{actorName} changed {title}. Your share stays {amount}.',
+	},
+	expenseDeleted: {
+		title: 'Expense deleted',
+		debtor: '{actorName} deleted {title}. You owe {amount} less.',
+		payer: '{actorName} deleted {title}. You are owed {amount} less.',
+	},
 	recurringCharged: {
 		title: 'New fixed-cost entry',
 		body: 'New fixed-cost entry: {description} {amount}',
@@ -64,6 +74,10 @@ export default {
 		title: 'Noticeboard post resolved',
 		body: '{actorName} marked a post as resolved: {title}',
 	},
+	memberJoined: {
+		title: 'New flatmate',
+		body: '{actorName} joined {wgName}.',
+	},
 	choreDue: {
 		title: 'Cleaning rota',
 		today: '{title} is due today in {wgName}.',
@@ -72,10 +86,14 @@ export default {
 		overdue:
 			'{title} has been open in {wgName} for {days, plural, one {{days, number, ::group-off} day} other {{days, number, ::group-off} days}}.',
 		unassigned: 'Nobody is assigned.',
+		many: 'Open for you: {titles}',
+		manyOpen: 'Open in {wgName}: {titles}.',
 	},
 	shoppingAdded: {
 		title: 'Shopping list',
 		body: '{actorName} added {title} to the shopping list in {wgName}.',
+		bodyMany:
+			'{actorName} added {count, plural, one {1 item} other {{count, number, ::group-off} items}} to the shopping list.',
 	},
 	eventCreated: {
 		title: 'New event',

@@ -36,7 +36,9 @@ export default {
 	},
 	eventDeleted: { feed: `${v('eliminaste', 'eliminó')} el evento “{title}”.` },
 	expenseCreated: { feed: `${v('añadiste', 'añadió')} {description}.` },
-	expenseUpdated: { feed: `${v('actualizaste', 'actualizó')} {description}.` },
+	expenseUpdated: {
+		feed: `${v('actualizaste', 'actualizó')} {description}{amountChange, select, yes { ({from} → {to})} other {}}.`,
+	},
 	expenseDeleted: { feed: `${v('eliminaste', 'eliminó')} {description}.` },
 	expenseSplitSettled: { feed: `${v('saldaste', 'saldó')} una parte de {description}.` },
 	expenseSplitReopened: { feed: `${v('reabriste', 'reabrió')} una parte de {description}.` },

@@ -19,6 +19,7 @@ import { badRequest, HTTP, rateLimitedReplayResponse, unauthorized } from '@/cor
 import { parseBody } from '@/core/http/parse-body';
 import { readIdempotencyKey, setReplayWarning } from '@/core/idempotency-store';
 import { readListLimit } from '@/core/infra/env';
+import { burstTag } from '@/core/notifications/burst-tag';
 import { dispatchNotificationSafely } from '@/core/notifications/notification-dispatch';
 import { chatMessageLimiter, checkRateLimit } from '@/core/rate-limit';
 import { persistWarningOrDrop } from '@/core/replay-warning';
@@ -253,6 +254,8 @@ export const POST = withWgRoute('chat messages POST', async (req, { code }) => {
 			event: 'chat.message',
 			payload: { messageId: created.id, actorName: member.name, preview },
 			excludeMemberId: member.memberId,
+			// A burst replaces the earlier notification instead of buzzing again; mentions stay untagged.
+			tag: burstTag('chat', wg.id, member.memberId),
 			// Mentioned members get only the targeted mention push, not the general one on top.
 			excludeMemberIds: mentionIds,
 		}),

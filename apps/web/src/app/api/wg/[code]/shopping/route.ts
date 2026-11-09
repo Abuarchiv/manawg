@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, isNotNull, isNull } from 'drizzle-orm';
+import { and, asc, count, desc, eq, gte, isNotNull, isNull } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { recordAuditEvent } from '@/core/audit';
@@ -18,6 +18,7 @@ import { parseBody } from '@/core/http/parse-body';
 import { readIdempotencyKey, setReplayWarning } from '@/core/idempotency-store';
 import { readListLimit } from '@/core/infra/env';
 import { logApiError } from '@/core/infra/observability';
+import { BURST_WINDOW_MS, burstTag } from '@/core/notifications/burst-tag';
 import { dispatchNotificationSafely } from '@/core/notifications/notification-dispatch';
 import { clampTapTime } from '@/core/offline/replay-retention';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
@@ -76,6 +77,26 @@ export const GET = withWgRoute('shopping GET', async (req, { code }) => {
 	]);
 	return NextResponse.json({ items: [...openItems, ...boughtItems] });
 });
+
+/** How many items the member added in the burst window, the new one included; 1 if the count fails. */
+async function recentlyAddedCount(wgId: string, memberId: string): Promise<number> {
+	try {
+		const [row] = await db
+			.select({ total: count() })
+			.from(shoppingItems)
+			.where(
+				and(
+					eq(shoppingItems.wgId, wgId),
+					eq(shoppingItems.addedByMemberId, memberId),
+					gte(shoppingItems.createdAt, new Date(Date.now() - BURST_WINDOW_MS)),
+				),
+			);
+		return Math.max(1, row?.total ?? 1);
+	} catch (err) {
+		logApiError('[shopping POST] recent item count failed', err);
+		return 1;
+	}
+}
 
 export const POST = withWgRoute('shopping POST', async (req, { code }) => {
 	const parsed = await parseBody(req, createShoppingItemSchema, {
@@ -174,11 +195,19 @@ export const POST = withWgRoute('shopping POST', async (req, { code }) => {
 				actorName: member.name,
 				metadata: { title: name, quantity: safeQuantity },
 			});
+			const addedCount = await recentlyAddedCount(wg.id, member.memberId);
 			const { warning } = await dispatchNotificationSafely({
 				wg,
 				event: 'shopping.added',
-				payload: { title: name, actorName: member.name, shoppingItemId: item.id },
+				payload: {
+					title: name,
+					actorName: member.name,
+					shoppingItemId: item.id,
+					...(addedCount > 1 ? { addedCount } : {}),
+				},
 				excludeMemberId: member.memberId,
+				// The device replaces the earlier notification of the burst without buzzing again.
+				tag: burstTag('shopping', wg.id, member.memberId),
 			});
 			if (key) {
 				await setReplayWarning(

@@ -99,7 +99,9 @@ mock.module('drizzle-orm', {
 	namedExports: {
 		and: (...parts: unknown[]) => ['and', ...parts],
 		asc: (column: unknown) => ['asc', column],
+		count: () => ['count'],
 		desc: (column: unknown) => ['desc', column],
+		gte: (...parts: unknown[]) => ['gte', ...parts],
 		eq: (...parts: unknown[]) => ['eq', ...parts],
 		isNotNull: (column: unknown) => ['isNotNull', column],
 		isNull: (column: unknown) => ['isNull', column],

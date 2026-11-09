@@ -13,7 +13,7 @@ import {
 import { requireCronSecret } from '@/core/infra/cron-auth';
 import { captureException, withCronLogging } from '@/core/infra/observability';
 import { dispatchNotification } from '@/core/notifications/notification-dispatch';
-import { endOfBerlinDay, startOfBerlinDay } from '@/core/utils/berlin-day';
+import { endOfBerlinDay, prevBerlinDayStart, startOfBerlinDay } from '@/core/utils/berlin-day';
 import { DISPATCH_BATCH_SIZE } from '@/features/events/event-reminder-dispatch';
 
 // Minimum gap between reminders for one chore. The cron runs daily at 08:00; 18 h keeps a
@@ -21,9 +21,6 @@ import { DISPATCH_BATCH_SIZE } from '@/features/events/event-reminder-dispatch';
 // calendar-day (TZ/DST) maths.
 const REMINDER_THROTTLE_MS = 18 * 60 * 60 * 1000;
 const REMINDER_CLAIM_SCOPE = 'chore-reminders';
-// Chores overdue for longer than this are not reminded: without a lower
-// bound the candidate query would scan every chore ever due across all WGs.
-const REMINDER_LOOKBACK_MS = 7 * 24 * 60 * 60 * 1000;
 // Per-run cap; throttled chores are excluded in SQL, so a larger backlog is
 // drained by the following runs instead of being loaded in one go.
 const REMINDER_CANDIDATE_LIMIT = 500;
@@ -37,6 +34,28 @@ interface DueChore {
 	wgId: string;
 	wgName: string;
 	shareCode: string;
+}
+
+/** The chores of one member (or the unassigned ones of one WG) that are reminded in one push. */
+interface ReminderBundle {
+	wg: { id: string; name: string; shareCode: string };
+	assignedMemberId: string | null;
+	chores: DueChore[];
+}
+
+function bundleByRecipient(chores: DueChore[]): ReminderBundle[] {
+	const bundles = new Map<string, ReminderBundle>();
+	for (const chore of chores) {
+		const key = `${chore.wgId}:${chore.assignedMemberId ?? ''}`;
+		const bundle = bundles.get(key) ?? {
+			wg: { id: chore.wgId, name: chore.wgName, shareCode: chore.shareCode },
+			assignedMemberId: chore.assignedMemberId,
+			chores: [],
+		};
+		bundle.chores.push(chore);
+		bundles.set(key, bundle);
+	}
+	return [...bundles.values()];
 }
 
 function reminderClaimKey(choreId: string, startOfDay: Date): string {
@@ -71,6 +90,38 @@ async function releaseReminderDispatchClaim(key: string): Promise<void> {
 		);
 }
 
+async function dispatchBundle(
+	bundle: ReminderBundle,
+	chores: DueChore[],
+): Promise<{ sent: number; failures: unknown[] }> {
+	const [first] = chores;
+	if (!first) return { sent: 0, failures: [] };
+	const unassigned = bundle.assignedMemberId ? {} : { unassigned: true };
+	try {
+		return await dispatchNotification({
+			wg: bundle.wg,
+			event: 'chore.due',
+			payload:
+				chores.length === 1
+					? {
+							...unassigned,
+							title: first.title,
+							choreId: first.id,
+							nextDueAt: first.nextDueAt.toISOString(),
+						}
+					: { ...unassigned, titles: chores.map((chore) => chore.title) },
+			...(bundle.assignedMemberId ? { targetMemberIds: [bundle.assignedMemberId] } : {}),
+			// A bundle replaces the one still on the device and alerts again.
+			...(chores.length > 1
+				? { tag: `chores:${bundle.wg.id}${bundle.assignedMemberId ? '' : ':unassigned'}` }
+				: {}),
+		});
+	} catch (err) {
+		captureException(err, { cronJob: 'chore-reminders' });
+		return { sent: 0, failures: [err] };
+	}
+}
+
 export const GET = withCronLogging(
 	'chore-reminders',
 	async (req: NextRequest): Promise<NextResponse> => {
@@ -84,7 +135,9 @@ export const GET = withCronLogging(
 		const startOfDay = startOfBerlinDay(now);
 		const endOfDay = endOfBerlinDay(now);
 		const throttleCutoff = new Date(now.getTime() - REMINDER_THROTTLE_MS);
-		const lookbackStart = new Date(now.getTime() - REMINDER_LOOKBACK_MS);
+		// A chore is reminded on its due day and the day after, then the push stays silent; it
+		// remains in "For you" and in the plan. This also bounds the candidate queries.
+		const lookbackStart = prevBerlinDayStart(startOfDay);
 
 		const due = await db
 			.select({
@@ -132,9 +185,8 @@ export const GET = withCronLogging(
 			.orderBy(sql`${chores.lastReminderAt} asc nulls first`, asc(chores.nextDueAt), asc(chores.id))
 			.limit(REMINDER_CANDIDATE_LIMIT);
 
-		// Nobody is answerable for these, so without a reminder they would stay overdue.
-		// No lookback: the chore will not rotate on its own, so it keeps its one announcement
-		// per throttle window until somebody picks it up.
+		// Nobody is answerable for these, so they are announced to the whole WG, with the same
+		// two-day window as assigned chores.
 		const unassigned = await db
 			.select({
 				id: chores.id,
@@ -149,6 +201,7 @@ export const GET = withCronLogging(
 			.innerJoin(wgs, eq(chores.wgId, wgs.id))
 			.where(
 				and(
+					gte(chores.nextDueAt, lookbackStart),
 					lte(chores.nextDueAt, endOfDay),
 					isNull(chores.assignedMemberId),
 					or(isNull(chores.lastReminderAt), lte(chores.lastReminderAt, throttleCutoff)),
@@ -180,58 +233,43 @@ export const GET = withCronLogging(
 		const completedToday = new Set(completions.map((item) => item.choreId));
 		const pending = due.filter((item) => !completedToday.has(item.id));
 
-		// Claim and dispatch in fixed-size batches so a large backlog never
+		// One push per recipient and day: a member's due chores (or a WG's unassigned ones) are
+		// bundled. Claims stay per chore, so a replay or retry never reminds a chore twice.
+		// Bundles are claimed and dispatched in fixed-size batches so a large backlog never
 		// opens hundreds of concurrent DB claims and push requests at once.
+		const bundles = bundleByRecipient(pending);
 		const sentChoreIds: string[] = [];
 		const failedClaimKeys: string[] = [];
 		let failed = 0;
-		for (let index = 0; index < pending.length; index += DISPATCH_BATCH_SIZE) {
-			const batch = pending.slice(index, index + DISPATCH_BATCH_SIZE);
-			const claimAttempts = await Promise.all(
-				batch.map(async (item) => ({
-					item,
-					claimKey: await claimReminderDispatch(item.id, startOfDay, now),
-				})),
-			);
-			const claimed: Array<DueChore & { reminderClaimKey: string }> = [];
-			for (const { item, claimKey } of claimAttempts) {
-				if (claimKey) claimed.push({ ...item, reminderClaimKey: claimKey });
-			}
-
-			const results = await Promise.allSettled(
-				claimed.map(async (item) => {
-					try {
-						return await dispatchNotification({
-							wg: { id: item.wgId, name: item.wgName, shareCode: item.shareCode },
-							event: 'chore.due',
-							payload: {
-								...(item.assignedMemberId ? {} : { unassigned: true }),
-								title: item.title,
-								choreId: item.id,
-								nextDueAt: item.nextDueAt.toISOString(),
-							},
-							...(item.assignedMemberId ? { targetMemberIds: [item.assignedMemberId] } : {}),
-						});
-					} catch (err) {
-						captureException(err, { cronJob: 'chore-reminders' });
-						return { sent: 0, failures: [err] };
+		for (let index = 0; index < bundles.length; index += DISPATCH_BATCH_SIZE) {
+			await Promise.all(
+				bundles.slice(index, index + DISPATCH_BATCH_SIZE).map(async (bundle) => {
+					const claims = await Promise.all(
+						bundle.chores.map(async (chore) => ({
+							chore,
+							claimKey: await claimReminderDispatch(chore.id, startOfDay, now),
+						})),
+					);
+					const claimed = claims.flatMap(({ chore, claimKey }) =>
+						claimKey ? [{ chore, claimKey }] : [],
+					);
+					if (claimed.length === 0) return;
+					const dispatched = await dispatchBundle(
+						bundle,
+						claimed.map(({ chore }) => chore),
+					);
+					// Only stamp chores whose dispatch actually delivered at least one
+					// push — a fulfilled promise with sent: 0 (e.g. no VAPID keys) would
+					// otherwise silently swallow the reminder until the throttle window
+					// passes. Failed pushes release their claim and retry next run.
+					if (dispatched.sent > 0) {
+						sentChoreIds.push(...claimed.map(({ chore }) => chore.id));
+					} else {
+						failedClaimKeys.push(...claimed.map(({ claimKey }) => claimKey));
+						if (dispatched.failures.length > 0) failed += 1;
 					}
 				}),
 			);
-
-			// Only stamp chores whose dispatch actually delivered at least one
-			// push — a fulfilled promise with sent: 0 (e.g. no VAPID keys) would
-			// otherwise silently swallow the reminder until the throttle window
-			// passes. Failed pushes release their claim and retry next run.
-			for (const [idx, item] of claimed.entries()) {
-				const result = results[idx];
-				if (result?.status === 'fulfilled' && result.value.sent > 0) {
-					sentChoreIds.push(item.id);
-				} else {
-					failedClaimKeys.push(item.reminderClaimKey);
-					if (result?.status === 'fulfilled' && result.value.failures.length > 0) failed += 1;
-				}
-			}
 		}
 
 		await Promise.all(failedClaimKeys.map((key) => releaseReminderDispatchClaim(key)));

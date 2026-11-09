@@ -40,6 +40,20 @@ mock.module('@/core/rate-limit', {
 	},
 });
 
+const dispatched: Array<Record<string, unknown>> = [];
+mock.module('@/core/notifications/notification-dispatch', {
+	namedExports: {
+		dispatchNotificationSafely: async (input: Record<string, unknown>) => {
+			dispatched.push(input);
+			return { sent: 0, warning: null };
+		},
+	},
+});
+
+function dispatchedPayload(): Record<string, number> {
+	return (dispatched[0]?.payload ?? {}) as Record<string, number>;
+}
+
 async function withExpense(
 	run: (f: {
 		database: ReturnType<typeof drizzle<typeof schema>>;
@@ -164,6 +178,41 @@ test("the payer's own share stays settled after an amount edit", { skip }, async
 		const rows = await splits();
 		assert.notEqual(rows.find((s) => s.debtorMemberId === payer.id)?.settledAt, null);
 		assert.equal(rows.find((s) => s.debtorMemberId === debtor.id)?.settledAt, null);
+	});
+});
+
+test('only an edit of amount, share or date tells the debtor; delete tells them their balance', {
+	skip,
+}, async () => {
+	await withExpense(async ({ patch, del, payer, debtor }) => {
+		dispatched.length = 0;
+		assert.equal((await patch({ category: 'groceries', description: 'Rent, March' })).status, 200);
+		assert.equal(dispatched.length, 0);
+
+		assert.equal(
+			(
+				await patch({
+					amountCents: 1200,
+					splits: [
+						{ debtorMemberId: payer.id, amountCents: 600 },
+						{ debtorMemberId: debtor.id, amountCents: 600 },
+					],
+				})
+			).status,
+			200,
+		);
+		assert.equal(dispatched.length, 1);
+		assert.equal(dispatched[0]?.event, 'expense.updated');
+		assert.deepEqual(dispatched[0]?.targetMemberIds, [debtor.id]);
+		const edit = dispatchedPayload();
+		assert.deepEqual([edit.shareFromCents, edit.shareToCents], [500, 600]);
+
+		dispatched.length = 0;
+		assert.equal((await del(payer.userId)).status, 200);
+		assert.equal(dispatched.length, 1);
+		assert.equal(dispatched[0]?.event, 'expense.deleted');
+		assert.deepEqual(dispatched[0]?.targetMemberIds, [debtor.id]);
+		assert.equal(dispatchedPayload().amountCents, 600);
 	});
 });
 

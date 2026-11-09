@@ -166,6 +166,12 @@ export function installWgRouteMocks(): RouteEnv {
 			notifySettlement: async () => undefined,
 		},
 	});
+	mock.module('@/features/expenses/server/expense-change-notify', {
+		namedExports: {
+			notifyExpenseUpdated: async () => undefined,
+			notifyExpenseDeleted: async () => undefined,
+		},
+	});
 	mock.module('@/core/db', { namedExports: { ...tables, db: delegate(() => env.db) } });
 	mock.module('@/core/db/private-image-deletions', {
 		namedExports: {

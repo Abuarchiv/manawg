@@ -42,6 +42,7 @@ export default {
 		delete: 'Löschen',
 		cancel: 'Abbrechen',
 		pendingNote: 'Wartet auf Verbindung, danach bearbeitbar',
+		editedAt: 'Bearbeitet am {date}',
 		openReceipt: 'Beleg öffnen',
 		sharesAria: 'Ausgabenanteile',
 		you: 'Du',
