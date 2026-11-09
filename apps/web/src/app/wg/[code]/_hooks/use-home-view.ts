@@ -2,6 +2,7 @@
 
 import { useLocale } from 'next-intl';
 import { useMemo } from 'react';
+import { ACTIVITY_LIMIT } from '@/composition/activity-types';
 import type { DashboardData } from '@/composition/dashboard-data';
 import { getForYouItems, getWeekAgenda } from '@/composition/dashboard-insights';
 import { completionRequestKey } from '@/features/chores/chore-completion';
@@ -14,7 +15,7 @@ interface HomeViewInput {
 	agendaNow: number;
 	shareCode: string;
 	memberId: string;
-	/** Last start-page visit in ms; `null` on the first visit, `undefined` while unread. */
+	/** Server time of the last start-page visit in ms; `null` without a marker, `undefined` while unread. */
 	lastSeen: number | null | undefined;
 	/** Chore occurrences completed offline; they stay hidden until the server has them. */
 	queuedOccurrences: ReadonlySet<string>;
@@ -70,18 +71,19 @@ export function useHomeView({
 	);
 	const pendingHrefs = useMemo(() => new Set(forYouItems.map((item) => item.href)), [forYouItems]);
 	// Others' entries since the last visit, newest first; what "Für dich" already lists stays out.
-	const newItems = useMemo(
-		() =>
-			data && lastSeen
-				? data.activity.filter(
-						(item) =>
-							item.memberId !== memberId &&
-							Date.parse(item.timestamp) > lastSeen &&
-							(!item.href || !pendingHrefs.has(item.href)),
-					)
-				: [],
-		[data, lastSeen, memberId, pendingHrefs],
-	);
+	const { newItems, newItemsTruncated } = useMemo(() => {
+		if (!data || !lastSeen) return { newItems: [], newItemsTruncated: false };
+		const isNew = (item: DashboardData['activity'][number]) =>
+			Date.parse(item.timestamp) > lastSeen;
+		return {
+			newItems: data.activity.filter(
+				(item) =>
+					item.memberId !== memberId && isNew(item) && (!item.href || !pendingHrefs.has(item.href)),
+			),
+			// A full payload that is new all the way down may have left further new entries out.
+			newItemsTruncated: data.activity.length >= ACTIVITY_LIMIT && data.activity.every(isNew),
+		};
+	}, [data, lastSeen, memberId, pendingHrefs]);
 	const isNewWg = Boolean(
 		data &&
 			!data.setup.hasExpense &&
@@ -90,5 +92,5 @@ export function useHomeView({
 			data.setup.choreCount === 0 &&
 			forYouItems.length === 0,
 	);
-	return { forYouItems, weekAgenda, newItems, isNewWg };
+	return { forYouItems, weekAgenda, newItems, newItemsTruncated, isNewWg };
 }

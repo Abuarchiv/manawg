@@ -18,6 +18,7 @@ test.describe('bottom navigation focus', () => {
 	test('draws a focus outline on the active tab', async ({ page }) => {
 		const { shareCode } = FIXTURE_WG;
 		const dashboard: DashboardData = {
+			generatedAt: new Date().toISOString(),
 			balances: [],
 			spendByDay: [],
 			totalSpendByCurrency: {},
@@ -37,7 +38,6 @@ test.describe('bottom navigation focus', () => {
 				},
 			],
 			activity: [],
-			latestAnnouncement: null,
 			myOpenAnnouncements: [],
 			dueRecurringExpenses: [],
 			absentMembers: [],

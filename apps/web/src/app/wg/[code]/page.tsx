@@ -25,7 +25,7 @@ export default function WgHomePage() {
 	const home = useHomeData(wg.shareCode, identity);
 	const { data, error, eventRead } = home;
 	const completion = useHomeChoreCompletion({ wg, identity, members, reload: home.load });
-	const lastSeen = useLastSeen(wg.id, identity.memberId);
+	const lastSeen = useLastSeen(wg.id, identity.memberId, data?.generatedAt);
 	const view = useHomeView({
 		data,
 		eventOccurrences: home.eventOccurrences,
@@ -102,7 +102,8 @@ export default function WgHomePage() {
 					loaded={Boolean(data)}
 					failed={Boolean(error)}
 					newItems={view.newItems}
-					lastSeenKnown={lastSeen !== undefined}
+					newItemsTruncated={view.newItemsTruncated}
+					lastSeen={lastSeen}
 				/>
 			</div>
 			<div>

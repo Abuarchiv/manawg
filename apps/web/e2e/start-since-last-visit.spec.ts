@@ -1,5 +1,6 @@
 // Start page "New since last visit": others' entries since a browser-local marker.
-// Why: the marker must hide nothing on a quick reload and never list the reader's own entries.
+// Why: the marker must hide nothing on a quick reload, never list the reader's own entries, and
+// only move on to the server time of a payload that was actually shown.
 
 import { expect, test } from '@playwright/test';
 import {
@@ -19,9 +20,13 @@ test.describe('start page since last visit', () => {
 	const KEY = `manawg:start-last-seen:${FIXTURE_WG.id}:${FIXTURE_WG.memberId}`;
 	const NOW = Date.parse('2026-11-09T12:00:00.000Z');
 	const minutesAgo = (minutes: number) => new Date(NOW - minutes * 60_000).toISOString();
+	const MARKER_NOW = new Date(NOW).toISOString();
+	const newButton = (page: import('@playwright/test').Page) =>
+		page.getByRole('button', { name: 'Neu seit deinem letzten Besuch · 1' });
 
 	function dashboard() {
 		return {
+			generatedAt: new Date(NOW).toISOString(),
 			balances: [],
 			spendByDay: [],
 			totalSpendByCurrency: {},
@@ -59,7 +64,6 @@ test.describe('start page since last visit', () => {
 					currency: 'EUR',
 				},
 			],
-			latestAnnouncement: null,
 			myOpenAnnouncements: [],
 			dueRecurringExpenses: [],
 			absentMembers: [],
@@ -101,40 +105,77 @@ test.describe('start page since last visit', () => {
 		await expect(list.getByRole('link', { name: /Gesamte Aktivität/ })).toBeVisible();
 	});
 
-	test('first visit shows nothing new and writes the marker', async ({ page }) => {
+	test('without a marker the heading stays neutral and the marker is written', async ({ page }) => {
 		await open(page, null);
-		const trigger = page.getByRole('button', { name: 'Nichts Neues seit deinem letzten Besuch' });
-		await expect(trigger).toHaveAttribute('aria-expanded', 'false');
-		expect(await page.evaluate((key) => localStorage.getItem(key), KEY)).not.toBeNull();
+		await expect(page.getByRole('link', { name: 'Neu in deiner WG' })).toBeVisible();
+		await expect(page.getByText('Nichts Neues seit deinem letzten Besuch')).toHaveCount(0);
+		await expect(page.getByText('Kinoabend')).toHaveCount(0);
+		expect(await page.evaluate((key) => localStorage.getItem(key), KEY)).toBe(MARKER_NOW);
+	});
+
+	test('nothing newer than the marker is one quiet link, not a fold-out', async ({ page }) => {
+		await open(page, MARKER_NOW);
+		const line = page.getByRole('link', { name: 'Nichts Neues seit deinem letzten Besuch' });
+		await expect(line).toHaveAttribute('href', `/wg/${FIXTURE_WG.shareCode}/activity`);
+		await expect(page.getByRole('button', { name: /Nichts Neues/ })).toHaveCount(0);
 	});
 
 	test('a quick reload keeps the list, six visible seconds clear it', async ({ page }) => {
 		await open(page, minutesAgo(60));
-		await expect(
-			page.getByRole('button', { name: 'Neu seit deinem letzten Besuch · 1' }),
-		).toBeVisible();
+		await expect(newButton(page)).toBeVisible();
 
 		await page.clock.runFor(2_000);
 		await page.reload();
 		await dismissOnboarding(page);
-		await expect(
-			page.getByRole('button', { name: 'Neu seit deinem letzten Besuch · 1' }),
-		).toBeVisible();
+		await expect(newButton(page)).toBeVisible();
 		expect(await page.evaluate((key) => localStorage.getItem(key), KEY)).toBe(minutesAgo(60));
 
-		// The list of the running visit stays even though the marker moves on.
+		// The list of the running visit stays even though the marker moves on, to the payload's
+		// server time and not to the phone's clock.
 		await page.clock.runFor(6_000);
-		await expect(
-			page.getByRole('button', { name: 'Neu seit deinem letzten Besuch · 1' }),
-		).toBeVisible();
-		expect(
-			Date.parse((await page.evaluate((key) => localStorage.getItem(key), KEY)) ?? ''),
-		).toBeGreaterThanOrEqual(NOW);
+		await expect(newButton(page)).toBeVisible();
+		expect(await page.evaluate((key) => localStorage.getItem(key), KEY)).toBe(MARKER_NOW);
 
 		await page.reload();
 		await dismissOnboarding(page);
 		await expect(
-			page.getByRole('button', { name: 'Nichts Neues seit deinem letzten Besuch' }),
+			page.getByRole('link', { name: 'Nichts Neues seit deinem letzten Besuch' }),
 		).toBeVisible();
+	});
+
+	test('leaving in the app after six visible seconds keeps the marker moved', async ({ page }) => {
+		await open(page, minutesAgo(60));
+		await expect(newButton(page)).toBeVisible();
+		await page.clock.runFor(6_000);
+		await page.getByRole('link', { name: /Gesamte Aktivität/ }).click();
+		await page.waitForURL(/\/activity$/);
+		expect(await page.evaluate((key) => localStorage.getItem(key), KEY)).toBe(MARKER_NOW);
+		await page.goBack();
+		await dismissOnboarding(page);
+		await expect(
+			page.getByRole('link', { name: 'Nichts Neues seit deinem letzten Besuch' }),
+		).toBeVisible();
+	});
+
+	test('time spent hidden does not count as seen', async ({ page }) => {
+		await open(page, minutesAgo(60));
+		await expect(newButton(page)).toBeVisible();
+		const setVisibility = (state: 'hidden' | 'visible') =>
+			page.evaluate((value) => {
+				Object.defineProperty(document, 'visibilityState', { value, configurable: true });
+				document.dispatchEvent(new Event('visibilitychange'));
+			}, state);
+		const stored = () => page.evaluate((key) => localStorage.getItem(key), KEY);
+
+		await page.clock.runFor(2_000);
+		await setVisibility('hidden');
+		await page.clock.runFor(8_000);
+		expect(await stored()).toBe(minutesAgo(60));
+
+		await setVisibility('visible');
+		await page.clock.runFor(2_000);
+		expect(await stored()).toBe(minutesAgo(60));
+		await page.clock.runFor(1_500);
+		expect(await stored()).toBe(MARKER_NOW);
 	});
 });

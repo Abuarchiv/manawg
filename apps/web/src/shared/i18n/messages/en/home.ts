@@ -81,8 +81,8 @@ export default {
 	},
 	news: {
 		heading: 'New in your flat',
-		headingNew: 'New since last visit · {count}',
-		headingNone: 'Nothing new since last visit',
+		headingNew: 'New since your last visit · {count}',
+		headingNone: 'Nothing new since your last visit',
 		failed: 'News could not be loaded.',
 		loading: 'Loading news',
 		allActivity: 'All activity',

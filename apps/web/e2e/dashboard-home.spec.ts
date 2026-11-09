@@ -84,7 +84,6 @@ test.describe('daily overview home', () => {
 			openShoppingTop: ['Milch'],
 			dueChores,
 			activity: [],
-			latestAnnouncement: null,
 			myOpenAnnouncements: [
 				{
 					id: 'request-1',

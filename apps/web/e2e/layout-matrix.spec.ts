@@ -140,7 +140,6 @@ test.describe('mobile layout matrix', () => {
 				amountCents: 3290,
 			},
 		],
-		latestAnnouncement: null,
 		myOpenAnnouncements: [],
 		dueRecurringExpenses: [],
 		absentMembers: [],

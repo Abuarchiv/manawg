@@ -22,52 +22,62 @@ interface WgNewsSectionProps {
 	failed: boolean;
 	/** Others' entries since this member's last visit, newest first. */
 	newItems: DashboardData['activity'];
-	/** False until the last-visit marker was read; the heading stays neutral until then. */
-	lastSeenKnown: boolean;
+	/** The payload was full and new all the way down, so more new entries may exist. */
+	newItemsTruncated: boolean;
+	/** Server time of the last visit in ms; `null` without a marker, `undefined` until it was read. */
+	lastSeen: number | null | undefined;
 }
 
 const MAX_NEW_ROWS = 5;
+
+const headingButtonClass =
+	'group w-full justify-between border-0 px-0 -my-1.5 leading-[inherit] font-heading text-[length:inherit] font-semibold text-foreground hover:bg-transparent active:bg-transparent dark:hover:bg-transparent aria-expanded:bg-transparent [@media(any-hover:hover)]:focus-visible:ring-ring';
 
 export function WgNewsSection({
 	wgBaseHref,
 	loaded,
 	failed,
 	newItems,
-	lastSeenKnown,
+	newItemsTruncated,
+	lastSeen,
 }: WgNewsSectionProps) {
 	const t = useTranslations('home.news');
 	const reducedMotion = useReducedMotion();
 	const [userOpen, setUserOpen] = useState<boolean | null>(null);
-	const ready = loaded && lastSeenKnown;
+	const ready = loaded && lastSeen !== undefined;
 	const hasNew = ready && newItems.length > 0;
-	// New entries open the section on their own; a choice made by hand wins.
-	const open = userOpen ?? hasNew;
-	const heading = !ready
-		? t('heading')
-		: hasNew
-			? t('headingNew', {
-					count: newItems.length > MAX_NEW_ROWS ? `${MAX_NEW_ROWS}+` : String(newItems.length),
-				})
-			: t('headingNone');
+	const activityHref = `${wgBaseHref}/activity`;
 
+	// Nothing new: one quiet line to the activity list, nothing to unfold. Without a marker
+	// (first visit, blocked storage) the app cannot say what is new, so the heading stays neutral.
+	if (ready && !hasNew) {
+		return (
+			<section aria-labelledby="wg-now-heading" className="flex min-w-0 flex-col gap-3">
+				<h2 id="wg-now-heading" className="mb-1.5">
+					<Link
+						href={activityHref}
+						className={cn(
+							buttonVariants({ variant: 'ghost' }),
+							headingButtonClass,
+							lastSeen !== null && 'font-normal text-muted-foreground',
+						)}
+					>
+						{lastSeen === null ? t('heading') : t('headingNone')}
+						<ChevronRight aria-hidden className="size-4" />
+					</Link>
+				</h2>
+			</section>
+		);
+	}
+
+	const count = `${newItems.length}${newItemsTruncated ? '+' : ''}`;
 	return (
 		<section aria-labelledby="wg-now-heading" className="flex min-w-0 flex-col gap-3">
-			<Collapsible open={open} onOpenChange={setUserOpen}>
+			{/* New entries open the section on their own; a choice made by hand wins. */}
+			<Collapsible open={userOpen ?? hasNew} onOpenChange={setUserOpen}>
 				<h2 id="wg-now-heading" className="mb-1.5">
-					<CollapsibleTrigger
-						render={
-							<Button
-								variant="ghost"
-								className={cn(
-									'group w-full justify-between border-0 px-0 -my-1.5 leading-[inherit] font-heading text-[length:inherit] font-semibold text-foreground hover:bg-transparent active:bg-transparent dark:hover:bg-transparent aria-expanded:bg-transparent [@media(any-hover:hover)]:focus-visible:ring-ring',
-									ready &&
-										!hasNew &&
-										'font-normal text-muted-foreground aria-expanded:text-muted-foreground',
-								)}
-							/>
-						}
-					>
-						{heading}
+					<CollapsibleTrigger render={<Button variant="ghost" className={headingButtonClass} />}>
+						{hasNew ? t('headingNew', { count }) : t('heading')}
 						<ChevronDown aria-hidden className="size-4 group-aria-expanded:rotate-180" />
 					</CollapsibleTrigger>
 				</h2>
@@ -77,7 +87,7 @@ export function WgNewsSection({
 							<div className="rounded-xl border">
 								<ActivityFeed items={newItems.slice(0, MAX_NEW_ROWS)} inset actorFirst />
 							</div>
-						) : loaded ? null : failed ? (
+						) : failed ? (
 							<p className="text-sm text-muted-foreground">{t('failed')}</p>
 						) : (
 							<div className="flex flex-col gap-2" aria-label={t('loading')} role="status">
@@ -87,7 +97,7 @@ export function WgNewsSection({
 							</div>
 						)}
 						<Link
-							href={`${wgBaseHref}/activity`}
+							href={activityHref}
 							className={cn(
 								buttonVariants({ variant: 'ghost' }),
 								'min-w-0 max-w-full self-end whitespace-normal px-0 text-meta text-muted-foreground leading-snug',

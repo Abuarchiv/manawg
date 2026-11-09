@@ -193,7 +193,6 @@ test.describe('English sweep', () => {
 						dueChores: [],
 						dueRecurringExpenses: [],
 						activity: [],
-						latestAnnouncement: null,
 						myOpenAnnouncements: [],
 						absentMembers: [],
 						setup: {

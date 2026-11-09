@@ -10,9 +10,10 @@ settled.
 
 ### Added
 
-- The start page shows "New since last visit": what other members added since you last had the
-  page open, with their name first. The marker stays in this browser only; without anything new,
-  the section stays collapsed.
+- The start page shows "New since your last visit": what other members added since you last had
+  the page open, with their name first. The marker stays in this browser only and follows the
+  server's clock. Without anything new, a single quiet line links to the activity list; without a
+  marker (first visit, blocked storage) the heading stays neutral.
 - Receipt scanning recognises Spanish text: with the interface in Spanish, the scanner loads the
   Spanish model as well, so `ñ` and accents are kept. Other languages do not download it.
 - The self-hosting guide has tested nginx and Traefik reverse-proxy examples with the `.env` values,
