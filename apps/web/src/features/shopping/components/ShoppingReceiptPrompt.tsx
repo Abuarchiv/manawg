@@ -24,7 +24,7 @@ export function ShoppingReceiptPrompt({
 }) {
 	const t = useTranslations('shopping.receipt');
 	const [receiptSince, setReceiptSince] = useState<string | null>(null);
-	const receiptKey = `manawg:receipt-prompt:${shareCode}`;
+	const receiptKey = `manawg:receipt-prompt:${shareCode}:${memberId}`;
 	useEffect(() => {
 		try {
 			setReceiptSince(window.localStorage.getItem(receiptKey));
