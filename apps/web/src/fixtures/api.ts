@@ -31,10 +31,12 @@ import { EXPECTED_MEMBER_ID_HEADER } from '@/shared/lib/member-header';
 import {
 	buildE2EChatMessages,
 	buildE2EDashboardData,
+	E2E_CHORE_ID,
 	E2E_CREATED_WG,
 	E2E_EXISTING_WG,
 	E2E_EXPIRED_INVITE_TOKEN,
 	E2E_INVITE_TOKEN,
+	E2E_RECURRING_EXPENSE_ID,
 	type E2EWgFixture,
 	FIXTURE_AUTH_USER_ID,
 	getE2EWgFixture,
@@ -71,7 +73,7 @@ const MEMBER_READS: Record<string, MemberRead> = {
 		NextResponse.json({
 			chores: [
 				{
-					id: 'dc02a93f-59f6-4cf9-80a7-53d4a407cb49',
+					id: E2E_CHORE_ID,
 					wgId: fixture.id,
 					title: 'Bad putzen',
 					intervalDays: 7,
@@ -113,7 +115,7 @@ const MEMBER_READS: Record<string, MemberRead> = {
 		NextResponse.json({
 			recurringExpenses: [
 				{
-					id: 'a1ef32d5-d40a-4df2-9977-7684dce7df3f',
+					id: E2E_RECURRING_EXPENSE_ID,
 					wgId: fixture.id,
 					createdByMemberId: fixture.members[0]?.id ?? '',
 					paidByMemberId: fixture.members[0]?.id ?? '',

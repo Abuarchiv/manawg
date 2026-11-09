@@ -5,7 +5,8 @@
  * without real authentication, so it must never activate on a hosted
  * deployment: Vercel sets `VERCEL=1` on every build and function (Preview and
  * Production alike), while the local/CI fixture runs only fake
- * `VERCEL_ENV=preview`. Every condition is required, so a single stray
+ * `VERCEL_ENV=preview`. Either `E2E_FIXTURE_MODE` or `NODE_ENV=test`
+ * opts in, and all other conditions are then required, so a single stray
  * variable can never switch a real deployment into it.
  */
 export function isE2EDbDownMode(): boolean {
