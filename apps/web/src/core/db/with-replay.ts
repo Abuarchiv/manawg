@@ -38,12 +38,17 @@ const replayCodec: ReplayCodec<unknown> = {
  * Every outcome except a rate limit (429) or outage (503) is stored, so a retry of a rejected
  * write replays the rejection; a rate-limited write can run again once the limit clears. `wgId` takes the WG's
  * payment lock first, in the same order as expense writes.
+ *
+ * `admit` runs after a stored replay lookup missed and before the claim, the lock and the
+ * transaction (a rate limit, for example, whose network call must not hold the lock). A non-null
+ * answer ends the request unstored; a stored replay is looked up first, so it wins over it.
  */
 export async function withIdempotentReplay<T>(
 	req: Request,
 	scope: string,
 	mutate: (tx: DbTransaction) => Promise<IdempotentReplayMutation<T>>,
 	wgId?: string,
+	admit?: () => Promise<IdempotentReplayResponse | null>,
 ): Promise<IdempotentReplayMutation<T> & { key: string | null }> {
 	const key = readIdempotencyKey(req);
 	const result = await withIdempotentWrite(
@@ -52,6 +57,10 @@ export async function withIdempotentReplay<T>(
 			key,
 			codec: replayCodec,
 			storeStatus: (status) => !TRANSIENT_STATUSES.has(status),
+			prepare: async () => {
+				const refused = await admit?.();
+				return refused ? { stop: refused } : { input: undefined };
+			},
 			inTransaction: (work) =>
 				withTransaction(async (tx) => {
 					if (wgId) await lockExpensePayments(tx, wgId);
@@ -64,6 +73,7 @@ export async function withIdempotentReplay<T>(
 		},
 	);
 	if (result.kind === 'written' && result.context) return { ...result.context, key };
+	if (result.kind === 'stopped') return { response: result.response, effect: null, key };
 	const { kind: _kind, ...response } = result;
 	return { response, effect: null, key };
 }

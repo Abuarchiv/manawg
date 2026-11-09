@@ -256,10 +256,6 @@ export const POST = withWgRoute('announcements POST', async (req, { code }) => {
 			req,
 			scope,
 			async (tx) => {
-				const limited = rateLimitedReplayResponse(
-					await checkRateLimit(wgWriteLimiter, `announcement:${wg.id}:${auth.member.memberId}`),
-				);
-				if (limited) return { response: limited, effect: null };
 				const actor = await lockActiveAccountMember(
 					tx,
 					wg.id,
@@ -336,6 +332,11 @@ export const POST = withWgRoute('announcements POST', async (req, { code }) => {
 				};
 			},
 			wg.id,
+			// Outside the transaction: the limiter's network call must not hold the WG lock.
+			async () =>
+				rateLimitedReplayResponse(
+					await checkRateLimit(wgWriteLimiter, `announcement:${wg.id}:${auth.member.memberId}`),
+				),
 		);
 	} catch (error) {
 		if (error instanceof TransactionAbort && error.code === 'image_removed') {

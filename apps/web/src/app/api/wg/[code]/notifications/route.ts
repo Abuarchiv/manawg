@@ -249,15 +249,32 @@ export const POST = withWgRoute('notifications POST', async (req, { code }) => {
 				key: readIdempotencyKey(req),
 				codec: notificationCodec,
 				beforeReplay: memberGate(writer),
+				// Before the claim and its transaction, so the limiter's network call holds neither; a
+				// stored replay was answered before this runs.
+				prepare: async () => {
+					const limited =
+						action.action === 'test_notification'
+							? rateLimitResponse(
+									await checkRateLimit(
+										notifTestLimiter,
+										`notif-test:${wg.id}:${auth.member.memberId}`,
+									),
+									'test_notification_rate_limited',
+									'test_notification_rate_limited',
+								)
+							: action.action === 'push_unsubscribe'
+								? rateLimitResponse(
+										await checkRateLimit(
+											wgWriteLimiter,
+											`push-unsubscribe:${wg.id}:${auth.member.memberId}`,
+										),
+									)
+								: null;
+					return limited ? { stop: limited } : { input: undefined };
+				},
 			},
 			async (tx) => {
 				if (action.action === 'test_notification') {
-					const rl = rateLimitResponse(
-						await checkRateLimit(notifTestLimiter, `notif-test:${wg.id}:${auth.member.memberId}`),
-						'test_notification_rate_limited',
-						'test_notification_rate_limited',
-					);
-					if (rl) return rejectWrite(rl);
 					try {
 						await dispatchNotification({
 							wg,
@@ -288,10 +305,6 @@ export const POST = withWgRoute('notifications POST', async (req, { code }) => {
 						context: { audit: 'subscribed', name: member.name, pushOptIn: true },
 					};
 				}
-				const unsubscribeLimit = rateLimitResponse(
-					await checkRateLimit(wgWriteLimiter, `push-unsubscribe:${wg.id}:${auth.member.memberId}`),
-				);
-				if (unsubscribeLimit) return rejectWrite(unsubscribeLimit);
 				const removed = await unsubscribePush(tx, writer, requestEndpoint);
 				if (!removed) return rejectWrite(unauthorized('member_deactivated', 'member_deactivated'));
 				return {

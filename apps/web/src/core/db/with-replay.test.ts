@@ -176,7 +176,8 @@ function harness() {
 	};
 	return {
 		state,
-		run: () => withIdempotentReplay(request, scope, mutate as never),
+		run: (admit?: () => Promise<{ status: number; body: unknown } | null>) =>
+			withIdempotentReplay(request, scope, mutate as never, undefined, admit),
 		persistWarning: () =>
 			persistReplayWarning(scope, claimKey, 'comment-1', 'notification_delivery_failed'),
 	};
@@ -222,6 +223,21 @@ test('a rate-limited write releases its exact claim and succeeds with the same k
 	assert.deepEqual((await run()).response, success.response);
 	assert.deepEqual(state.rows, ['created']);
 	assert.equal(state.claims, 2);
+});
+
+test('admit refuses before the claim and a stored replay still wins over it', async () => {
+	const { state, run } = harness();
+	const refuse = async () => ({ status: 429, body: { error: 'too_many_requests' } });
+	const refused = await run(refuse);
+	assert.equal(refused.response.status, 429);
+	assert.equal(refused.effect, null);
+	assert.equal(state.claims, 0);
+	assert.equal(state.slot, null);
+	assert.equal((await run()).response.status, 200);
+	const replayed = await run(refuse);
+	assert.equal(replayed.response.status, 200);
+	assert.equal(state.claims, 1);
+	assert.deepEqual(state.rows, ['created']);
 });
 
 test('an uncertain rate-limit transaction commit does not release the claim outside the transaction', async () => {

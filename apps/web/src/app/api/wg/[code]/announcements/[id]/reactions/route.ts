@@ -38,10 +38,6 @@ export const POST = withWgRoute<{ id: string }>(
 			req,
 			scope,
 			async (tx) => {
-				const limited = rateLimitedReplayResponse(
-					await checkRateLimit(wgWriteLimiter, `reaction:${wg.id}:${auth.member.memberId}`),
-				);
-				if (limited) return { response: limited, effect: null };
 				const actor = await lockActiveAccountMember(
 					tx,
 					wg.id,
@@ -117,6 +113,11 @@ export const POST = withWgRoute<{ id: string }>(
 					: { response: response(true), effect: null };
 			},
 			wg.id,
+			// Outside the transaction: the limiter's network call must not hold the WG lock.
+			async () =>
+				rateLimitedReplayResponse(
+					await checkRateLimit(wgWriteLimiter, `reaction:${wg.id}:${auth.member.memberId}`),
+				),
 		);
 		if (!outcome.effect) {
 			return NextResponse.json(outcome.response.body, { status: outcome.response.status });

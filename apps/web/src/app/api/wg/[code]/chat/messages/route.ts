@@ -197,6 +197,14 @@ export const POST = withWgRoute('chat messages POST', async (req, { code }) => {
 				key,
 				codec: chatMessageCodec,
 				storeStatus: storeChatStatus,
+				// Before the claim and the WG lock, so the limiter's network call holds neither; a stored
+				// replay was answered before this runs.
+				prepare: async () => {
+					const limited = rateLimitedReplayResponse(
+						await checkRateLimit(chatMessageLimiter, `chat:${wg.id}:${member.memberId}`),
+					);
+					return limited ? { stop: limited } : { input: undefined };
+				},
 				inTransaction: (work) =>
 					withTransaction(async (tx) => {
 						// The per-WG write lock is shared with payments and WG deletion, so deletion waits for sends.
@@ -220,11 +228,6 @@ export const POST = withWgRoute('chat messages POST', async (req, { code }) => {
 					// A shared lock until commit: moving the member out waits for this write.
 					.for('share');
 				if (!sender) return rejectWrite(unauthorized('member_deactivated'));
-				// The rate limit runs under the claim, so only the request that sends counts.
-				const limited = rateLimitedReplayResponse(
-					await checkRateLimit(chatMessageLimiter, `chat:${wg.id}:${member.memberId}`),
-				);
-				if (limited) return limited;
 				return insertMessage(tx, {
 					wgId: wg.id,
 					senderMemberId: member.memberId,
@@ -235,6 +238,9 @@ export const POST = withWgRoute('chat messages POST', async (req, { code }) => {
 			},
 		);
 	const result = await send();
+	if (result.kind === 'stopped') {
+		return NextResponse.json(result.response.body, { status: result.response.status });
+	}
 	if (result.kind === 'replayed' || !result.context) {
 		return NextResponse.json(result.body, { status: result.status });
 	}
