@@ -42,7 +42,7 @@ ManaWG is built for one flat. Splitwise and Spliit are built for any group of pe
 | License | Apache-2.0 | Proprietary | MIT |
 | Price | Free, no ads, no paid tier | Free, with a paid Pro tier | Free, no ads, funded by donations |
 | Import from other apps (CSV) | Splitwise, Splid, Tricount, Settle Up | Not listed | Not yet, listed as a possible feature |
-| Currencies | EUR, CHF, USD, GBP | 100+ | Set per group |
+| Currencies | EUR in the app; CHF, USD, GBP through the API, no conversion | 100+ | Set per group |
 | Interface languages | English, German, Spanish | 7+ | 24 |
 | Apps | Installable web app (PWA) | iPhone, Android, web | Web app (PWA), iPhone app |
 
@@ -105,7 +105,7 @@ browser and installs on Android and iPhone as a progressive web app. *WG* is sho
 
 | Area | What it does |
 | --- | --- |
-| **Expenses** | Split evenly or by amount in EUR, CHF, USD or GBP. Balances, settle-up suggestions with as few transfers as possible, cash payments, payment reminders and recurring costs such as rent. A monthly statement arrives by mail with a PDF attached. |
+| **Expenses** | Split evenly or by amount, in euros (the API also accepts CHF, USD and GBP, with balances kept per currency). Balances, settle-up suggestions with as few transfers as possible, cash payments, payment reminders and recurring costs such as rent. A monthly statement arrives by mail with a PDF attached. |
 | **Cleaning rota** | Chores rotate by workload, so the person with the lightest load is next and nobody gets the same chore twice in a row. Flatmates who are away are skipped. |
 | **Shopping and supplies** | One shared list with suggestions, and household supplies that put an item on the list when it runs low. |
 | **Calendar** | Recurring dates, reminders and an iCal feed for your phone's calendar. |
