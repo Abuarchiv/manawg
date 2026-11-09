@@ -111,7 +111,12 @@ test('a sent mention id counts only when its @name is in the body', { skip }, as
 	const { resolveMentionIds } = await import('../src/features/chat/server/chat-mentions.ts');
 	const resolve = (body: string | null, requestedMemberIds?: string[]) =>
 		withTransaction((tx) =>
-			resolveMentionIds(tx, { wgId, senderMemberId: ids.Fiona ?? '', body, requestedMemberIds }),
+			resolveMentionIds(tx, {
+				wgId,
+				senderMemberId: ids.Fiona ?? '',
+				body,
+				...(requestedMemberIds && { requestedMemberIds }),
+			}),
 		);
 	const everyone = [ids.Gina ?? '', ids.Hugo ?? '', ids.Fiona ?? ''];
 
