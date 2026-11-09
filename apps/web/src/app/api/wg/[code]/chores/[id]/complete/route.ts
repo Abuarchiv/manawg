@@ -31,7 +31,14 @@ import {
 import { computeNextDueAt, isLateCompletion } from '@/features/chores/chore-recurrence';
 import { choreSwapSourcePath } from '@/features/chores/server/resolve-swap-request';
 
-type ChoreCompleteResponseBody = { chore: unknown };
+/** What `complete/undo` needs to put the chore back: the completion and the state before it. */
+type ChoreCompleteResponseBody = {
+	chore: unknown;
+	completion?: {
+		id: string;
+		previous: { nextDueAt: string; assignedMemberId: string | null; anchorAt: string };
+	};
+};
 
 const choreCompleteCodec = bodyCodec(
 	(body): body is ChoreCompleteResponseBody =>
@@ -251,7 +258,17 @@ async function writeCompletion(
 				choreSwapSourcePath(c.id),
 			),
 		);
-	const body: ChoreCompleteResponseBody = { chore: updated };
+	const body: ChoreCompleteResponseBody = {
+		chore: updated,
+		completion: {
+			id: completion.id,
+			previous: {
+				nextDueAt: c.nextDueAt.toISOString(),
+				assignedMemberId: c.assignedMemberId,
+				anchorAt: c.anchorAt.toISOString(),
+			},
+		},
+	};
 	return { status: 200, body, context: { nextAssigned } };
 }
 

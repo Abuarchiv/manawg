@@ -118,7 +118,11 @@ test('a moved occurrence ends the confirm step and reloads the plan', () => {
 });
 
 test('an offline completion is a notice and needs no reload', () => {
-	const feedback = choreCompletionFeedback({ kind: 'queued' }, chore, names);
+	const feedback = choreCompletionFeedback(
+		{ kind: 'queued', queuedActionId: 'chore:abc:1:c1' },
+		chore,
+		names,
+	);
 	assert.equal(feedback.tone, 'notice');
 	assert.equal(feedback.message, CHORE_COMPLETION_COPY.queued);
 	assert.equal(feedback.reload, false);

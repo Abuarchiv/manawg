@@ -656,10 +656,12 @@ test.describe('chore next assignee', () => {
 		const complete = row.getByRole('button', { name: `Als erledigt markieren: ${title}` });
 		const completeBox = await complete.boundingBox();
 		if (!completeBox) throw new Error('The completion button is not visible.');
+		// The click must reach the button: it sends the completion without a confirm step.
+		const request = page.waitForRequest(/\/chores\/edge-hit\/complete$/);
 		await page.mouse.click(
 			completeBox.x + completeBox.width - 1,
 			completeBox.y + completeBox.height / 2,
 		);
-		await expect(page.getByRole('alertdialog')).toBeVisible();
+		await request;
 	});
 });

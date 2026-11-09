@@ -351,7 +351,6 @@ test.describe('wg optimistic actions', () => {
 		await navigateToFeature(page, `/wg/${SHARE_CODE}/chores`);
 		await dismissOnboarding(page);
 		await page.getByRole('button', { name: 'Als erledigt markieren: Bad putzen' }).click();
-		await page.getByRole('button', { name: 'Erledigt bestätigen: Bad putzen' }).click();
 		await failureStarted;
 
 		const row = page.locator(`#chore-${CHORE_ID}`);
@@ -362,7 +361,7 @@ test.describe('wg optimistic actions', () => {
 		}
 
 		await expect(row).toBeVisible();
-		await expect(page.getByRole('alertdialog').getByRole('alert')).toContainText(
+		await expect(page.locator('#chore-action-error')).toContainText(
 			'Die Erledigung konnte nicht vollständig gespeichert werden: Lade den Plan neu und prüfe den Verlauf.',
 		);
 	});

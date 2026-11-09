@@ -158,7 +158,9 @@ test.describe('English cleaning rota', () => {
 				// Catch-up dialog for the overdue chore
 				await page.getByRole('button', { name: 'Catch up: Take out the rubbish' }).click();
 				await expect(page.getByText('Mark “Take out the rubbish” as done?')).toBeVisible();
-				await expect(page.getByText('This cannot be undone.', { exact: false })).toBeVisible();
+				await expect(
+					page.getByText('You can undo it right after.', { exact: false }),
+				).toBeVisible();
 				await expect(
 					page.getByRole('button', { name: 'Confirm catch-up: Take out the rubbish' }),
 				).toBeVisible();
@@ -315,6 +317,14 @@ test.describe('English cleaning rota', () => {
 		await prepare(page, context, baseURL, 390, 'light');
 		const confirmed = (id: string, assignedMemberId: string) => ({
 			chore: { id, nextDueAt: new Date(Date.now() + 7 * DAY_MS).toISOString(), assignedMemberId },
+			completion: {
+				id: '11111111-1111-4111-8111-111111111111',
+				previous: {
+					nextDueAt: new Date().toISOString(),
+					assignedMemberId: FIXTURE_WG.memberId,
+					anchorAt: new Date().toISOString(),
+				},
+			},
 		});
 		await page.route(`**${BASE}/chores/mine/complete`, (route) =>
 			route.fulfill({ json: confirmed('mine', 'anna') }),
@@ -326,10 +336,10 @@ test.describe('English cleaning rota', () => {
 		await dismissOnboarding(page);
 
 		await page.getByRole('button', { name: 'Mark as done: Clean the bathroom' }).click();
-		await expect(page.getByText('Mark “Clean the bathroom” as done?')).toBeVisible();
-		await expect(page.getByText('Anna is up next.', { exact: false })).toBeVisible();
-		await page.getByRole('button', { name: 'Confirm done: Clean the bathroom' }).click();
+		// One tap: no dialog, the toast names who is up next and offers an undo.
+		await expect(page.getByRole('alertdialog')).toHaveCount(0);
 		await expect(page.getByText(/Clean the bathroom is done\. Anna is up next on /)).toBeVisible();
+		await expect(page.getByRole('button', { name: 'Undo' })).toBeVisible();
 
 		await page.getByRole('button', { name: 'Catch up: Take out the rubbish' }).click();
 		await expect(page.getByText('You are up next.', { exact: false })).toBeVisible();

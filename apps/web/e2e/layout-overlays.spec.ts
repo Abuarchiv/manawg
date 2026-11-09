@@ -236,7 +236,8 @@ test.describe('alert dialog responsive', () => {
 			title,
 			intervalDays: 7,
 			recurrenceType: 'days',
-			nextDueAt: new Date(Date.now() + 3_600_000).toISOString(),
+			// Overdue: only a late chore still asks before it is completed.
+			nextDueAt: new Date(Date.now() - 3 * 86_400_000).toISOString(),
 			assignedMemberId: viewer.id,
 			lastCompletedAt: null,
 			lastCompletedByName: null,
@@ -282,7 +283,7 @@ test.describe('alert dialog responsive', () => {
 		await dismissOnboarding(page);
 
 		const completeTrigger = page.getByRole('button', {
-			name: `Als erledigt markieren: ${title}`,
+			name: `Aufgabe nachholen: ${title}`,
 		});
 		await completeTrigger.focus();
 		await page.keyboard.press('Enter');
@@ -296,7 +297,7 @@ test.describe('alert dialog responsive', () => {
 		await page.keyboard.press('Shift+Tab');
 		await expect(
 			choreDialog.getByRole('button', {
-				name: `Erledigt bestätigen: ${title}`,
+				name: `Nachholen bestätigen: ${title}`,
 			}),
 		).toBeFocused();
 		await page.keyboard.press('Escape');

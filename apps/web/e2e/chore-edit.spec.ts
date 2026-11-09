@@ -83,7 +83,6 @@ test.describe('chore edit', () => {
 		await dismissOnboarding(page);
 		try {
 			await page.getByRole('button', { name: 'Als erledigt markieren: Bad putzen' }).click();
-			await page.getByRole('button', { name: 'Erledigt bestätigen: Bad putzen' }).click();
 			await refreshing;
 			await page.getByRole('button', { name: `Aufgabenaktionen: ${next.title}` }).click();
 			await page.getByRole('button', { name: `Aufgabe bearbeiten: ${next.title}` }).click();

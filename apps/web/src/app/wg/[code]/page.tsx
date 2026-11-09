@@ -32,8 +32,9 @@ export default function WgHomePage() {
 		agendaNow: home.agendaNow,
 		shareCode: wg.shareCode,
 		memberId: identity.memberId,
+		memberName: identity.name,
 		lastSeen,
-		queuedOccurrences: completion.queuedOccurrences,
+		hiddenOccurrences: completion.hiddenOccurrences,
 	});
 
 	// Entries do not make the WG complete: until a second person lives in it, the invitation

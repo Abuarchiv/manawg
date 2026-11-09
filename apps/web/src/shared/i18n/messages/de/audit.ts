@@ -60,6 +60,9 @@ export default {
 	choreCompleted: {
 		feed: '{self, select, yes {hast} other {hat}} {title} erledigt.',
 	},
+	choreCompletionUndone: {
+		feed: '{self, select, yes {hast} other {hat}} {title} als erledigt zurückgenommen.',
+	},
 	eventCreated: {
 		feed: '{self, select, yes {hast} other {hat}} den Termin „{title}“ angelegt.',
 	},

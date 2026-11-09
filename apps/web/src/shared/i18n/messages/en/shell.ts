@@ -101,6 +101,7 @@ export default {
 		showPassword: 'Show password',
 		hidePassword: 'Hide password',
 		dismissToast: 'Dismiss notification',
+		undo: 'Undo',
 		toasts: 'Notifications',
 		scrollToEnd: 'Scroll to the end',
 		scrollToStart: 'Scroll to the start',

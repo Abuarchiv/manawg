@@ -98,6 +98,7 @@ export default {
 		showPassword: 'Passwort anzeigen',
 		hidePassword: 'Passwort verbergen',
 		dismissToast: 'Benachrichtigung schließen',
+		undo: 'Rückgängig',
 		toasts: 'Benachrichtigungen',
 		scrollToEnd: 'Zum Ende scrollen',
 		scrollToStart: 'Zum Anfang scrollen',

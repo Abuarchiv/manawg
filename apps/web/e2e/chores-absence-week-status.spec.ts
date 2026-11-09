@@ -68,10 +68,9 @@ test.describe('chore absence cache', () => {
 		await expect(absenceRow).toHaveCount(0);
 
 		await page.getByRole('button', { name: 'Als erledigt markieren: Bad putzen' }).click();
-		await page.getByRole('button', { name: 'Erledigt bestätigen: Bad putzen' }).click();
-		await expect(page.getByRole('alertdialog').getByRole('alert')).toContainText(
-			'Die Erledigung konnte nicht gespeichert werden',
-		);
+		await expect(
+			page.getByText('Die Erledigung konnte nicht gespeichert werden').first(),
+		).toBeVisible();
 		await expect(absenceRow).toHaveCount(0);
 	});
 

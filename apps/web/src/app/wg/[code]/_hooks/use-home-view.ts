@@ -15,10 +15,11 @@ interface HomeViewInput {
 	agendaNow: number;
 	shareCode: string;
 	memberId: string;
+	memberName: string;
 	/** Server time of the last start-page visit in ms; `null` without a marker, `undefined` while unread. */
 	lastSeen: number | null | undefined;
-	/** Chore occurrences completed offline; they stay hidden until the server has them. */
-	queuedOccurrences: ReadonlySet<string>;
+	/** Chore occurrences completed here, offline or just now; they stay hidden until the server has them. */
+	hiddenOccurrences: ReadonlySet<string>;
 }
 
 /** Derives the start page sections from the dashboard read. */
@@ -28,16 +29,17 @@ export function useHomeView({
 	agendaNow,
 	shareCode,
 	memberId,
+	memberName,
 	lastSeen,
-	queuedOccurrences,
+	hiddenOccurrences,
 }: HomeViewInput) {
 	const locale = useLocale() as Locale;
 	const dueChores = useMemo(
 		() =>
 			(data?.dueChores ?? []).filter(
-				(chore) => !queuedOccurrences.has(completionRequestKey(chore)),
+				(chore) => !hiddenOccurrences.has(completionRequestKey(chore)),
 			),
-		[data?.dueChores, queuedOccurrences],
+		[data?.dueChores, hiddenOccurrences],
 	);
 	const forYouItems = useMemo(
 		() =>
