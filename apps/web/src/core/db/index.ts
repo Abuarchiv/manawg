@@ -1,6 +1,7 @@
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
+import { logApiError } from '@/core/infra/observability';
 import { closeClientOnQueryTimeout, resolveConnectionString } from './connection';
 import * as schema from './schema';
 import type { DbTransaction } from './transaction';
@@ -23,9 +24,9 @@ function currentDbSource(): string {
 function invalidateDb(pool: Pool, err: Error): void {
 	if (cachedDb?.pool !== pool) return;
 	cachedDb = null;
-	console.error('[db] Pool error; invalidating connection pool:', err.message);
+	logApiError('[db] Pool error; invalidating connection pool:', err);
 	void pool.end().catch((endError: unknown) => {
-		console.error('[db] Pool shutdown failed:', endError);
+		logApiError('[db] Pool shutdown failed:', endError);
 	});
 }
 
@@ -39,7 +40,7 @@ function dropStaleDb(): void {
 	cachedDb = null;
 	console.warn('[db] Connection string changed; rebuilding connection pool.');
 	void stale.pool.end().catch((endError: unknown) => {
-		console.error('[db] Stale pool shutdown failed:', endError);
+		logApiError('[db] Stale pool shutdown failed:', endError);
 	});
 }
 
