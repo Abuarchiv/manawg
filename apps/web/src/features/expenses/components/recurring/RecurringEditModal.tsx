@@ -25,12 +25,8 @@ export function RecurringEditModal({
 	onSubmit,
 }: RecurringEditModalProps) {
 	const t = useTranslations('expenses-recurring');
-	// RecurringForm resyncs its fields whenever `initial` changes identity (so
-	// switching to a different recurringExpense picks up fresh values). A fresh object
-	// literal here would give it a new identity on every re-render of this
-	// modal — e.g. any unrelated state change on the parent recurringExpenses page while
-	// the user is mid-edit — silently discarding whatever they just typed.
-	// Keying the memo on `recurringExpense` ties the identity to the actual data instead.
+	// The form seeds its fields once, so it is keyed by template id: another template gets fresh
+	// values, while a roster refresh or re-render never discards what the user typed.
 	const initial = useMemo(
 		() => ({
 			description: recurringExpense.description,
@@ -48,6 +44,7 @@ export function RecurringEditModal({
 		<RecurringModalShell title={t('modal.editTitle')} onClose={onClose} submitting={submitting}>
 			{(requestClose) => (
 				<RecurringForm
+					key={recurringExpense.id}
 					mode="edit"
 					members={members}
 					submitting={submitting}
