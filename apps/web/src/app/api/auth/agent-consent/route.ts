@@ -60,7 +60,8 @@ export const GET = authGet(async ({ supabase, request }) => {
 		status: 'consent',
 		authorizationId: data.authorization_id,
 		clientName: data.client.name || null,
-		clientHost: hostOf(data.client.uri),
+		// The registered redirect decides where the code goes; the client's own uri is self-declared.
+		clientHost: hostOf(data.redirect_uri),
 		email: data.user.email,
 	} as const;
 });
