@@ -53,11 +53,8 @@ export function PasswordResetForm({ recoveryRequested, continueTo }: PasswordRes
 
 	async function submit(event: React.FormEvent<HTMLFormElement>): Promise<void> {
 		event.preventDefault();
-		if (
-			state !== 'ready' ||
-			password.length < NEW_PASSWORD_MIN_LENGTH ||
-			password !== confirmation
-		) {
+		if (state !== 'ready') return;
+		if (password.length < NEW_PASSWORD_MIN_LENGTH || password !== confirmation) {
 			setError(
 				password.length < NEW_PASSWORD_MIN_LENGTH
 					? t('reset.tooShort', { min: NEW_PASSWORD_MIN_LENGTH })
