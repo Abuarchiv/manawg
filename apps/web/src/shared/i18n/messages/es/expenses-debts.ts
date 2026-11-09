@@ -67,6 +67,8 @@ export default {
 		balances: 'Saldos',
 		balancesLabel: 'Saldo por miembro',
 		you: 'Tú',
+		balanceGets: 'recibe {amount}',
+		balanceOwes: 'debe {amount}',
 		balanceSettled: 'saldado',
 		howToSettle: 'Cómo saldar cuentas',
 		yourPayments: 'Tus pagos pendientes',
@@ -94,6 +96,9 @@ export default {
 		cashNote:
 			'“Registrar el saldo completo como efectivo” confirma en su lugar todo el saldo combinado de {amount}.',
 		sharesLabel: 'Partes de gastos cubiertas',
+		sharesToggle: 'Ver {count} partes de gastos',
+		details: 'Detalles',
+		cashDiffers: 'El saldo es mayor que estas partes. Puedes registrarlo todo en efectivo.',
 		expense: 'Gasto',
 		offset: 'Compensado con lo que te debe',
 		currentShare: 'Parte pendiente actual',
@@ -106,7 +111,7 @@ export default {
 		cancel: 'Cancelar',
 		saving: 'Guardando…',
 		recordCash: 'Registrar el saldo completo como efectivo ({amount})',
-		recordPaid: 'Registrar {amount} como pagado',
+		recordPaid: 'Marcar {amount} como pagado',
 	},
 	cash: {
 		title: 'Pagos en efectivo',

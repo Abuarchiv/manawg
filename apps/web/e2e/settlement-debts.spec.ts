@@ -78,6 +78,7 @@ test.describe('debt summary reminder link', () => {
 	}, testInfo) => {
 		const { shareCode, memberId } = FIXTURE_WG;
 		const otherMemberId = '11111111-1111-4111-8111-111111111111';
+		const kaiMemberId = '44444444-4444-4444-8444-444444444444';
 		const longMemberName = 'A'.repeat(80);
 		await setupMember(page);
 		await page.route(`**/api/wg/${shareCode}/members`, (route) =>
@@ -86,6 +87,7 @@ test.describe('debt summary reminder link', () => {
 					members: [
 						{ id: memberId, name: 'Abu', color: null, active: true },
 						{ id: otherMemberId, name: longMemberName, color: null, active: true },
+						{ id: kaiMemberId, name: 'Kai', color: null, active: true },
 					],
 					viewerIsAdmin: false,
 				},
@@ -146,9 +148,15 @@ test.describe('debt summary reminder link', () => {
 
 		const debtList = page.getByRole('list', { name: 'Deine offenen Zahlungen' });
 		await expect(debtList).toBeVisible();
-		// Balances are always visible, not hidden behind „Alle Salden“.
+		// With three or more members the balances are always visible, in words instead of a bare sign.
 		const balanceList = page.getByRole('list', { name: 'Saldo pro Mitglied' });
 		await expect(balanceList).toBeVisible();
+		await expect(balanceList.getByRole('listitem').filter({ hasText: 'Kai' })).toContainText(
+			'ausgeglichen',
+		);
+		await expect(
+			balanceList.getByRole('listitem').filter({ hasText: longMemberName }).first(),
+		).toContainText(/schuldet|bekommt/);
 		const balanceLabel = page.getByText('Dein Saldo', { exact: true });
 		await expect(balanceLabel).toBeVisible();
 		// The balance is the heading; the open payments follow directly below.
@@ -317,6 +325,98 @@ test.describe('debt settle error notice', () => {
 	test.use({ hasTouch: true, isMobile: true });
 
 	const MINA_ID = '0ab8c8f2-5d03-4a84-aadc-4c5d7e8abf55';
+
+	test('two members need no balance list; the dialog offers one action unless cash differs', async ({
+		page,
+	}) => {
+		const { shareCode, memberId } = FIXTURE_WG;
+		let release: () => void = () => undefined;
+		const gate = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		let netCents = 1000;
+
+		await setupMember(page);
+		await page.route(`**/api/wg/${shareCode}/expenses`, (route) =>
+			route.fulfill({
+				json: {
+					expenses: [
+						{
+							id: 'expense-rent',
+							paidByMemberId: memberId,
+							amountCents: 2000,
+							currency: 'EUR',
+							description: 'Miete',
+							occurredAt: '2026-09-01T10:00:00.000Z',
+							splits: [
+								{
+									id: 'split-rent',
+									expenseId: 'expense-rent',
+									debtorMemberId: MINA_ID,
+									amountCents: 1000,
+									settledAt: null,
+								},
+							],
+						},
+					],
+					payments: [],
+				},
+			}),
+		);
+		await page.route(`**/api/wg/${shareCode}/recurring-expenses`, (route) =>
+			route.fulfill({ json: { recurringExpenses: [] } }),
+		);
+		await page.route(`**/api/wg/${shareCode}/dashboard`, (route) =>
+			route.fulfill({ json: { openShoppingCount: 0, dueChores: [], dueRecurringExpenses: [] } }),
+		);
+		await mockUnreadCount(page, `/api/wg/${shareCode}`);
+		await page.route(`**/api/wg/${shareCode}/expenses/settle-batch*`, async (route) => {
+			await gate;
+			return route.fulfill({
+				json: {
+					currency: 'EUR',
+					netCents,
+					settleableCents: 1000,
+					remainingCents: 0,
+					splits: [{ id: 'split-rent', expenseId: 'expense-rent', amountCents: 1000 }],
+				},
+			});
+		});
+
+		await navigateToFeature(page, `/wg/${shareCode}/expenses`);
+		await dismissOnboarding(page);
+		await expect(page.getByRole('list', { name: 'Deine offenen Zahlungen' })).toBeVisible();
+		await expect(page.getByRole('list', { name: 'Saldo pro Mitglied' })).toHaveCount(0);
+
+		// The dialog opens at once; its confirm button stays disabled until the preview arrived.
+		await page.getByRole('button', { name: 'Ausgleichen' }).click();
+		const dialog = page.getByRole('alertdialog', { name: 'Bereits erfolgte Zahlung bestätigen' });
+		await expect(dialog).toBeVisible();
+		await expect(dialog.getByRole('button', { name: /Prüft/ })).toBeDisabled();
+		release();
+
+		// Equal amounts: one primary action, notes behind "Details".
+		await expect(
+			dialog.getByRole('button', { name: '10,00 € als bezahlt eintragen' }),
+		).toBeVisible();
+		await expect(dialog.getByRole('button', { name: /bar eintragen/ })).toHaveCount(0);
+		await expect(dialog.getByText('Diese Anteile wurden aktuell geprüft.')).toHaveCount(0);
+		await dialog.getByRole('button', { name: 'Details' }).click();
+		await expect(dialog.getByText('Diese Anteile wurden aktuell geprüft.')).toBeVisible();
+		await dialog.getByRole('button', { name: 'Abbrechen' }).click();
+		await expect(dialog).not.toBeVisible();
+
+		// A larger net balance adds the cash alternative with its one-line explanation.
+		netCents = 1500;
+		await page.getByRole('button', { name: 'Ausgleichen' }).click();
+		await expect(
+			dialog.getByRole('button', { name: '10,00 € als bezahlt eintragen' }),
+		).toBeVisible();
+		await expect(
+			dialog.getByRole('button', { name: /Gesamten Saldo 15,00 € bar eintragen/ }),
+		).toBeVisible();
+		await expect(dialog.getByText('Der Saldo ist höher als diese Anteile.')).toBeVisible();
+	});
 
 	test('cancelling the settle-confirmation dialog clears a failed settle attempt error', async ({
 		page,

@@ -79,6 +79,9 @@ export function useDebtSettlement({
 		settlingRef.current = true;
 		setReviewing(true);
 		setError(null);
+		// The dialog opens at once with a skeleton; its amounts come from the preview only.
+		setPreview(null);
+		setReviewOpen(true);
 		try {
 			// apiFetch reports failures in its result and never throws.
 			const res = await apiFetch<SettlementPreview>(
@@ -87,8 +90,8 @@ export function useDebtSettlement({
 			);
 			if (res.ok) {
 				setPreview(res.data);
-				setReviewOpen(true);
 			} else {
+				setReviewOpen(false);
 				toast.error(t('checkFailed'));
 			}
 		} finally {
@@ -135,14 +138,12 @@ export function useDebtSettlement({
 				if (shouldReleaseIdempotencyKey(res.status, res.error)) settlementRequestRef.current = null;
 				setError(message(settlementError(res.error)));
 				if (res.error === 'settlement_changed') {
-					setPreview(null);
 					setReviewOpen(false);
 				}
 				return;
 			}
 			settlementRequestRef.current = null;
 			const { settled, settledCents, remainingCents, reason } = res.data;
-			setPreview(null);
 			setReviewOpen(false);
 			const names = { from: debt.fromName, to: debt.toName };
 			if (reason === 'no_direct_splits') onSettled(t('noDirectSplits'));
@@ -193,13 +194,11 @@ export function useDebtSettlement({
 				if (shouldReleaseIdempotencyKey(res.status, res.error)) cashRequestRef.current = null;
 				setError(message(settlementError(res.error)));
 				if (res.error === 'settlement_changed') {
-					setPreview(null);
 					setReviewOpen(false);
 				}
 				return;
 			}
 			cashRequestRef.current = null;
-			setPreview(null);
 			setReviewOpen(false);
 			onSettled(
 				t('cashRecorded', {

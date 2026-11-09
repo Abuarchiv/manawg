@@ -16,6 +16,16 @@ settled.
   the headers and limits ManaWG needs from a proxy, and a check that the sign-in limit sees each
   visitor separately ([Reverse proxy examples](docs/self-hosting.md#reverse-proxy-examples)).
 
+### Changed
+
+- The balance card says "owes €5.00", "gets €12.00" or "settled" for each member instead of a
+  signed number, and leaves the list out in a flat of two, where the heading already says it. The
+  link to all reminders has a history icon; the bell stays for sending a reminder.
+- The settle-up dialog opens at once and fills in the amounts as soon as they are checked. When the
+  shares cover the whole balance it has one button, "Mark €10.00 as paid"; the cash option appears
+  only when it would cover more. The notes sit under "Details", and more than three shares are
+  collapsed.
+
 ### Fixed
 
 - The structured data (JSON-LD) of the app now lists all supported interface languages instead

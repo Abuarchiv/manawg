@@ -1,6 +1,6 @@
 'use client';
 
-import { Bell, FileText } from 'lucide-react';
+import { FileText, History } from 'lucide-react';
 import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
 import { Fragment } from 'react';
@@ -110,7 +110,9 @@ export function DebtSummary({
 		ownBalance && shownBalances.length > 1
 			? shownBalances.filter((m) => m !== ownBalance)
 			: shownBalances;
-	const showBalances = shownBalances.length > 1 && listedBalances.length > 0;
+	// With exactly two members the heading and the settle row already say it all.
+	const showBalances =
+		new Set(shownBalances.map((member) => member.memberId)).size > 2 && listedBalances.length > 0;
 
 	return (
 		<Card size="sm">
@@ -172,7 +174,7 @@ export function DebtSummary({
 						title={t('remindersLink')}
 						className={cn(buttonVariants({ variant: 'ghost', size: 'icon-sm' }))}
 					>
-						<Bell aria-hidden />
+						<History aria-hidden />
 					</Link>
 				</CardAction>
 			</CardHeader>
@@ -199,7 +201,8 @@ export function DebtSummary({
 										</span>
 										<span
 											className={cn(
-												'ml-auto shrink-0 text-right font-mono whitespace-nowrap tabular-nums',
+												// Wraps only at the space after the word; the amount's own spaces are non-breaking.
+												'ml-auto min-w-0 text-right font-mono tabular-nums',
 												member.balanceCents === 0
 													? 'text-muted-foreground'
 													: !isMe
@@ -211,9 +214,14 @@ export function DebtSummary({
 										>
 											{member.balanceCents === 0
 												? t('balanceSettled')
-												: formatEuroCents(member.balanceCents, member.currency, {
-														signed: true,
-														locale,
+												: t(member.balanceCents > 0 ? 'balanceGets' : 'balanceOwes', {
+														amount: formatEuroCents(
+															Math.abs(member.balanceCents),
+															member.currency,
+															{
+																locale,
+															},
+														),
 													})}
 										</span>
 									</li>
