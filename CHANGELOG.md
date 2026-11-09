@@ -57,9 +57,6 @@ settled.
   flatmates are already in. The shared invitation text says what ManaWG is in one line.
 - Opening the expense form from the shopping list now selects the category Groceries. For "Add as
   expense" on a single bought item, an earlier expense with the same description keeps its category.
-
-### Changed
-
 - The balance card says "owes €5.00", "gets €12.00" or "settled" for each member instead of a
   signed number, and leaves the list out in a flat of two, where the heading already says it. The
   link to all reminders has a history icon; the bell stays for sending a reminder.
