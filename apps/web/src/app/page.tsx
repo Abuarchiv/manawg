@@ -1,19 +1,19 @@
 import type { Metadata } from 'next';
-import { getTranslations } from 'next-intl/server';
-import { OG_BASE, TWITTER_BASE } from '@/shared/lib/og';
+import { getLocale, getTranslations } from 'next-intl/server';
+import { ogBase, TWITTER_BASE } from '@/shared/lib/og';
 import { EntryClient } from './EntryClient';
 
 // Entry page stays noindex (inherited from the layout) and carries no canonical:
 // a cross-domain canonical on a noindex page is a contradictory signal to Google.
 // The brand ranks through manawg.com, which this page links to in its footer.
 export async function generateMetadata(): Promise<Metadata> {
-	const t = await getTranslations('meta.brand');
+	const [t, locale] = await Promise.all([getTranslations('meta.brand'), getLocale()]);
 	const title = t('title');
 	const description = t('description');
 	return {
 		title,
 		description,
-		openGraph: { ...OG_BASE, title, description, url: '/' },
+		openGraph: { ...ogBase(locale), title, description, url: '/' },
 		twitter: { ...TWITTER_BASE, title, description },
 	};
 }

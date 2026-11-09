@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
-import { getTranslations } from 'next-intl/server';
-import { OG_BASE, TWITTER_BASE } from '@/shared/lib/og';
+import { getLocale, getTranslations } from 'next-intl/server';
+import { ogBase, TWITTER_BASE } from '@/shared/lib/og';
 import { InviteClient } from './InviteClient';
 
 export const dynamic = 'force-dynamic';
@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
 // Invite links are mostly shared in chats; the preview card names the invitation,
 // never the WG or the token (the token is the secret of this URL).
 export async function generateMetadata(): Promise<Metadata> {
-	const t = await getTranslations('meta.invite');
+	const [t, locale] = await Promise.all([getTranslations('meta.invite'), getLocale()]);
 	const description = t('description');
 	// openGraph/twitter titles do not go through the root title template.
 	const title = `${t('title')} — ManaWG`;
@@ -18,7 +18,7 @@ export async function generateMetadata(): Promise<Metadata> {
 		robots: { index: false, follow: false },
 		// Keep the token out of Referer headers.
 		referrer: 'no-referrer',
-		openGraph: { ...OG_BASE, title, description },
+		openGraph: { ...ogBase(locale), title, description },
 		twitter: { ...TWITTER_BASE, title, description },
 	};
 }
