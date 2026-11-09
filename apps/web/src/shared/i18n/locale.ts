@@ -66,3 +66,8 @@ const HTML_LANG: Record<Locale, string> = { de: 'de', en: 'en-GB', es: 'es-ES' }
 export function htmlLang(locale: Locale): string {
 	return HTML_LANG[locale];
 }
+
+/** The `<html lang>` value of every supported locale, e.g. for the JSON-LD `inLanguage`. */
+export function supportedHtmlLangs(): string[] {
+	return LOCALES.map(htmlLang);
+}

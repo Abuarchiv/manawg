@@ -12,9 +12,14 @@ settled.
 
 - Receipt scanning recognises Spanish text: with the interface in Spanish, the scanner loads the
   Spanish model as well, so `ñ` and accents are kept. Other languages do not download it.
+- The self-hosting guide has tested nginx and Traefik reverse-proxy examples with the `.env` values,
+  the headers and limits ManaWG needs from a proxy, and a check that the sign-in limit sees each
+  visitor separately ([Reverse proxy examples](docs/self-hosting.md#reverse-proxy-examples)).
 
 ### Fixed
 
+- The structured data (JSON-LD) of the app now lists all supported interface languages instead
+  of German only.
 - Spanish shopping entries such as "2 kg de arroz" or "2 l de leche" no longer keep the "de" in the
   item name after a metric unit.
 
