@@ -3,8 +3,8 @@ import { defineConfig } from 'drizzle-kit';
 import { validateDatabaseUrl } from './src/core/db/connection';
 
 const migrationUrl = process.env.DATABASE_MIGRATION_URL;
-const pooledUrl = process.env.POSTGRES_URL ?? process.env.DATABASE_URL;
-const unpooledUrl = process.env.POSTGRES_URL_NON_POOLING ?? process.env.DATABASE_URL_UNPOOLED;
+const pooledUrl = process.env.POSTGRES_URL || process.env.DATABASE_URL;
+const unpooledUrl = process.env.POSTGRES_URL_NON_POOLING || process.env.DATABASE_URL_UNPOOLED;
 
 let url: string | undefined;
 if (migrationUrl) {
@@ -32,7 +32,7 @@ export default defineConfig({
 	],
 	out: './drizzle',
 	dialect: 'postgresql',
-	...(url ? { dbCredentials: { url } } : {}),
+	dbCredentials: { url },
 	strict: true,
 	verbose: true,
 });
