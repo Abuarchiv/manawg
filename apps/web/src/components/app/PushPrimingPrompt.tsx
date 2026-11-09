@@ -19,7 +19,9 @@ import {
 	persistExistingWebPushSubscription,
 	subscribeWebPush,
 } from '@/core/notifications/push-subscribe';
+import { formatPushActivationError } from '@/core/notifications/web-push-errors';
 import { isEditingTarget, safeLocalStorage } from '@/core/utils/browser';
+import { useMessage } from '@/shared/i18n/message';
 
 function rememberDismissed(): void {
 	try {
@@ -42,6 +44,7 @@ export function PushPrimingPrompt({ code, memberId }: { code: string; memberId: 
 	const [activationError, setActivationError] = useState<string | null>(null);
 	const cardRef = useRef<HTMLDivElement>(null);
 	const toast = useToast();
+	const message = useMessage();
 
 	// The card sits at the page end: the error line makes it taller, so bring it fully back
 	// into view (above the bottom navigation, see scroll-mb on the card).
@@ -148,8 +151,8 @@ export function PushPrimingPrompt({ code, memberId }: { code: string; memberId: 
 			await subscribeWebPush(code, memberId);
 			hideCard();
 			toast.success(t('enabled'));
-		} catch {
-			setActivationError(t('activationFailed'));
+		} catch (err) {
+			setActivationError(message(formatPushActivationError(err)));
 		} finally {
 			setBusy(false);
 		}
