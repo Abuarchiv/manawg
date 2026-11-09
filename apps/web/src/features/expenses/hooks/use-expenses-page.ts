@@ -119,7 +119,7 @@ export function useExpensesPage() {
 		updateRecurringExpenses: data.updateRecurringExpenses,
 		reload: async () => {
 			await data.load(false, true);
-			// The "fällig" badge on Fixkosten in the finance sub-nav reads the dashboard cache,
+			// The "due" badge on the recurring tab in the finance sub-nav reads the dashboard cache,
 			// which otherwise only refreshes on focus.
 			void refreshCachedFetch(`/api/wg/${encodeURIComponent(wg.shareCode)}/dashboard`, {
 				memberId: identity.memberId,
@@ -198,7 +198,7 @@ export function useExpensesPage() {
 	const stableMemberName = useStableCallback(memberName);
 
 	// History by calendar week; the API returns newest first.
-	// Render only the newest entries (balances still use all); "Mehr anzeigen" loads more.
+	// Render only the newest entries (balances still use all); the "show more" button loads more.
 	const [visibleLimit, setVisibleLimit] = useState(EXPENSE_RENDER_PAGE);
 	const [scope, setScope] = useState<ExpenseScope>('all');
 	const [query, setQuery] = useState('');
@@ -365,7 +365,7 @@ export function useExpensesPage() {
 		visibleRecurringExpenses,
 		hiddenRecurringCount: recurringExpenses.length - visibleRecurringExpenses.length,
 		selectablePayers: payerOptions(members, form.paidByMemberId),
-		// A member who moved out ("Auszug") drops out of every picker, while the
+		// A member who moved out drops out of every picker, while the
 		// full `members` list stays in use for name/colour/balance lookups so the
 		// history keeps resolving. See expense-split-input.ts for the cases where a
 		// moved-out member has to be offered anyway.

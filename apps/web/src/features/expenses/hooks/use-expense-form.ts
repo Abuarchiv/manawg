@@ -112,7 +112,7 @@ export function useExpenseForm({
 			setDraftHydrated(true);
 			return;
 		}
-		// A stored draft restores silently and shows on "Ausgabe hinzufügen"; only "Bearbeiten" from the offline queue opens it directly.
+		// A stored draft restores silently and shows when the add form opens; only editing from the offline queue opens it directly.
 		if (draft.queueEditId && !isEmptyModuleDraft('expense', draft, identityMemberId)) {
 			setShowForm(true);
 		}
@@ -131,7 +131,7 @@ export function useExpenseForm({
 		if (draft.amountStr) setAmountStr(draft.amountStr);
 		if (draft.imageUrl !== undefined) setImageUrl(draft.imageUrl);
 		if (draft.paidByMemberId) setPaidByMemberId(draft.paidByMemberId);
-		// Queued expenses always carry per-person amounts; an equal split stays "Gleichmäßig".
+		// Queued expenses always carry per-person amounts; an equal split stays an equal split.
 		const queuedParticipants =
 			draft.queueEditId !== undefined && draft.splitMode === 'manual'
 				? queuedEqualParticipants(draft, membersRef.current, locale)
