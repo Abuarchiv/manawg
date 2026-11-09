@@ -53,9 +53,6 @@ mean that the feature does not appear in the project's own feature list. If you 
 a trip and nobody wants to create an account, Spliit fits better. Spot a mistake? Please
 [open an issue](https://github.com/Abuarchiv/manawg/issues/new/choose).
 
-Spanish and the Tricount and Settle Up import are in the `main` branch, but not yet in the 0.1.1
-release or on [app.manawg.com](https://app.manawg.com). They ship with the next feature release.
-
 ## Status
 
 ManaWG is at version 0.1.x. The first public release, 0.1.0, came out on 5 November 2026, and the

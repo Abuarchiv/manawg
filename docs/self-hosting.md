@@ -167,7 +167,7 @@ docker compose pull && docker compose up -d
 If Compose builds the image from your checkout, check out the release tag and rebuild:
 
 ```sh
-git fetch --tags && git checkout v0.1.1
+git fetch --tags && git checkout v0.2.0
 docker compose up -d --build
 ```
 

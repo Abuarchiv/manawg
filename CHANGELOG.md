@@ -8,6 +8,8 @@ settled.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-09
+
 ### Added
 
 - Spanish (Español) as a third language: the interface, mails, push notifications, monthly
@@ -54,6 +56,9 @@ settled.
   `docker/portainer/compose.yaml` run the Docker stack from Portainer without a shell, without
   `./docker/setup.sh` and without bind mounts ([Portainer](docs/self-hosting.md#portainer)). The
   normal `compose.yaml` is unchanged.
+- Manual step only with Supabase hosted: run `scripts/supabase-auth-templates.mjs --apply` again,
+  otherwise the sign-up code mail has no code. Docker setups need nothing beyond pulling the
+  `0.2.0` image and restarting; `setup` applies the migrations `0042` and `0043` on start.
 
 ## [0.1.1] - 2026-11-05
 
@@ -102,5 +107,6 @@ image is listed in this file.
 
 - No manual step. The `setup` service applies all database migrations on start.
 
+[0.2.0]: https://github.com/Abuarchiv/manawg/releases/tag/v0.2.0
 [0.1.1]: https://github.com/Abuarchiv/manawg/releases/tag/v0.1.1
 [0.1.0]: https://github.com/Abuarchiv/manawg/releases/tag/v0.1.0
