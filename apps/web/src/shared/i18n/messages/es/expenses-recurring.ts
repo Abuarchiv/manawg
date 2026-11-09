@@ -132,13 +132,6 @@ export default {
 			'Asignado {sum} de {total} · {state, select, match {coincide} short {{amount} sin asignar} other {{amount} de más}}',
 		equalHint: 'Introduce un importe y se repartirá a partes iguales.',
 	},
-	interval: {
-		monthly: 'mensual',
-		quarterly: 'trimestral',
-		halfYearly: 'cada seis meses',
-		yearly: 'anual',
-		everyMonths: 'cada {count} meses',
-	},
 	errors: {
 		saveCreated: 'No se ha podido añadir el gasto fijo',
 		saveUpdated: 'No se ha podido actualizar el gasto fijo',

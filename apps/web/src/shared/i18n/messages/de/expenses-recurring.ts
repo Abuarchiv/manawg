@@ -128,13 +128,6 @@ export default {
 			'Verteilt {sum} von {total} · {state, select, match {passt} short {noch {amount} offen} other {{amount} zu viel}}',
 		equalHint: 'Betrag eingeben, dann wird gleichmäßig aufgeteilt.',
 	},
-	interval: {
-		monthly: 'monatlich',
-		quarterly: 'quartalsweise',
-		halfYearly: 'halbjährlich',
-		yearly: 'jährlich',
-		everyMonths: 'alle {count} Monate',
-	},
 	errors: {
 		saveCreated: 'Fixkosten konnten nicht angelegt werden',
 		saveUpdated: 'Fixkosten konnten nicht aktualisiert werden',
