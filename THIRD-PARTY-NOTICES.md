@@ -51,16 +51,17 @@ SOFTWARE.
 ## Text recognition (OCR)
 
 The expense import reads screenshots in the browser. The worker, the WebAssembly core and the
-German and English models are served by the app from `/tesseract/`. They are copied from the
-installed packages at build time and are not committed. All three are licensed under the Apache
-License 2.0, whose text is in [Apache-2.0.txt](apps/web/public/licenses/Apache-2.0.txt). The
-worker also bundles small MIT and BSD libraries, listed in `/tesseract/worker.min.js.LICENSE.txt`.
+German, English and Spanish models are served by the app from `/tesseract/`. They are copied from
+the installed packages at build time and are not committed. The browser fetches only the models the
+interface language needs. All of them are licensed under the Apache License 2.0, whose text is in
+[Apache-2.0.txt](apps/web/public/licenses/Apache-2.0.txt). The worker also bundles small MIT and
+BSD libraries, listed in `/tesseract/worker.min.js.LICENSE.txt`.
 
 - [tesseract.js](https://github.com/naptha/tesseract.js), the worker.
 - [tesseract.js-core](https://github.com/naptha/tesseract.js-core), the WebAssembly build of
   Tesseract.
-- The `deu` and `eng` models from [tessdata_best](https://github.com/tesseract-ocr/tessdata_best),
-  packaged as `@tesseract.js-data/deu` and `@tesseract.js-data/eng`.
+- The `deu`, `eng` and `spa` models from
+  [tessdata_best](https://github.com/tesseract-ocr/tessdata_best), packaged as `@tesseract.js-data/deu`, `@tesseract.js-data/eng` and `@tesseract.js-data/spa`.
 
 The licence files of the first two and a README naming the sources are placed next to the served
 files in `/tesseract/`.

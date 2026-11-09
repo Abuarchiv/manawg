@@ -8,6 +8,11 @@ settled.
 
 ## [Unreleased]
 
+### Added
+
+- Receipt scanning recognises Spanish text: with the interface in Spanish, the scanner loads the
+  Spanish model as well, so `ñ` and accents are kept. Other languages do not download it.
+
 ## [0.2.0] - 2026-11-09
 
 ### Added

@@ -1,7 +1,7 @@
 /**
- * The OCR worker, its WASM core and the German and English models are served by the app itself
- * from public/tesseract (see features/expenses/ocr.ts), so the CSP names no third-party host and
- * OCR works on instances without public internet access. The files come from the installed
+ * The OCR worker, its WASM core and the German, English and Spanish models are served by the app
+ * itself from public/tesseract (see features/expenses/ocr.ts), so the CSP names no third-party host
+ * and OCR works on instances without public internet access. The files come from the installed
  * packages and are not committed. next.config.ts calls this on every config load: next dev,
  * next build (local, Vercel, Docker) and the Playwright servers all run it. The upstream licence
  * texts are copied next to the files, as Apache-2.0 requires for redistribution.
@@ -29,7 +29,7 @@ const CORE_FILES = [
 	'tesseract-core-simd-lstm.wasm.js',
 	'tesseract-core-relaxedsimd-lstm.wasm.js',
 ];
-const LANGUAGES = ['deu', 'eng'];
+const LANGUAGES = ['deu', 'eng', 'spa'];
 const README = `These files are served unmodified from the following open-source projects. Each is
 licensed under the Apache License 2.0. worker.min.js also bundles small MIT and BSD libraries,
 listed in worker.min.js.LICENSE.txt.
@@ -42,7 +42,7 @@ tesseract-core-*.wasm.js, LICENSE.tesseract.js-core.txt
 
 lang/*.traineddata.gz
   Trained models from tessdata_best, https://github.com/tesseract-ocr/tessdata_best,
-  packaged by @tesseract.js-data/deu and @tesseract.js-data/eng.
+  packaged by @tesseract.js-data/deu, @tesseract.js-data/eng and @tesseract.js-data/spa.
 
 The licence texts of the code are in the LICENSE.* files next to this one.
 Apache License 2.0: https://www.apache.org/licenses/LICENSE-2.0

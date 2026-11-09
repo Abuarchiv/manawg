@@ -2,6 +2,7 @@
 // Why: Split and rounding input is the most error-prone user path.
 
 import { expect, type Locator, type Page, type Response, test } from '@playwright/test';
+import type { Locale } from '../src/shared/i18n/locale';
 import {
 	dismissOnboarding,
 	FIXTURE_WG,
@@ -11,6 +12,7 @@ import {
 	setupMember,
 	skipUnlessFixtures,
 } from './support/helpers';
+import { setLocale } from './support/i18n';
 
 test.describe('manual split validation', () => {
 	skipUnlessFixtures();
@@ -330,6 +332,7 @@ test.describe('ocr runtime', () => {
 		'/tesseract/lang/deu.traineddata.gz',
 		'/tesseract/lang/eng.traineddata.gz',
 	] as const;
+	const SPANISH_LANGUAGE_DATA_PATH = '/tesseract/lang/spa.traineddata.gz';
 	// Tesseract.js-core tries an optional fetch of its embedded WASM data URI.
 	// WebKit blocks it via connect-src, then successfully falls back to decoding
 	// the same bytes. Match only that exact message and WASM magic prefix; do not
@@ -437,10 +440,14 @@ test.describe('ocr runtime', () => {
 		expect(unexpected).toEqual([]);
 	}
 
-	async function openOcrImport(page: Page): Promise<Response> {
+	async function openOcrImport(page: Page, locale: Locale = 'de', baseURL = ''): Promise<Response> {
 		await setupMember(page);
+		if (locale !== 'de') await setLocale(page.context(), baseURL, locale);
 		// Account-language setup is separate from the OCR no-write contract.
-		await page.addInitScript(() => localStorage.setItem('manawg:locale-synced', 'de'));
+		await page.addInitScript(
+			(synced) => localStorage.setItem('manawg:locale-synced', synced),
+			locale,
+		);
 		const documentResponse = page.waitForResponse(
 			(response) =>
 				response.request().resourceType() === 'document' &&
@@ -452,13 +459,24 @@ test.describe('ocr runtime', () => {
 		expect(response.status()).toBe(200);
 		expectStrictOcrPolicy(response);
 
-		await page.getByRole('button', { name: /Screenshot/i }).click();
+		await page
+			.getByRole('button', { name: locale === 'es' ? /Captura de pantalla/i : /Screenshot/i })
+			.click();
 		await expect(page.locator('#import-screenshot')).toBeVisible();
 		return response;
 	}
 
-	async function uploadSyntheticReceipt(page: Page): Promise<void> {
-		const base64 = await page.evaluate(() => {
+	async function uploadSyntheticReceipt(
+		page: Page,
+		receiptLines: readonly string[] = [
+			'TEST RECEIPT',
+			'27.09.2026',
+			'Milch 2,50 EUR',
+			'Brot 3,20 EUR',
+			'TOTAL 5,70 EUR',
+		],
+	): Promise<void> {
+		const base64 = await page.evaluate((lines) => {
 			const canvas = document.createElement('canvas');
 			canvas.width = 1000;
 			canvas.height = 600;
@@ -468,17 +486,11 @@ test.describe('ocr runtime', () => {
 			context.fillRect(0, 0, canvas.width, canvas.height);
 			context.fillStyle = '#000';
 			context.font = '38px Arial';
-			for (const [index, line] of [
-				'TEST RECEIPT',
-				'27.09.2026',
-				'Milch 2,50 EUR',
-				'Brot 3,20 EUR',
-				'TOTAL 5,70 EUR',
-			].entries()) {
+			for (const [index, line] of lines.entries()) {
 				context.fillText(line, 60, 85 + index * 85);
 			}
 			return canvas.toDataURL('image/png').split(',')[1] ?? '';
-		});
+		}, receiptLines);
 		if (!base64) throw new Error('Synthetic receipt PNG was not generated');
 		await page.locator('#import-screenshot').setInputFiles({
 			name: 'synthetic-receipt.png',
@@ -487,7 +499,7 @@ test.describe('ocr runtime', () => {
 		});
 	}
 
-	function expectTesseractAssets(evidence: NetworkEvidence): void {
+	function expectTesseractAssets(evidence: NetworkEvidence, expectSpanish = false): void {
 		const paths = [...evidence.assetResponses.keys()];
 		const workerPath = '/tesseract/worker.min.js';
 		const corePath = /^\/tesseract\/tesseract-core(?:-[^/]+)?-lstm\.wasm\.js$/;
@@ -499,6 +511,9 @@ test.describe('ocr runtime', () => {
 			expect(paths).toContain(path);
 			expect(evidence.assetResponses.get(path), `${path} returns HTTP 200`).toBe(200);
 		}
+		expect(paths.includes(SPANISH_LANGUAGE_DATA_PATH), 'Spanish model is fetched only for es').toBe(
+			expectSpanish,
+		);
 		expect(evidence.thirdPartyRequests).toEqual([]);
 	}
 
@@ -521,6 +536,35 @@ test.describe('ocr runtime', () => {
 		).toHaveCount(0);
 
 		expectTesseractAssets(evidence);
+		expectOnlyExpectedCspViolations(evidence.cspViolations, browserName);
+		expect(evidence.pageErrors).toEqual([]);
+		expect(evidence.apiWrites).toEqual([]);
+	});
+
+	test('a Spanish interface also loads the Spanish model and keeps ñ and accents', async ({
+		page,
+		browserName,
+		baseURL,
+	}) => {
+		test.setTimeout(120_000);
+		const evidence = observeNetwork(page);
+		await openOcrImport(page, 'es', baseURL ?? '');
+		await uploadSyntheticReceipt(page, [
+			'RECIBO DE PRUEBA',
+			'27.09.2026',
+			'Café con leche 2,50 EUR',
+			'Piña y jamón 3,20 EUR',
+			'TOTAL 5,70 EUR',
+		]);
+
+		const recognizedData = page.locator('#import-ocr');
+		await expect.poll(() => recognizedData.inputValue(), { timeout: 100_000 }).toContain('TOTAL');
+		const recognizedText = await recognizedData.inputValue();
+		expect(recognizedText).toContain('Café');
+		expect(recognizedText).toContain('Piña');
+		expect(recognizedText).toContain('jamón');
+
+		expectTesseractAssets(evidence, true);
 		expectOnlyExpectedCspViolations(evidence.cspViolations, browserName);
 		expect(evidence.pageErrors).toEqual([]);
 		expect(evidence.apiWrites).toEqual([]);

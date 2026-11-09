@@ -23,7 +23,11 @@
 			],
 			"drizzle": false,
 			"ignoreBinaries": ["psql"],
-			"ignoreDependencies": ["@tesseract.js-data/deu", "@tesseract.js-data/eng"]
+			"ignoreDependencies": [
+				"@tesseract.js-data/deu",
+				"@tesseract.js-data/eng",
+				"@tesseract.js-data/spa"
+			]
 		}
 	}
 }
