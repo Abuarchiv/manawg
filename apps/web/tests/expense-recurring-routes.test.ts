@@ -299,6 +299,7 @@ test('recurring expense creation requires the caller to bear a positive share', 
 	let members = [{ id: PAYER_ID }];
 	let insertCount = 0;
 	const tx = {
+		select: () => ({ from: () => ({ where: async () => members }) }),
 		insert: () => ({
 			values: (value: Record<string, unknown>) => ({
 				returning: async () => {
