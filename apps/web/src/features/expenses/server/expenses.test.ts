@@ -39,14 +39,14 @@ test('the expense chat notice carries cents and currency next to the German text
 		} as never,
 	});
 	assert.equal(chatMessages.length, 1);
-	assert.deepEqual(chatMessages[0]?.payload, {
+	const { amount, ...payload } = chatMessages[0]?.payload ?? {};
+	assert.deepEqual(payload, {
 		expenseId: 'e1',
 		actorMemberId: 'm1',
 		actorName: 'Anna',
 		description: 'Reis',
 		amountCents: 2480,
 		currency: 'EUR',
-		amount: chatMessages[0]?.payload.amount,
 	});
-	assert.match(String(chatMessages[0]?.payload.amount), /^24,80\s€$/);
+	assert.match(String(amount), /^24,80\s€$/);
 });

@@ -250,7 +250,9 @@ export async function runStatementPlans(
 				status: 'failed' as const,
 				error: 'dispatch_error',
 			}));
-			await recordOutcomes(failed, rows).catch(() => undefined);
+			await recordOutcomes(failed, rows).catch((recordError) => {
+				console.warn('[statement-mail] dispatch_error outcome write failed', recordError);
+			});
 			throw error;
 		}
 		await recordOutcomes(result.updates, rows);
