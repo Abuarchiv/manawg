@@ -1,4 +1,4 @@
-import { relations, sql } from 'drizzle-orm';
+import { sql } from 'drizzle-orm';
 import {
 	check,
 	index,
@@ -67,21 +67,5 @@ export const wgInventoryLog = pgTable(
 			.where(sql`${t.memberId} IS NOT NULL`),
 	}),
 );
-
-export const wgInventoryItemsRelations = relations(wgInventoryItems, ({ one, many }) => ({
-	wg: one(wgs, { fields: [wgInventoryItems.wgId], references: [wgs.id] }),
-	logs: many(wgInventoryLog),
-}));
-
-export const wgInventoryLogRelations = relations(wgInventoryLog, ({ one }) => ({
-	item: one(wgInventoryItems, {
-		fields: [wgInventoryLog.itemId],
-		references: [wgInventoryItems.id],
-	}),
-	member: one(wgMembers, {
-		fields: [wgInventoryLog.memberId],
-		references: [wgMembers.id],
-	}),
-}));
 
 export type WgInventoryItem = typeof wgInventoryItems.$inferSelect;

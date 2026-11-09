@@ -1,4 +1,4 @@
-import { relations, sql } from 'drizzle-orm';
+import { sql } from 'drizzle-orm';
 import {
 	type AnyPgColumn,
 	check,
@@ -224,72 +224,6 @@ export const expenseReminders = pgTable(
 		channelCheck: check('expense_reminders_channel_check', sql`${t.channel} in ('push', 'inapp')`),
 	}),
 );
-
-export const expenseRemindersRelations = relations(expenseReminders, ({ one }) => ({
-	wg: one(wgs, { fields: [expenseReminders.wgId], references: [wgs.id] }),
-	debtor: one(wgMembers, {
-		fields: [expenseReminders.debtorMemberId],
-		references: [wgMembers.id],
-		relationName: 'reminderDebtor',
-	}),
-	creditor: one(wgMembers, {
-		fields: [expenseReminders.creditorMemberId],
-		references: [wgMembers.id],
-		relationName: 'reminderCreditor',
-	}),
-	sentBy: one(wgMembers, {
-		fields: [expenseReminders.sentByMemberId],
-		references: [wgMembers.id],
-		relationName: 'reminderSentBy',
-	}),
-}));
-
-export const expensesRelations = relations(expenses, ({ one, many }) => ({
-	wg: one(wgs, { fields: [expenses.wgId], references: [wgs.id] }),
-	paidBy: one(wgMembers, {
-		fields: [expenses.paidByMemberId],
-		references: [wgMembers.id],
-	}),
-	import: one(expenseImports, {
-		fields: [expenses.importId],
-		references: [expenseImports.id],
-	}),
-	splits: many(expenseSplits),
-}));
-
-export const expenseImportsRelations = relations(expenseImports, ({ one, many }) => ({
-	wg: one(wgs, { fields: [expenseImports.wgId], references: [wgs.id] }),
-	importedBy: one(wgMembers, {
-		fields: [expenseImports.importedByMemberId],
-		references: [wgMembers.id],
-	}),
-	expenses: many(expenses),
-}));
-
-export const expenseSplitsRelations = relations(expenseSplits, ({ one }) => ({
-	expense: one(expenses, {
-		fields: [expenseSplits.expenseId],
-		references: [expenses.id],
-	}),
-	debtor: one(wgMembers, {
-		fields: [expenseSplits.debtorMemberId],
-		references: [wgMembers.id],
-	}),
-}));
-
-export const expensePaymentsRelations = relations(expensePayments, ({ one }) => ({
-	wg: one(wgs, { fields: [expensePayments.wgId], references: [wgs.id] }),
-	fromMember: one(wgMembers, {
-		fields: [expensePayments.fromMemberId],
-		references: [wgMembers.id],
-		relationName: 'paymentFrom',
-	}),
-	toMember: one(wgMembers, {
-		fields: [expensePayments.toMemberId],
-		references: [wgMembers.id],
-		relationName: 'paymentTo',
-	}),
-}));
 
 export type Expense = typeof expenses.$inferSelect;
 export type ExpenseSplit = typeof expenseSplits.$inferSelect;

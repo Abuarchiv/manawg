@@ -1,4 +1,4 @@
-import { relations, sql } from 'drizzle-orm';
+import { sql } from 'drizzle-orm';
 import {
 	boolean,
 	check,
@@ -28,7 +28,7 @@ export const wgs = pgTable(
 // FK policy toward wgMembers: 'restrict' on the financial and audit tables (expenses, splits,
 // shopping items, announcements, chore completions, recurring expenses) keeps history intact, so
 // members leave through deactivated_at ("Auszug") and are never deleted; 'cascade' on tables
-// (absences, debts, chat) whose rows mean nothing without the member.
+// (absences, reminders, chat) whose rows mean nothing without the member.
 export const wgMembers = pgTable(
 	'wg_members',
 	{
@@ -55,7 +55,7 @@ export const wgMembers = pgTable(
 		locale: text('locale').notNull().default('de'),
 		// Soft-delete for "Auszug" (move-out). A member who ever paid an expense, owes a
 		// split, added a shopping item, wrote an announcement, completed a chore, or
-		// created a recurring expense cannot be hard-deleted — six RESTRICT foreign keys
+		// created a recurring expense cannot be hard-deleted — RESTRICT foreign keys
 		// reference wg_members. Instead this timestamp is set: the member drops out of every
 		// *active* roster (chore rotation, split candidates, identity picker, dropdowns)
 		// while all history and balances stay intact. NULL = active. Reversible.
@@ -106,13 +106,6 @@ export const pushSubscriptions = pgTable(
 		endpointIdx: index('push_subscriptions_endpoint_lookup_idx').on(t.endpoint),
 	}),
 );
-
-export const pushSubscriptionsRelations = relations(pushSubscriptions, ({ one }) => ({
-	member: one(wgMembers, {
-		fields: [pushSubscriptions.memberId],
-		references: [wgMembers.id],
-	}),
-}));
 
 export type WgMember = typeof wgMembers.$inferSelect;
 export type PushSubscription = typeof pushSubscriptions.$inferSelect;
