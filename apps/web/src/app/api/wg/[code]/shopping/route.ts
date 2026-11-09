@@ -194,7 +194,7 @@ export const POST = withWgRoute('shopping POST', async (req, { code }) => {
 			}
 			return { status: 200, body: { item, warning } };
 		},
-		() => console.error('[shopping POST] post-commit side effect failed'),
+		(err) => logApiError('[shopping POST] post-commit side effect failed', err),
 	);
 	return shoppingCreateHttpResponse(response);
 });
