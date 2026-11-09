@@ -235,7 +235,7 @@ export default {
 		changeName: 'Namen ändern',
 		copyMessage: 'Nachricht kopieren',
 		messageCopied: 'Kopiert',
-		expiredMessage: 'Mein ManaWG-Link ist abgelaufen, schickst du mir bitte einen neuen?',
+		expiredMessage: 'Mein ManaWG-Link funktioniert nicht mehr, schickst du mir bitte einen neuen?',
 		joining: 'Tritt bei…',
 		join: 'Beitreten',
 	},

@@ -15,6 +15,8 @@ interface CreateStepProps {
 	wgName: string;
 	onWgNameChange: (value: string) => void;
 	creatorName: string;
+	/** True once the account-name lookup has answered; the name row waits for it so it does not jump. */
+	nameSettled: boolean;
 	onCreatorNameChange: (value: string) => void;
 	error: string | null;
 	invalidField: StartField | null;
@@ -28,6 +30,7 @@ export function CreateStep({
 	wgName,
 	onWgNameChange,
 	creatorName,
+	nameSettled,
 	onCreatorNameChange,
 	error,
 	invalidField,
@@ -39,7 +42,8 @@ export function CreateStep({
 	const t = useTranslations('entry.start');
 	// A known name needs no field: only the flat name is asked, the name opens on request or on an error.
 	const [editingName, setEditingName] = useState(false);
-	const showNameField = editingName || invalidField === 'creatorName' || creatorName.trim() === '';
+	const hasName = creatorName.trim() !== '';
+	const showNameField = editingName || invalidField === 'creatorName' || (nameSettled && !hasName);
 	return (
 		<form
 			noValidate
@@ -87,7 +91,7 @@ export function CreateStep({
 						describedBy={invalidField === 'creatorName' ? 'create-wg-error' : undefined}
 						enterKeyHint="done"
 					/>
-				) : (
+				) : hasName ? (
 					<button
 						type="button"
 						onClick={() => setEditingName(true)}
@@ -95,7 +99,7 @@ export function CreateStep({
 					>
 						{t('displayNameKnown', { name: creatorName.trim() })}
 					</button>
-				)}
+				) : null}
 				{error && invalidField === 'creatorName' && (
 					<ErrorBox id="create-wg-error">{error}</ErrorBox>
 				)}

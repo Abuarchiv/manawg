@@ -306,8 +306,30 @@ test.describe('invitation link', () => {
 				() => (window as unknown as { __copied: string[] }).__copied,
 			);
 			expect(copied).toEqual([
-				'Mein ManaWG-Link ist abgelaufen, schickst du mir bitte einen neuen?',
+				'Mein ManaWG-Link funktioniert nicht mehr, schickst du mir bitte einen neuen?',
 			]);
+		});
+
+		test('shows the message to copy by hand when copying fails', async ({ page }) => {
+			await page.addInitScript(() => {
+				Object.defineProperty(navigator, 'clipboard', {
+					value: { writeText: async () => Promise.reject(new Error('denied')) },
+					configurable: true,
+				});
+				document.execCommand = () => false;
+			});
+			await openAsGuest(page, 390, {
+				status: 404,
+				json: { error: 'invite_unavailable', code: 'invite_unavailable' },
+			});
+			await page
+				.getByRole('button', { name: 'Nachricht kopieren', exact: true })
+				.click({ timeout: 60_000 });
+			await expect(
+				page.getByText(
+					'Mein ManaWG-Link funktioniert nicht mehr, schickst du mir bitte einen neuen?',
+				),
+			).toBeVisible();
 		});
 
 		test('keeps the generic guest page when the preview is rate limited', async ({ page }) => {

@@ -31,6 +31,7 @@ const COPIED_RESET_MS = 1500;
 function CopyExpiredMessage() {
 	const t = useTranslations('entry.invite');
 	const [copied, setCopied] = useState(false);
+	const [copyFailed, setCopyFailed] = useState(false);
 	const timerRef = useRef<number | null>(null);
 	useEffect(
 		() => () => {
@@ -39,7 +40,8 @@ function CopyExpiredMessage() {
 		[],
 	);
 	async function copy(): Promise<void> {
-		if (!(await copyText(t('expiredMessage')))) return;
+		if (!(await copyText(t('expiredMessage')))) return setCopyFailed(true);
+		setCopyFailed(false);
 		setCopied(true);
 		if (timerRef.current !== null) window.clearTimeout(timerRef.current);
 		timerRef.current = window.setTimeout(() => setCopied(false), COPIED_RESET_MS);
@@ -50,6 +52,7 @@ function CopyExpiredMessage() {
 				{copied && <Check data-icon="inline-start" aria-hidden />}
 				{copied ? t('messageCopied') : t('copyMessage')}
 			</Button>
+			{copyFailed && <p className="select-all text-sm text-foreground">{t('expiredMessage')}</p>}
 			<span aria-live="polite" className="sr-only">
 				{copied ? t('messageCopied') : ''}
 			</span>
@@ -209,7 +212,7 @@ export function InviteClient({ token }: { token: string }) {
 						)}
 						{busy
 							? t('invite.joining')
-							: showField
+							: showField || !nameLookedUp
 								? t('invite.join')
 								: t('invite.joinAs', { name: name.trim() })}
 					</Button>
