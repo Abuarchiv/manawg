@@ -15,6 +15,7 @@ import {
 	isTransientWebPushError,
 	parseWebPushStatusCode,
 } from '@/core/notifications/web-push-errors';
+import { berlinWallMinutes } from '@/core/utils/berlin-day';
 import { isLocale, type Locale } from '@/shared/i18n/locale';
 
 export interface DispatchInput {
@@ -105,19 +106,6 @@ const PUSH_REQUEST_TIMEOUT_MS = 10_000;
  * and the push fails with ETIMEDOUT although the service is reachable.
  */
 const pushAgent = new Agent({ autoSelectFamilyAttemptTimeout: 2_000 });
-
-/** Quiet-hour settings are WG-local and use the same Berlin calendar zone as
- * recurrence and reminders. Never depend on the host process timezone. */
-function berlinCurrentHour(now = new Date()): number {
-	const hour = new Intl.DateTimeFormat('en-GB', {
-		timeZone: 'Europe/Berlin',
-		hour: '2-digit',
-		hourCycle: 'h23',
-	})
-		.formatToParts(now)
-		.find((part) => part.type === 'hour')?.value;
-	return hour ? Number(hour) : 0;
-}
 
 /** The contact the push services reach for abuse; null in development and tests, where push is skipped. */
 function resolveVapidSubject(): string | null {
@@ -252,7 +240,6 @@ export async function dispatchNotification(
 	const rows = await db
 		.select({
 			id: wgMembers.id,
-			deactivatedAt: wgMembers.deactivatedAt,
 			pushOptIn: wgMembers.pushOptIn,
 			notifyAnnouncements: wgMembers.notifyAnnouncements,
 			notifyChores: wgMembers.notifyChores,
@@ -267,6 +254,7 @@ export async function dispatchNotification(
 			locale: wgMembers.locale,
 		})
 		.from(wgMembers)
+		// Moved-out members never receive push, even when explicitly targeted.
 		.where(
 			input.targetMemberIds?.length
 				? and(
@@ -293,13 +281,12 @@ export async function dispatchNotification(
 	};
 	const category = notificationCategoryForEvent(input.event);
 	const priority = input.urgent ? 'urgent' : notificationPriorityForEvent(input.event);
-	const currentHour = berlinCurrentHour();
+	// Quiet hours are WG-local and use the Berlin zone, never the host process timezone.
+	const currentHour = Math.floor(berlinWallMinutes(new Date()) / 60);
 
 	const targetMembers = rows
 		.filter((member) => member.id !== input.excludeMemberId)
 		.filter((member) => !input.excludeMemberIds?.includes(member.id))
-		// Moved-out members never receive push, even when explicitly targeted.
-		.filter((member) => member.deactivatedAt === null)
 		.filter(
 			(member) =>
 				input.bypassPreferences ||
