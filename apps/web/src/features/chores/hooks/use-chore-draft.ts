@@ -174,7 +174,6 @@ export function useChoreDraftSync({
 		if (!draftHydrated) return;
 		const { assigneeTouched: _previousAssigneeTouched, ...previousDraft } =
 			readDraft<Record<string, unknown>>(draftKey) ?? {};
-		void _previousAssigneeTouched;
 		const draft = {
 			...previousDraft,
 			title: newTitle,

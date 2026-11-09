@@ -66,6 +66,10 @@ export function ChatView({ wgId, shareCode, initialMessages, initialReactions }:
 		() => members.filter((m) => m.active && m.id !== identity.memberId).map((m) => m.id),
 		[members, identity.memberId],
 	);
+	const composerMembers = useMemo(
+		() => members.filter((m) => m.active).map((m) => ({ id: m.id, name: m.name })),
+		[members],
+	);
 	const listMembers = useMemo(
 		() => members.map((m) => ({ id: m.id, name: m.name, color: m.color ?? null })),
 		[members],
@@ -222,7 +226,7 @@ export function ChatView({ wgId, shareCode, initialMessages, initialReactions }:
 				key={`${shareCode}:${identity.memberId}`}
 				draftKey={chatDraftKey(shareCode, identity.memberId)}
 				error={chat.sendError}
-				members={members.filter((m) => m.active).map((m) => ({ id: m.id, name: m.name }))}
+				members={composerMembers}
 				currentMemberId={identity.memberId}
 				replyToMessageId={replyToId}
 				replyFocusRequest={replyFocusRequest}

@@ -35,6 +35,7 @@ export function useChoresPage() {
 	const { wg, members, identity } = useWg();
 	const toast = useToast();
 	const t = useTranslations('chores.shared');
+	const tCommon = useTranslations('common');
 	const encodedShareCode = encodeURIComponent(wg.shareCode);
 	const searchParams = useSearchParams();
 	const highlightParam = searchParams.get('highlight');
@@ -139,7 +140,7 @@ export function useChoresPage() {
 	function memberLookup(id: string | null): MemberInfo {
 		if (!id) return { name: t('nobody'), color: null };
 		const m = members.find((x) => x.id === id);
-		return { name: m?.name ?? '?', color: m?.color ?? null };
+		return { name: m?.name ?? tCommon('unknownPerson'), color: m?.color ?? null };
 	}
 
 	const showSkeleton = initialLoading && items.length === 0;

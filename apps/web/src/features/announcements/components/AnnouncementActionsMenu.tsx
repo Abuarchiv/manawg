@@ -56,7 +56,6 @@ interface AnnouncementActionsMenuProps {
 	hiddenReactions: ReactionKey[];
 	reactionPending: (key: ReactionKey) => boolean;
 	isPinned: boolean;
-	isResolved: boolean;
 	canModerate: boolean;
 	canEdit: boolean;
 	canResolve: boolean;
@@ -79,7 +78,6 @@ export function AnnouncementActionsMenu({
 	hiddenReactions,
 	reactionPending,
 	isPinned,
-	isResolved,
 	canModerate,
 	canEdit,
 	canResolve,
@@ -172,12 +170,10 @@ export function AnnouncementActionsMenu({
 							onClick={onToggleStatus}
 							disabled={statusPending}
 							className="min-h-11"
-							aria-label={t(isResolved ? 'card.reopenAria' : 'card.resolveAria', {
-								subject: actionSubject,
-							})}
+							aria-label={t('card.resolveAria', { subject: actionSubject })}
 						>
 							{statusPending ? <Spinner /> : <CheckCircle2 />}
-							{t(isResolved ? 'card.reopen' : 'card.resolve')}
+							{t('card.resolve')}
 						</DropdownMenuItem>
 					)}
 					{canModerate && (

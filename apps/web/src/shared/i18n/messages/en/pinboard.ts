@@ -67,8 +67,6 @@ export default {
 		unpinAria: 'Unpin post: {subject}',
 		resolve: 'Mark as resolved',
 		resolveAria: 'Mark as resolved: {subject}',
-		reopen: 'Reopen',
-		reopenAria: 'Reopen post: {subject}',
 		remove: 'Remove',
 		removeAria: 'Remove post: {subject}',
 		showLessAria: 'Show less: {subject}',
@@ -77,7 +75,6 @@ export default {
 		showMore: 'Show more',
 		imageAria: 'Open attached image: {subject}',
 		takers: '{count, plural, one {{names} is taking this} other {{names} are taking this}}',
-		resolvedAt: 'Resolved {time}',
 		saving: 'Saving…',
 	},
 	delete: {

@@ -28,13 +28,16 @@ export function SystemMessage({ shareCode, systemKind, payload }: SystemMessageP
 		case 'member.left':
 			return <SystemRow icon={LogOut} text={t('left', { name: asString(data.name, someone) })} />;
 		case 'expense.created': {
-			const text = t.rich('expenseCreated', {
-				actor: asString(data.actorName, someone),
-				description: asString(data.description, t('anExpense')),
-				amount: richArgument(
-					<span className="tabular-nums">{systemAmountText(data, locale) ?? t('zeroAmount')}</span>,
-				),
-			});
+			const actor = asString(data.actorName, someone);
+			const description = asString(data.description, t('anExpense'));
+			const amount = systemAmountText(data, locale);
+			const text = amount
+				? t.rich('expenseCreated', {
+						actor,
+						description,
+						amount: richArgument(<span className="tabular-nums">{amount}</span>),
+					})
+				: t('expenseCreatedNoAmount', { actor, description });
 			// Older messages carry no expenseId and stay plain text.
 			const expenseId = asString(data.expenseId, '');
 			return (
