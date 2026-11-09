@@ -8,7 +8,7 @@ import { useEffect } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { buttonVariants } from '@/components/ui/button';
 import { segmentCountStatus } from '@/components/wg/segment-count-status';
-import { useChatUnreadCount } from '@/components/wg/use-wg-counts';
+import { countState, useChatUnreadCount } from '@/components/wg/use-wg-counts';
 import {
 	LIST_REFRESH_INTERVAL_MS,
 	useVisibilityPausedInterval,
@@ -47,14 +47,7 @@ export function ChatTopBarLink({ href, className }: ChatTopBarLinkProps) {
 	);
 	const exactCount = unread.data?.exactCount;
 	const accessibleCount = exactCount ?? (unread.data?.overflow ? undefined : count);
-	const state =
-		count === undefined
-			? unread.error
-				? 'unavailable'
-				: 'loading'
-			: unread.error
-				? 'stale'
-				: 'ready';
+	const state = countState(unread.data, unread.error);
 	const status = segmentCountStatus({
 		count,
 		hint: 'unread',

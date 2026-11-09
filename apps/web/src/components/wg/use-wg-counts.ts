@@ -64,7 +64,7 @@ export function useChatUnreadCount(): ChatUnreadSnapshot {
 	return { data: chat.data, error: chat.error !== undefined, refresh };
 }
 
-function countState<T>(data: T | undefined, error: unknown): SegmentCountState {
+export function countState<T>(data: T | undefined, error: unknown): SegmentCountState {
 	if (data !== undefined) return error ? 'stale' : 'ready';
 	return error ? 'unavailable' : 'loading';
 }
