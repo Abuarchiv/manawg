@@ -55,6 +55,7 @@ mock.module('@/core/db', {
 		auditEvents: {},
 		mailLog: {},
 		wgInvites: {},
+		pushSubscriptions: {},
 	},
 });
 mock.module('@/core/guards/api-auth', {

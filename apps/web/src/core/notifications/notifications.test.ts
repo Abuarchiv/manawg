@@ -297,3 +297,40 @@ test('edit and delete pushes tell the recipient their own share and balance', ()
 		/^Anna hat Pizza gelöscht\. Dein Saldo ändert sich um 8,00\s€\.$/,
 	);
 });
+
+test('a burst of shopping adds shows its count, the first add keeps the item wording', () => {
+	const add = (payload: Record<string, unknown>, locale: 'de' | 'en' | 'es' = 'de') =>
+		formatNotificationMessage(
+			'shopping.added',
+			{ wgName: 'WG', actorName: 'Mina', title: 'Milch', ...payload },
+			locale,
+		);
+	assert.equal(add({}).body, 'Mina hat Milch in WG hinzugefügt.');
+	assert.equal(add({ addedCount: 3 }).body, 'Mina hat 3 Artikel zur Einkaufsliste hinzugefügt.');
+	assert.equal(add({ addedCount: 3 }, 'en').body, 'Mina added 3 items to the shopping list.');
+	assert.equal(
+		add({ addedCount: 3 }, 'es').body,
+		'Mina añadió 3 artículos a la lista de la compra.',
+	);
+	assert.equal(add({ addedCount: 3 }).urlPath, '/shopping');
+});
+
+test('bundled chore reminders name two chores and count the rest', () => {
+	const due = (titles: string[], extra: Record<string, unknown> = {}, locale: 'de' | 'en' = 'de') =>
+		formatNotificationMessage('chore.due', { wgName: 'WG', titles, ...extra }, locale);
+	assert.equal(due(['Bad putzen', 'Müll', 'Küche']).body, 'Heute für dich: Bad putzen, Müll (+1)');
+	assert.equal(due(['Bad', 'Müll']).body, 'Heute für dich: Bad, Müll');
+	assert.equal(
+		due(['Bath', 'Trash', 'Hall', 'Stairs'], {}, 'en').body,
+		'Today for you: Bath, Trash (+2)',
+	);
+	assert.equal(
+		due(['Bad', 'Müll'], { unassigned: true }).body,
+		'Heute offen in WG: Bad, Müll. Niemand ist zuständig.',
+	);
+	assert.equal(due(['Bad', 'Müll']).urlPath, '/chores');
+	assert.equal(
+		formatNotificationMessage('chore.due', { wgName: 'WG', title: 'Bad', choreId: 'c1' }).urlPath,
+		'/chores?highlight=c1',
+	);
+});

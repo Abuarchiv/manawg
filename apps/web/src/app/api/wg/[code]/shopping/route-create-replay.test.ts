@@ -127,7 +127,10 @@ const withTransaction = async <R>(operation: (tx: Tx) => Promise<R>): Promise<R>
 	}
 };
 
+const dispatched: Array<Record<string, unknown>> = [];
 const db = {
+	// The burst count: every item in the fake store was added by the same member just now.
+	select: () => ({ from: () => ({ where: async () => [{ total: state.items.length }] }) }),
 	delete: (table: unknown) => ({
 		where: (condition: Condition) => ({
 			returning: async () => {
@@ -151,7 +154,9 @@ mock.module('drizzle-orm', {
 	namedExports: {
 		and: (...parts: unknown[]) => ['and', ...parts],
 		asc: (column: unknown) => ['asc', column],
+		count: () => ['count'],
 		desc: (column: unknown) => ['desc', column],
+		gte: (...parts: unknown[]) => ['gte', ...parts],
 		eq: (...parts: unknown[]) => ['eq', ...parts],
 		isNotNull: (column: unknown) => ['isNotNull', column],
 		isNull: (column: unknown) => ['isNull', column],
@@ -214,7 +219,12 @@ mock.module('@/core/infra/observability', {
 });
 mock.module('@/core/audit', { namedExports: { recordAuditEvent: async () => undefined } });
 mock.module('@/core/notifications/notification-dispatch', {
-	namedExports: { dispatchNotificationSafely: async () => ({ warning: null }) },
+	namedExports: {
+		dispatchNotificationSafely: async (input: Record<string, unknown>) => {
+			dispatched.push(input);
+			return { warning: null };
+		},
+	},
 });
 mock.module('@/core/rate-limit', {
 	namedExports: { checkRateLimit: async () => ({ success: true }), wgWriteLimiter: {} },
@@ -228,11 +238,11 @@ function harness() {
 	state.failInsert = false;
 	state.reclaimOnRollback = false;
 	state.stall = null;
-	const post = (body: unknown) =>
+	const post = (body: unknown, key = idemKey) =>
 		POST(
 			new Request('https://example.invalid/api/wg/MTE8PZAT/shopping', {
 				method: 'POST',
-				headers: { 'content-type': 'application/json', 'idempotency-key': idemKey },
+				headers: { 'content-type': 'application/json', 'idempotency-key': key },
 				body: JSON.stringify(body),
 			}) as never,
 			{ params: Promise.resolve({ code: 'MTE8PZAT' }) } as never,
@@ -338,4 +348,17 @@ test('an unreadable boughtAt is rejected', async () => {
 	const { state, post } = harness();
 	assert.equal((await post({ name: 'Kaffee', bought: true, boughtAt: 'gestern' })).status, 400);
 	assert.equal(state.items.length, 0);
+});
+
+test('adds in a row share one push tag and count the burst', async () => {
+	const { state, post } = harness();
+	dispatched.length = 0;
+	for (const [index, name] of ['Milch', 'Brot', 'Eier'].entries()) {
+		state.slot = null; // the fake keeps a single replay slot
+		assert.equal((await post({ name }, `55555555-5555-4555-8555-55555555555${index}`)).status, 200);
+	}
+	assert.equal(dispatched.length, 3);
+	assert.deepEqual(new Set(dispatched.map((d) => d.tag)), new Set([`shopping:${wgId}`]));
+	const counts = dispatched.map((d) => (d.payload as { addedCount?: number }).addedCount);
+	assert.deepEqual(counts, [undefined, 2, 3]);
 });

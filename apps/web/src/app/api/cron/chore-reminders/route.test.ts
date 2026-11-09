@@ -47,7 +47,13 @@ const state = {
 	dispatchSent: 1,
 	dispatchError: null as Error | null,
 	captured: [] as unknown[],
-	payloads: [] as { choreId: string; nextDueAt?: string; unassigned?: boolean }[],
+	payloads: [] as {
+		choreId?: string;
+		titles?: string[];
+		nextDueAt?: string;
+		unassigned?: boolean;
+	}[],
+	tags: [] as (string | undefined)[],
 	targets: [] as (string[] | undefined)[],
 	stamped: null as unknown[] | null,
 	rows: [] as Record<string, unknown>[],
@@ -149,17 +155,21 @@ mock.module('@/core/infra/observability', {
 mock.module('@/core/notifications/notification-dispatch', {
 	namedExports: {
 		dispatchNotification: async (notification: {
-			payload: { choreId: string };
+			payload: { choreId?: string; titles?: string[] };
 			targetMemberIds?: string[];
+			tag?: string;
 		}) => {
 			state.inFlight += 1;
 			state.maxInFlight = Math.max(state.maxInFlight, state.inFlight);
 			await new Promise((resolve) => setImmediate(resolve));
 			state.inFlight -= 1;
 			if (state.dispatchError) throw state.dispatchError;
-			state.dispatched.push(notification.payload.choreId);
+			state.dispatched.push(
+				notification.payload.choreId ?? notification.payload.titles?.join('+') ?? '',
+			);
 			state.payloads.push(notification.payload);
 			state.targets.push(notification.targetMemberIds);
+			state.tags.push(notification.tag);
 			return { sent: state.dispatchSent, failures: [] };
 		},
 	},
@@ -171,6 +181,7 @@ mock.module('@/core/utils/berlin-day', {
 	namedExports: {
 		startOfBerlinDay: () => new Date('2026-09-24T22:00:00.000Z'),
 		endOfBerlinDay: () => new Date('2026-09-25T21:59:59.999Z'),
+		prevBerlinDayStart: () => new Date('2026-09-23T22:00:00.000Z'),
 	},
 });
 mock.module('drizzle-orm', {
@@ -196,12 +207,12 @@ const { GET } = await import('./route');
 
 let harnessRuns = 0;
 
-function chore(index: number) {
+function chore(index: number, memberCount = Number.POSITIVE_INFINITY) {
 	return {
 		id: `chore-${harnessRuns}-${index}`,
 		title: `Chore ${index}`,
 		nextDueAt: new Date('2026-09-23T08:00:00.000Z'),
-		assignedMemberId: `member-${index}`,
+		assignedMemberId: `member-${index % memberCount}`,
 		lastReminderAt: null,
 		wgId: 'wg-1',
 		wgName: 'WG',
@@ -212,9 +223,12 @@ function chore(index: number) {
 function harness({
 	choreCount,
 	unassignedCount = 0,
+	memberCount,
 }: {
 	choreCount: number;
 	unassignedCount?: number;
+	/** Spreads the chores over this many members; by default every chore has its own. */
+	memberCount?: number;
 }) {
 	harnessRuns += 1;
 	Object.assign(state, {
@@ -230,10 +244,11 @@ function harness({
 		dispatchError: null,
 		captured: [],
 		payloads: [],
+		tags: [],
 		targets: [],
 		stamped: null,
 		claims: new Set<string>(),
-		rows: Array.from({ length: choreCount }, (_, index) => chore(index)),
+		rows: Array.from({ length: choreCount }, (_, index) => chore(index, memberCount)),
 		unassignedRows: Array.from({ length: unassignedCount }, (_, index) => ({
 			...chore(index),
 			id: `orphan-${harnessRuns}-${index}`,
@@ -268,13 +283,13 @@ test('chore reminder candidates are bounded to a recent window and capped', asyn
 	assert.ok(lookback, 'nextDueAt lookback is a top-level condition');
 	const lowerBound = (lookback.args as Op[]).find((inner) => inner.operator === 'gte');
 	assert.ok(lowerBound, 'nextDueAt needs a lower bound');
-	assert.equal((lowerBound.args[1] as Date).toISOString(), '2026-09-18T06:00:00.000Z');
+	assert.equal((lowerBound.args[1] as Date).toISOString(), '2026-09-23T22:00:00.000Z');
 	const absenceLookback = (lookback.args as Op[]).find((inner) => inner.operator === 'sql');
 	assert.ok(absenceLookback, 'the lookback also reaches back to the end of the last absence');
 	assert.deepEqual(absenceLookback.args.slice(1), [
 		'chores.assignedMemberId',
 		new Date('2026-09-25T21:59:59.999Z'),
-		new Date('2026-09-18T06:00:00.000Z'),
+		new Date('2026-09-23T22:00:00.000Z'),
 	]);
 	assert.ok(
 		conditions.some(
@@ -357,10 +372,10 @@ test('a chore nobody is assigned to is announced to the whole WG', async (t) => 
 		assert.deepEqual(await response.json(), { ok: true, sent: 2 });
 	});
 
-	const orphan = state.payloads.findIndex((payload) => payload.choreId.startsWith('orphan-'));
+	const orphan = state.payloads.findIndex((payload) => payload.choreId?.startsWith('orphan-'));
 	assert.equal(state.payloads[orphan]?.unassigned, true);
 	assert.equal(state.targets[orphan], undefined, 'no target list means every eligible member');
-	const assigned = state.payloads.findIndex((payload) => payload.choreId.startsWith('chore-'));
+	const assigned = state.payloads.findIndex((payload) => payload.choreId?.startsWith('chore-'));
 	assert.deepEqual(state.targets[assigned], ['member-0']);
 	assert.equal(state.payloads[assigned]?.unassigned, undefined);
 });
@@ -455,4 +470,53 @@ test('a dispatch that throws is reported, releases its claim and answers 503', a
 
 	assert.equal(state.captured.length, 2, 'every thrown dispatch error reaches error reporting');
 	assert.equal(state.claims.size, 0, 'the claims are released so the next run can retry');
+});
+
+test('several due chores of one member are one push, all stamped', async (t) => {
+	t.mock.timers.enable({ apis: ['Date'], now });
+	const { state, get } = harness({ choreCount: 3, memberCount: 1 });
+	await withCronSecret(async () => {
+		assert.deepEqual(await (await get()).json(), { ok: true, sent: 3 });
+	});
+	assert.equal(state.payloads.length, 1, 'one dispatch for the member');
+	assert.deepEqual(state.payloads[0]?.titles, ['Chore 0', 'Chore 1', 'Chore 2']);
+	assert.equal(state.payloads[0]?.choreId, undefined);
+	assert.deepEqual(state.targets[0], ['member-0']);
+	assert.equal(state.tags[0], 'chores:wg-1');
+	assert.equal(state.stamped?.length, 3, 'every chore of the bundle is stamped');
+});
+
+test('a bundle without a delivered push releases every claim and stamps nothing', async (t) => {
+	t.mock.timers.enable({ apis: ['Date'], now });
+	const { state, get } = harness({ choreCount: 3, memberCount: 1 });
+	state.dispatchSent = 0;
+	await withCronSecret(async () => {
+		assert.deepEqual(await (await get()).json(), { ok: true, sent: 0 });
+	});
+	assert.equal(state.stamped, null);
+	assert.equal(state.claims.size, 0);
+});
+
+test('a chore with its own member keeps the single-chore push and no tag', async (t) => {
+	t.mock.timers.enable({ apis: ['Date'], now });
+	const { state, get } = harness({ choreCount: 2 });
+	await withCronSecret(async () => {
+		await get();
+	});
+	assert.equal(state.payloads.length, 2);
+	assert.equal(state.payloads[0]?.titles, undefined);
+	assert.deepEqual(state.tags, [undefined, undefined]);
+});
+
+test('unassigned chores of one WG are bundled for everyone, under their own tag', async (t) => {
+	t.mock.timers.enable({ apis: ['Date'], now });
+	const { state, get } = harness({ choreCount: 0, unassignedCount: 2 });
+	await withCronSecret(async () => {
+		await get();
+	});
+	assert.equal(state.payloads.length, 1);
+	assert.equal(state.payloads[0]?.unassigned, true);
+	assert.deepEqual(state.payloads[0]?.titles, ['Unassigned 0', 'Unassigned 1']);
+	assert.equal(state.targets[0], undefined);
+	assert.equal(state.tags[0], 'chores:wg-1:unassigned');
 });

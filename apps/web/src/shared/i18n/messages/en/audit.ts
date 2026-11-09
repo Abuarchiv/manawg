@@ -40,7 +40,9 @@ export default {
 	},
 	eventDeleted: { feed: same('removed the event “{title}”.') },
 	expenseCreated: { feed: same('added {description}.') },
-	expenseUpdated: { feed: same('updated {description}{amountChange, select, yes { ({from} → {to})} other {}}.') },
+	expenseUpdated: {
+		feed: same('updated {description}{amountChange, select, yes { ({from} → {to})} other {}}.'),
+	},
 	expenseDeleted: { feed: same('removed {description}.') },
 	expenseSplitSettled: { feed: same('settled a share for {description}.') },
 	expenseSplitReopened: { feed: same('reopened a share for {description}.') },

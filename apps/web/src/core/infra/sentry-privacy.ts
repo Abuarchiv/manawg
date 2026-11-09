@@ -64,6 +64,8 @@ export const SAFE_TAG_VALUES: Record<string, ReadonlySet<string>> = {
 	// NotificationEvent (core/notifications/notifications.ts); a test keeps both lists equal.
 	event: new Set([
 		'expense.created',
+		'expense.updated',
+		'expense.deleted',
 		'expense.recurring_charged',
 		'expense.reminder',
 		'expense.debt_settled',
@@ -73,6 +75,7 @@ export const SAFE_TAG_VALUES: Record<string, ReadonlySet<string>> = {
 		'announcement.posted',
 		'announcement.commented',
 		'announcement.resolved',
+		'member.joined',
 		'chore.due',
 		'shopping.added',
 		'event.created',

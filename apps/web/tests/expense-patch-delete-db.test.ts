@@ -50,6 +50,10 @@ mock.module('@/core/notifications/notification-dispatch', {
 	},
 });
 
+function dispatchedPayload(): Record<string, number> {
+	return (dispatched[0]?.payload ?? {}) as Record<string, number>;
+}
+
 async function withExpense(
 	run: (f: {
 		database: ReturnType<typeof drizzle<typeof schema>>;
@@ -200,20 +204,15 @@ test('only an edit of amount, share or date tells the debtor; delete tells them 
 		assert.equal(dispatched.length, 1);
 		assert.equal(dispatched[0]?.event, 'expense.updated');
 		assert.deepEqual(dispatched[0]?.targetMemberIds, [debtor.id]);
-		assert.deepEqual(
-			[
-				(dispatched[0]?.payload as Record<string, unknown>).shareFromCents,
-				(dispatched[0]?.payload as Record<string, unknown>).shareToCents,
-			],
-			[500, 600],
-		);
+		const edit = dispatchedPayload();
+		assert.deepEqual([edit.shareFromCents, edit.shareToCents], [500, 600]);
 
 		dispatched.length = 0;
 		assert.equal((await del(payer.userId)).status, 200);
 		assert.equal(dispatched.length, 1);
 		assert.equal(dispatched[0]?.event, 'expense.deleted');
 		assert.deepEqual(dispatched[0]?.targetMemberIds, [debtor.id]);
-		assert.equal((dispatched[0]?.payload as Record<string, unknown>).amountCents, 600);
+		assert.equal(dispatchedPayload().amountCents, 600);
 	});
 });
 

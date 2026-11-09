@@ -253,6 +253,8 @@ export const POST = withWgRoute('chat messages POST', async (req, { code }) => {
 			event: 'chat.message',
 			payload: { messageId: created.id, actorName: member.name, preview },
 			excludeMemberId: member.memberId,
+			// A burst replaces the earlier notification instead of buzzing again; mentions stay untagged.
+			tag: `chat:${wg.id}`,
 			// Mentioned members get only the targeted mention push, not the general one on top.
 			excludeMemberIds: mentionIds,
 		}),

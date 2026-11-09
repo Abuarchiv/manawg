@@ -85,10 +85,14 @@ export default {
 		overdue:
 			'{title} lleva pendiente en {wgName} {days, plural, one {{days, number, ::group-off} día} other {{days, number, ::group-off} días}}.',
 		unassigned: 'No hay nadie asignado.',
+		many: 'Hoy para ti: {titles}',
+		manyOpen: 'Pendiente hoy en {wgName}: {titles}.',
 	},
 	shoppingAdded: {
 		title: 'Lista de la compra',
 		body: '{actorName} añadió {title} a la lista de la compra de {wgName}.',
+		bodyMany:
+			'{actorName} añadió {count, plural, one {1 artículo} other {{count, number, ::group-off} artículos}} a la lista de la compra.',
 	},
 	eventCreated: {
 		title: 'Evento nuevo',

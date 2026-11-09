@@ -25,7 +25,10 @@ const listing: object = new Proxy(function listingRoot() {}, {
 mock.module('@/core/audit', { namedExports: { recordAuditEvent: async () => undefined } });
 mock.module('@/core/db', {
 	namedExports: {
-		db: { query: { wgs: { findFirst: async () => ({ id: 'wg-1', name: 'Altbau' }) } }, select: () => listing },
+		db: {
+			query: { wgs: { findFirst: async () => ({ id: 'wg-1', name: 'Altbau' }) } },
+			select: () => listing,
+		},
 		wgInvites: {},
 		wgMembers: {},
 		wgs: {},

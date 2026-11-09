@@ -85,10 +85,14 @@ export default {
 		overdue:
 			'{title} has been open in {wgName} for {days, plural, one {{days, number, ::group-off} day} other {{days, number, ::group-off} days}}.',
 		unassigned: 'Nobody is assigned.',
+		many: 'Today for you: {titles}',
+		manyOpen: 'Open today in {wgName}: {titles}.',
 	},
 	shoppingAdded: {
 		title: 'Shopping list',
 		body: '{actorName} added {title} to the shopping list in {wgName}.',
+		bodyMany:
+			'{actorName} added {count, plural, one {1 item} other {{count, number, ::group-off} items}} to the shopping list.',
 	},
 	eventCreated: {
 		title: 'New event',

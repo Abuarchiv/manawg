@@ -126,6 +126,9 @@ function formatEventTime(t: PushT, locale: Locale, value: unknown, allDay = fals
 	}).format(date);
 }
 
+/** A bundled chore reminder names this many chores and counts the rest. */
+const CHORE_TITLES_SHOWN = 2;
+
 // Reminders also fire for chores overdue up to a week and for new chores due
 // tomorrow, so the copy follows the Berlin calendar distance to nextDueAt.
 function choreDueBody(
@@ -134,6 +137,17 @@ function choreDueBody(
 	payload: Record<string, unknown>,
 	wgName: string,
 ): string {
+	const titles = Array.isArray(payload.titles)
+		? payload.titles.filter((title): title is string => typeof title === 'string')
+		: [];
+	if (titles.length > 1) {
+		const shown = titles.slice(0, CHORE_TITLES_SHOWN).join(', ');
+		const rest = titles.length - CHORE_TITLES_SHOWN;
+		const list = rest > 0 ? `${shown} (+${rest})` : shown;
+		return payload.unassigned === true
+			? `${t('choreDue.manyOpen', { titles: list, wgName })} ${t('choreDue.unassigned')}`
+			: t('choreDue.many', { titles: list });
+	}
 	const body = choreDueSentence(t, locale, payload, wgName);
 	return payload.unassigned === true ? `${body} ${t('choreDue.unassigned')}` : body;
 }
@@ -301,9 +315,18 @@ export function formatNotificationMessage(
 			return {
 				title: t('choreDue.title'),
 				body: choreDueBody(t, locale, payload, wgName),
-				urlPath: choreUrlPath(payload),
+				urlPath: Array.isArray(payload.titles) ? '/chores' : choreUrlPath(payload),
 			};
-		case 'shopping.added':
+		case 'shopping.added': {
+			// A burst of adds by one member shows its running count instead of the last item.
+			const count = typeof payload.addedCount === 'number' ? payload.addedCount : 1;
+			if (count > 1) {
+				return {
+					title: t('shoppingAdded.title'),
+					body: t('shoppingAdded.bodyMany', { actorName, count }),
+					urlPath: '/shopping',
+				};
+			}
 			return {
 				title: t('shoppingAdded.title'),
 				body: t('shoppingAdded.body', {
@@ -313,6 +336,7 @@ export function formatNotificationMessage(
 				}),
 				urlPath: shoppingUrlPath(payload),
 			};
+		}
 		case 'event.created':
 			return {
 				title: t('eventCreated.title'),

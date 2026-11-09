@@ -82,10 +82,14 @@ export default {
 		overdue:
 			'{title} ist in {wgName} seit {days, plural, one {{days, number, ::group-off} Tag} other {{days, number, ::group-off} Tagen}} offen.',
 		unassigned: 'Niemand ist zuständig.',
+		many: 'Heute für dich: {titles}',
+		manyOpen: 'Heute offen in {wgName}: {titles}.',
 	},
 	shoppingAdded: {
 		title: 'Einkaufsliste',
 		body: '{actorName} hat {title} in {wgName} hinzugefügt.',
+		bodyMany:
+			'{actorName} hat {count, plural, one {1 Artikel} other {{count, number, ::group-off} Artikel}} zur Einkaufsliste hinzugefügt.',
 	},
 	eventCreated: {
 		title: 'Neuer Termin',
