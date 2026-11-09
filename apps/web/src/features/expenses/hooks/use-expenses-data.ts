@@ -63,8 +63,12 @@ export function useExpensesData({ shareCode, memberId, setActionNotice }: UseExp
 		describeError: (error) =>
 			t(wgLoadError({ key: 'expenses.page.loadRecurringLead' }, error.status, error.error)),
 		// Offline with the expenses on screen, a missing template cache is no reason for a banner.
+		// Online, a failed template read with no templates shown still says so.
 		hideError: (error, context) =>
-			hideStaleNetworkError(error, { ...context, hasData: context.hasData || expenses.hasData() }),
+			hideStaleNetworkError(error, {
+				...context,
+				hasData: context.hasData || (expenses.hasData() && navigator.onLine === false),
+			}),
 		// The expenses collection's mount load, poll and replay reload both lists.
 		pollIntervalMs: null,
 		reload: () => undefined,

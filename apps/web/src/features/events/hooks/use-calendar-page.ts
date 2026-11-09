@@ -11,6 +11,7 @@ import {
 	shouldReleaseIdempotencyKey,
 } from '@/core/http/idempotency-key';
 import { apiFetch } from '@/core/infra/api-client';
+import { hideStaleNetworkError } from '@/core/sync/collection-overlay';
 import { useSyncedCollection } from '@/core/sync/use-synced-collection';
 import { MS_PER_DAY } from '@/core/utils/time';
 import {
@@ -101,8 +102,7 @@ export function useCalendarPage(month: Date) {
 				? t('load.monthOffline')
 				: t('load.events'),
 		// Offline with this month on screen: keep showing it, no error state.
-		hideError: (error, { hasData }) =>
-			hasData && monthCachedRef.current && isNetworkError(error.error, error.status),
+		hideError: (error, context) => monthCachedRef.current && hideStaleNetworkError(error, context),
 		// The chores side read refreshes with every events load, including the poll.
 		reload: (reason) => {
 			void refreshChores();
