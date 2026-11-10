@@ -32,7 +32,6 @@ export default function WgHomePage() {
 		agendaNow: home.agendaNow,
 		shareCode: wg.shareCode,
 		memberId: identity.memberId,
-		memberName: identity.name,
 		lastSeen,
 		hiddenOccurrences: completion.hiddenOccurrences,
 	});

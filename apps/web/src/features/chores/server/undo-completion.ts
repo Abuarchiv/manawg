@@ -9,7 +9,7 @@ import { choreSwapSourcePath } from '@/features/chores/server/resolve-swap-reque
  * A completion can be taken back for this long after the chore last changed on the server. The
  * clock is the chore's own `updatedAt`, not the client's tap time, which may be hours old or off.
  */
-export const UNDO_WINDOW_MS = 2 * 60_000;
+const UNDO_WINDOW_MS = 2 * 60_000;
 
 export interface UndoCompletionInput {
 	completionId: string;

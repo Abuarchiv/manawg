@@ -15,7 +15,6 @@ interface HomeViewInput {
 	agendaNow: number;
 	shareCode: string;
 	memberId: string;
-	memberName: string;
 	/** Server time of the last start-page visit in ms; `null` without a marker, `undefined` while unread. */
 	lastSeen: number | null | undefined;
 	/** Chore occurrences completed here, offline or just now; they stay hidden until the server has them. */
@@ -29,7 +28,6 @@ export function useHomeView({
 	agendaNow,
 	shareCode,
 	memberId,
-	memberName,
 	lastSeen,
 	hiddenOccurrences,
 }: HomeViewInput) {
