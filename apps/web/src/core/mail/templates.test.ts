@@ -56,7 +56,7 @@ test('invitation carries the invitation link, its lifetime and who is already in
 	assert.equal(mail.subject, 'Lina lädt dich in die WG Kastanienallee ein');
 	assert.ok(mail.text.includes(`${APP_ORIGIN}/invite/aB3_-xYz09aB3_-xYz09kQ`));
 	assert.ok(!mail.text.includes('KST48210'));
-	assert.ok(mail.text.includes('Der Link gilt 7 Tage.'));
+	assert.ok(mail.text.includes('Der Link gilt 14 Tage.'));
 	assert.ok(mail.text.includes('Lina, Jonas und Mira sind schon dabei.'));
 	assert.ok(mail.text.includes('wir speichern sie nicht weiter'));
 });

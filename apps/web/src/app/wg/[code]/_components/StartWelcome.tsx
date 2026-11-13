@@ -13,40 +13,45 @@ import {
 	CardHeader,
 	CardTitle,
 } from '@/components/ui/card';
+import { InviteButton } from '@/components/wg/InviteButton';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { cn } from '@/shared/lib/cn';
-import { InviteButton } from './InviteButton';
+import { isWelcomeHidden, welcomeDismissalValue } from './welcome-dismissal';
 
 export function StartWelcome({ dismissedFallback }: { dismissedFallback?: React.ReactNode }) {
 	const t = useTranslations('home.welcome');
 	const { wg, identity, members } = useWg();
 	// Stable WG/member IDs isolate the preference per WG and member.
 	const storageKey = `manawg:start-welcome-dismissed:${wg.id}:${identity.memberId}`;
+	const roommates = members.filter((member) => member.active && member.id !== identity.memberId);
+	const hasRoommates = roommates.length > 0;
 	// null until localStorage was read, so the fallback does not flash on load.
-	const [status, setStatus] = useState<{ key: string; dismissed: boolean } | null>(null);
+	const [status, setStatus] = useState<{ key: string; stored: string | null } | null>(null);
 	useEffect(() => {
 		try {
-			setStatus({ key: storageKey, dismissed: localStorage.getItem(storageKey) === '1' });
+			setStatus({ key: storageKey, stored: localStorage.getItem(storageKey) });
 		} catch {
-			setStatus({ key: storageKey, dismissed: false });
+			setStatus({ key: storageKey, stored: null });
 		}
 	}, [storageKey]);
 
 	function dismiss() {
 		// The button disappears shortly: move focus to the next heading first.
 		document.getElementById('week-heading')?.focus({ preventScroll: true });
-		setStatus({ key: storageKey, dismissed: true });
+		const stored = welcomeDismissalValue(Date.now(), !hasRoommates);
+		setStatus({ key: storageKey, stored });
 		try {
-			localStorage.setItem(storageKey, '1');
+			localStorage.setItem(storageKey, stored);
 		} catch {
 			// With blocked storage, dismissal still lasts for this mounted view.
 		}
 	}
 
 	if (status?.key !== storageKey) return null;
-	if (status.dismissed) return <>{dismissedFallback}</>;
+	if (isWelcomeHidden(status.stored, Date.now(), !hasRoommates)) return <>{dismissedFallback}</>;
 	const baseHref = `/wg/${encodeURIComponent(wg.shareCode)}`;
-	const hasRoommates = members.filter((member) => member.active).length >= 2;
+	// The roster is ordered by joining date: the last other active member joined most recently.
+	const newest = roommates.at(-1);
 	return (
 		<section aria-labelledby="new-wg-heading">
 			<Card size="sm">
@@ -55,33 +60,50 @@ export function StartWelcome({ dismissedFallback }: { dismissedFallback?: React.
 						<h2 id="new-wg-heading">{t('title')}</h2>
 					</CardTitle>
 					<CardDescription>
-						{hasRoommates ? t('descriptionWithRoommates') : t('descriptionAlone')}
+						{newest ? t('descriptionRoommateIn', { name: newest.name }) : t('descriptionAlone')}
 					</CardDescription>
 					<CardAction>
-						<Button
-							variant="ghost"
-							size="icon"
-							className="size-8"
-							onClick={dismiss}
-							aria-label={t('dismiss')}
-						>
-							<X aria-hidden />
-						</Button>
+						{hasRoommates ? (
+							<Button
+								variant="ghost"
+								size="icon"
+								className="size-8"
+								onClick={dismiss}
+								aria-label={t('dismiss')}
+							>
+								<X aria-hidden />
+							</Button>
+						) : (
+							// Alone, dismissing only snoozes the card: say so instead of showing a close icon.
+							<Button variant="ghost" size="sm" onClick={dismiss}>
+								{t('dismissSolo')}
+							</Button>
+						)}
 					</CardAction>
 				</CardHeader>
 				<CardContent className="flex flex-col gap-2">
-					{hasRoommates && (
-						<Link href={`${baseHref}/shopping`} className={cn(buttonVariants(), 'w-full')}>
-							{t('openShopping')}
-						</Link>
+					{hasRoommates ? (
+						<>
+							<Link href={`${baseHref}/expenses?new=1`} className={cn(buttonVariants(), 'w-full')}>
+								{t('addExpense')}
+							</Link>
+							<Link
+								href={`${baseHref}/shopping`}
+								className={cn(buttonVariants({ variant: 'outline' }), 'w-full')}
+							>
+								{t('openShopping')}
+							</Link>
+							<InviteButton code={wg.shareCode} memberId={identity.memberId} wgName={wg.name} />
+						</>
+					) : (
+						<InviteButton
+							code={wg.shareCode}
+							memberId={identity.memberId}
+							wgName={wg.name}
+							className="w-full"
+							variant="default"
+						/>
 					)}
-					<InviteButton
-						code={wg.shareCode}
-						memberId={identity.memberId}
-						wgName={wg.name}
-						className="w-full"
-						variant={hasRoommates ? 'ghost' : 'default'}
-					/>
 				</CardContent>
 			</Card>
 		</section>

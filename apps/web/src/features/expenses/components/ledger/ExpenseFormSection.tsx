@@ -23,7 +23,7 @@ import type { ExpenseFormState } from '@/features/expenses/hooks/expense-page-co
 import { type Message, useMessage } from '@/shared/i18n/message';
 import { cn } from '@/shared/lib/cn';
 import { useKeyboardOpen } from '@/shared/lib/use-keyboard-open';
-import { ExpenseCategoryField } from './ExpenseCategoryField';
+import { ExpenseCategoryChips } from './ExpenseCategoryChips';
 import { CloseDraftDialog, ReplaceDraftDialog } from './ExpenseDraftDialogs';
 import { ExpenseExtras } from './ExpenseExtras';
 import { ExpenseFormNotices } from './ExpenseFormNotices';
@@ -33,6 +33,7 @@ import { ExpenseTextField } from './ExpenseTextField';
 import { useExpenseFormDirty } from './use-expense-form-dirty';
 
 const EXPENSE_DESCRIPTION_FIELD_ID = 'expense-description';
+const EXPENSE_AMOUNT_FIELD_ID = 'expense-amount';
 
 /** Who can pay and be charged in the form; the lists exclude members who moved out. */
 interface ExpenseFormPeople {
@@ -135,6 +136,9 @@ export function ExpenseFormSection({
 	const isEditingExpense = form.editingExpense !== null || form.invalidEditDraft;
 	const editingExpenseId = form.editingExpense?.id ?? null;
 	const pendingPrefillDescription = form.pendingPrefill?.description ?? null;
+	// A prefilled description only needs its amount; an empty form starts at the description.
+	const prefilled = description.trim() !== '' || pendingPrefillDescription !== null;
+	const initialFocusId = prefilled ? EXPENSE_AMOUNT_FIELD_ID : EXPENSE_DESCRIPTION_FIELD_ID;
 	const keyboardOpen = useKeyboardOpen();
 	const [confirmClose, setConfirmClose] = useState(false);
 	const [replaceOpen, setReplaceOpen] = useState(false);
@@ -162,6 +166,7 @@ export function ExpenseFormSection({
 		...extras.draftFields,
 		recurringIntervalMonths,
 		identityMemberId,
+		emptyCategory: form.emptyCategory,
 		formModeKey,
 		startsFromCurrentValues: isEditingExpense || editingRecurringExpense !== null,
 	});
@@ -196,7 +201,7 @@ export function ExpenseFormSection({
 				<DialogContent
 					showCloseButton={false}
 					className="top-0 flex h-dvh max-h-dvh w-full max-w-md translate-y-0 flex-col gap-0 rounded-none p-0"
-					initialFocus={() => document.getElementById(EXPENSE_DESCRIPTION_FIELD_ID)}
+					initialFocus={() => document.getElementById(initialFocusId)}
 				>
 					<DialogHeader className="shrink-0 px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
 						<div className="flex items-center gap-2">
@@ -245,14 +250,10 @@ export function ExpenseFormSection({
 									disabled={formSaving}
 									error={textError(fieldErrors.description)}
 									enterKeyHint="next"
-								/>
-								<ExpenseCategoryField
-									id="expense-category"
-									value={category}
-									onChange={setCategory}
-									disabled={formSaving}
+									onEnter={() => document.getElementById(EXPENSE_AMOUNT_FIELD_ID)?.focus()}
 								/>
 								<ExpenseTextField
+									id={EXPENSE_AMOUNT_FIELD_ID}
 									label={t('fields.amount')}
 									value={amountStr}
 									onChange={(value) => {
@@ -265,7 +266,12 @@ export function ExpenseFormSection({
 									suffix={currency === 'EUR' ? '€' : currency}
 									disabled={formSaving}
 									error={textError(fieldErrors.amount)}
-									enterKeyHint="next"
+									enterKeyHint="done"
+								/>
+								<ExpenseCategoryChips
+									value={category}
+									onChange={setCategory}
+									disabled={formSaving}
 								/>
 								<ExpensePayerDateFields
 									paidByMemberId={paidByMemberId}

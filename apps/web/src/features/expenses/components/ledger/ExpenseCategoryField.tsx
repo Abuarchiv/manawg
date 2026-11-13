@@ -12,7 +12,7 @@ interface ExpenseCategoryFieldProps {
 	disabled: boolean;
 }
 
-/** Category select shared by the expense and the fixed-cost forms. */
+/** Category select of the fixed-cost form; the expense form uses `ExpenseCategoryChips`. */
 export function ExpenseCategoryField({ id, value, onChange, disabled }: ExpenseCategoryFieldProps) {
 	const t = useTranslations('expenses-form.fields');
 	const tCategories = useTranslations('expenses.categories');

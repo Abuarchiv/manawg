@@ -9,14 +9,8 @@ import {
 	removeDraft,
 	writeDraft,
 } from '@/core/offline/drafts';
-import type { OfflineActionType } from '@/core/offline/offline-queue';
 import { formatCentsInput } from '@/core/utils/amount';
 import { isoToInputDate } from '@/core/utils/local-date';
-import {
-	DEFAULT_EXPENSE_CATEGORY,
-	EXPENSE_CATEGORIES,
-	type ExpenseCategory,
-} from '@/features/expenses/expense-categories';
 import {
 	type ExpenseDraft,
 	type ExpenseEditReference,
@@ -29,8 +23,13 @@ import {
 } from '@/features/expenses/expense-form-draft';
 import { equalSplitParticipants } from '@/features/expenses/expense-split-input';
 import type { Expense, RecurringExpense } from '@/features/expenses/expense-types';
+import { useExpenseCategory } from '@/features/expenses/hooks/use-expense-category';
 import { useExpenseFormExtras } from '@/features/expenses/hooks/use-expense-form-extras';
-import { useExpensePrefillHandoff } from '@/features/expenses/hooks/use-expense-prefill-handoff';
+import {
+	type ExpensePrefillParams,
+	useExpensePrefillHandoff,
+} from '@/features/expenses/hooks/use-expense-prefill-handoff';
+import { useExpenseQueuedFields } from '@/features/expenses/hooks/use-expense-queued-fields';
 import type { Message } from '@/shared/i18n/message';
 
 /** The member fields this hook reads; structural so it needs no WG context provider. */
@@ -44,10 +43,10 @@ interface UseExpenseFormOptions {
 	members: readonly FormMember[];
 	identityMemberId: string;
 	// URL handoffs preserve an existing draft until the resident explicitly replaces it.
-	prefillDescription: string | null;
-	prefillAmount: string | null;
-	prefillPaidBy: string | null;
+	prefill: ExpensePrefillParams;
 	recurringId: string | null;
+	/** The loaded expenses, newest first; the default category is read from them. */
+	expenses: readonly Pick<Expense, 'description' | 'category' | 'paidByMemberId'>[];
 	/**
 	 * Needed to resolve `recurringId`, which names a template that may not be
 	 * loaded yet. The effect below re-runs until it appears.
@@ -69,16 +68,16 @@ export function useExpenseForm({
 	shareCode,
 	members,
 	identityMemberId,
-	prefillDescription,
-	prefillAmount,
-	prefillPaidBy,
+	prefill: prefillParams,
 	recurringId,
+	expenses,
 	recurringExpenses,
 }: UseExpenseFormOptions) {
 	const locale = useLocale();
 	const [showForm, setShowForm] = useState(false);
-	const [description, setDescription] = useState('');
-	const [category, setCategory] = useState<ExpenseCategory>(DEFAULT_EXPENSE_CATEGORY);
+	const [description, setDescriptionState] = useState('');
+	const categoryState = useExpenseCategory(identityMemberId, expenses);
+	const { category, setCategory } = categoryState;
 	const [amountStr, setAmountStr] = useState('');
 	const [imageUrl, setImageUrl] = useState<string | null>(null);
 	const [paidByMemberId, setPaidByMemberId] = useState<string>(identityMemberId);
@@ -90,20 +89,32 @@ export function useExpenseForm({
 	const [editingRecurringExpense, setEditingRecurringExpense] = useState<RecurringExpense | null>(
 		null,
 	);
-	const [queueEditId, setQueueEditId] = useState<string | null>(null);
-	const [queueEditType, setQueueEditType] = useState<OfflineActionType | null>(null);
-	const [recurringIntervalMonths, setRecurringIntervalMonths] = useState(1);
-	const [recurringNextDueAt, setRecurringNextDueAt] = useState<string | null>(null);
+	const {
+		draftFields: queuedDraftFields,
+		clear: clearQueued,
+		restore: restoreQueued,
+		...queued
+	} = useExpenseQueuedFields();
+	const { queueEditId, setRecurringIntervalMonths } = queued;
 	const [draftHydrated, setDraftHydrated] = useState(false);
 	const [invalidEditDraft, setInvalidEditDraft] = useState(false);
 	const [pendingPrefill, setPendingPrefill] = useState<ExpenseSuggestion | null>(null);
 	const [recurringSourceId, setRecurringSourceId] = useState<string | null>(null);
 	const extras = useExpenseFormExtras();
+	const { restore: restoreCategory } = categoryState;
 
 	const draftKey = buildDraftKey(shareCode, identityMemberId, 'expense');
 	// Lets the once-per-draft restore read the current members.
 	const membersRef = useRef(members);
 	membersRef.current = members;
+
+	/** Typing a description known from earlier expenses pre-selects its category. */
+	function setDescription(next: string): void {
+		setDescriptionState(next);
+		if (!editingExpense && !editingRecurringExpense && !queueEditId && !recurringSourceId) {
+			categoryState.followDescription(next);
+		}
+	}
 
 	// Restore the stored draft once; `draftHydrated` keeps the empty initial state from overwriting it.
 	useEffect(() => {
@@ -124,10 +135,9 @@ export function useExpenseForm({
 			setShowForm(true);
 			setFormError({ key: 'expenses-form.notices.draftBrokenKept' });
 		}
-		if (draft.description) setDescription(draft.description);
+		if (draft.description) setDescriptionState(draft.description);
 		// A draft is untrusted storage; only known category codes are restored.
-		const draftCategory = EXPENSE_CATEGORIES.find((code) => code === draft.category);
-		if (draftCategory) setCategory(draftCategory);
+		restoreCategory(draft);
 		if (draft.amountStr) setAmountStr(draft.amountStr);
 		if (draft.imageUrl !== undefined) setImageUrl(draft.imageUrl);
 		if (draft.paidByMemberId) setPaidByMemberId(draft.paidByMemberId);
@@ -149,12 +159,17 @@ export function useExpenseForm({
 			extras.setParticipantIds(participantsOrAll(queuedParticipants, membersRef.current));
 		}
 		if (typeof draft.recurringSourceId === 'string') setRecurringSourceId(draft.recurringSourceId);
-		if (draft.queueEditId) setQueueEditId(draft.queueEditId);
-		if (draft.queueEditType) setQueueEditType(draft.queueEditType);
-		if (draft.recurringIntervalMonths) setRecurringIntervalMonths(draft.recurringIntervalMonths);
-		if (draft.recurringNextDueAt) setRecurringNextDueAt(draft.recurringNextDueAt);
+		restoreQueued(draft);
 		setDraftHydrated(true);
-	}, [draftKey, identityMemberId, extras.restore, extras.setParticipantIds, locale]);
+	}, [
+		draftKey,
+		identityMemberId,
+		extras.restore,
+		extras.setParticipantIds,
+		locale,
+		restoreCategory,
+		restoreQueued,
+	]);
 
 	useEffect(() => {
 		if (!draftHydrated) return;
@@ -164,21 +179,20 @@ export function useExpenseForm({
 			editingExpense: invalidEditDraft ? { invalid: true } : editingExpense,
 			description,
 			category,
+			lastCategory: categoryState.lastCategory,
 			amountStr,
 			imageUrl,
 			paidByMemberId,
 			splitMode,
 			manualSplits,
 			...extras.draftFields,
-			queueEditId,
-			queueEditType,
-			recurringIntervalMonths,
-			recurringNextDueAt,
+			...queuedDraftFields,
 		});
 	}, [
 		extras.draftFields,
 		amountStr,
 		category,
+		categoryState.lastCategory,
 		description,
 		editingExpense,
 		invalidEditDraft,
@@ -187,10 +201,7 @@ export function useExpenseForm({
 		imageUrl,
 		manualSplits,
 		paidByMemberId,
-		queueEditId,
-		queueEditType,
-		recurringIntervalMonths,
-		recurringNextDueAt,
+		queuedDraftFields,
 		recurringSourceId,
 		splitMode,
 	]);
@@ -204,23 +215,21 @@ export function useExpenseForm({
 		setPaidByMemberId(identityMemberId);
 	}, [draftHydrated, identityMemberId, members, paidByMemberId]);
 
+	const { applyPrefill: applyCategoryPrefill } = categoryState;
 	const applyPrefill = useCallback(
 		(prefill: ExpenseSuggestion): void => {
 			writeDraft(draftKey, prefill);
 			setRecurringSourceId(prefill.recurringSourceId);
-			setRecurringIntervalMonths(1);
-			setRecurringNextDueAt(null);
+			clearQueued();
 			setConflictExpenseId(null);
-			setDescription(prefill.description);
-			setCategory(prefill.category ?? DEFAULT_EXPENSE_CATEGORY);
+			setDescriptionState(prefill.description);
+			applyCategoryPrefill(prefill.description, prefill.category, prefill.categoryHint);
 			setAmountStr(prefill.amountStr);
 			setImageUrl(prefill.imageUrl);
 			setPaidByMemberId(prefill.paidByMemberId);
 			setSplitMode(prefill.splitMode);
 			setManualSplits(prefill.manualSplits);
 			extras.reset();
-			setQueueEditId(null);
-			setQueueEditType(null);
 			setEditingExpense(null);
 			setInvalidEditDraft(false);
 			setEditingRecurringExpense(null);
@@ -228,7 +237,7 @@ export function useExpenseForm({
 			setPendingPrefill(null);
 			setShowForm(true);
 		},
-		[draftKey, extras.reset],
+		[draftKey, extras.reset, applyCategoryPrefill, clearQueued],
 	);
 
 	const suggestPrefill = useCallback(
@@ -248,9 +257,7 @@ export function useExpenseForm({
 		suggestPrefill,
 		members,
 		identityMemberId,
-		prefillDescription,
-		prefillAmount,
-		prefillPaidBy,
+		prefill: prefillParams,
 		recurringId,
 		recurringExpenses,
 		locale,
@@ -259,8 +266,8 @@ export function useExpenseForm({
 	function resetForm(): void {
 		removeDraft(draftKey);
 		setRecurringSourceId(null);
-		setDescription('');
-		setCategory(DEFAULT_EXPENSE_CATEGORY);
+		setDescriptionState('');
+		categoryState.reset();
 		setAmountStr('');
 		setImageUrl(null);
 		setPaidByMemberId(identityMemberId);
@@ -272,17 +279,14 @@ export function useExpenseForm({
 		setEditingExpense(null);
 		setInvalidEditDraft(false);
 		setEditingRecurringExpense(null);
-		setQueueEditId(null);
-		setQueueEditType(null);
-		setRecurringIntervalMonths(1);
-		setRecurringNextDueAt(null);
+		clearQueued();
 		setPendingPrefill(null);
 	}
 
 	function startEdit(expense: Expense): void {
 		setRecurringSourceId(null);
 		setPendingPrefill(null);
-		setDescription(expense.description);
+		setDescriptionState(expense.description);
 		setCategory(expense.category);
 		setAmountStr(formatCentsInput(expense.amountCents, locale));
 		setImageUrl(expense.imageUrl);
@@ -304,12 +308,9 @@ export function useExpenseForm({
 		}
 		setFormError(null);
 		setConflictExpenseId(null);
-		setQueueEditId(null);
-		setQueueEditType(null);
+		clearQueued();
 		setEditingExpense({ id: expense.id, updatedAt: expense.updatedAt, currency: expense.currency });
 		setEditingRecurringExpense(null);
-		setRecurringIntervalMonths(1);
-		setRecurringNextDueAt(null);
 		setInvalidEditDraft(false);
 		setShowForm(true);
 	}
@@ -322,7 +323,7 @@ export function useExpenseForm({
 	function startRecurringEdit(template: RecurringExpense): void {
 		setRecurringSourceId(null);
 		setPendingPrefill(null);
-		setDescription(template.description);
+		setDescriptionState(template.description);
 		setCategory(template.category);
 		setAmountStr(formatCentsInput(template.amountCents, locale));
 		setImageUrl(null);
@@ -332,13 +333,11 @@ export function useExpenseForm({
 		setSplitMode('manual');
 		setManualSplits(splitsToManualInput(template.splits, locale));
 		extras.reset();
+		clearQueued();
 		setRecurringIntervalMonths(template.intervalMonths);
-		setRecurringNextDueAt(null);
 		setEditingExpense(null);
 		setInvalidEditDraft(false);
 		setEditingRecurringExpense(template);
-		setQueueEditId(null);
-		setQueueEditType(null);
 		setFormError(null);
 		setShowForm(true);
 	}
@@ -350,6 +349,8 @@ export function useExpenseForm({
 		setDescription,
 		category,
 		setCategory,
+		emptyCategory: categoryState.emptyCategory,
+		rememberCategory: categoryState.remember,
 		amountStr,
 		setAmountStr,
 		imageUrl,
@@ -370,14 +371,7 @@ export function useExpenseForm({
 		invalidEditDraft,
 		editingRecurringExpense,
 		setEditingRecurringExpense,
-		queueEditId,
-		setQueueEditId,
-		queueEditType,
-		setQueueEditType,
-		recurringIntervalMonths,
-		setRecurringIntervalMonths,
-		recurringNextDueAt,
-		setRecurringNextDueAt,
+		...queued,
 		draftKey,
 		pendingPrefill,
 		recurringSourceId,

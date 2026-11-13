@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import { parseExpenseCategory } from '@/features/expenses/expense-default-category';
 import {
 	type ExpenseSuggestion,
 	recurringTemplateSuggestion,
@@ -9,13 +10,31 @@ import { buildExpensePrefillDraft } from '@/features/expenses/expense-prefill';
 import type { RecurringExpense } from '@/features/expenses/expense-types';
 import type { Locale } from '@/shared/i18n/locale';
 
+/** The search params of a deep link into the form; the page clears them when the form closes. */
+export const PREFILL_PARAMS = [
+	'new',
+	'desc',
+	'amount',
+	'paidBy',
+	'category',
+	'categoryHint',
+	'recurring',
+] as const;
+
+/** The `desc`, `amount`, `paidBy`, `category` and `categoryHint` search params of a deep link into the form. */
+export interface ExpensePrefillParams {
+	description: string | null;
+	amount: string | null;
+	paidBy: string | null;
+	category: string | null;
+	categoryHint: string | null;
+}
+
 interface PrefillHandoffOptions {
 	suggestPrefill: (prefill: ExpenseSuggestion) => void;
 	members: ReadonlyArray<{ id: string }>;
 	identityMemberId: string;
-	prefillDescription: string | null;
-	prefillAmount: string | null;
-	prefillPaidBy: string | null;
+	prefill: ExpensePrefillParams;
 	recurringId: string | null;
 	recurringExpenses: readonly RecurringExpense[];
 	locale: Locale;
@@ -29,35 +48,44 @@ export function useExpensePrefillHandoff({
 	suggestPrefill,
 	members,
 	identityMemberId,
-	prefillDescription,
-	prefillAmount,
-	prefillPaidBy,
+	prefill: params,
 	recurringId,
 	recurringExpenses,
 	locale,
 }: PrefillHandoffOptions): void {
 	const appliedPrefillRef = useRef<string | null>(null);
 	const appliedRecurringRef = useRef<string | null>(null);
-	const prefillKey = `${prefillDescription ?? ''}|${prefillAmount ?? ''}|${prefillPaidBy ?? ''}`;
+	const { description, amount, paidBy, category, categoryHint } = params;
+	const prefillKey = `${description ?? ''}|${amount ?? ''}|${paidBy ?? ''}|${category ?? ''}|${categoryHint ?? ''}`;
 
 	// A handoff is a new draft, so it must not overwrite unfinished input.
 	useEffect(() => {
 		if (recurringId) return;
 		const prefill = buildExpensePrefillDraft({
-			description: prefillDescription,
-			amount: prefillAmount,
-			paidByMemberId: members.find((member) => member.id === prefillPaidBy)?.id ?? identityMemberId,
+			description,
+			amount,
+			paidByMemberId: members.find((member) => member.id === paidBy)?.id ?? identityMemberId,
 		});
 		if (!prefill || appliedPrefillRef.current === prefillKey) return;
 		appliedPrefillRef.current = prefillKey;
-		suggestPrefill({ ...prefill, recurringSourceId: null });
+		// A category code that is not one of ours is ignored.
+		const prefillCategory = parseExpenseCategory(category);
+		const prefillHint = parseExpenseCategory(categoryHint);
+		suggestPrefill({
+			...prefill,
+			recurringSourceId: null,
+			...(prefillCategory ? { category: prefillCategory } : {}),
+			...(prefillHint ? { categoryHint: prefillHint } : {}),
+		});
 	}, [
 		suggestPrefill,
 		identityMemberId,
 		members,
-		prefillAmount,
-		prefillDescription,
-		prefillPaidBy,
+		description,
+		amount,
+		paidBy,
+		category,
+		categoryHint,
 		prefillKey,
 		recurringId,
 	]);

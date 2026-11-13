@@ -49,9 +49,14 @@ export default {
 	welcome: {
 		title: 'Your flat is ready',
 		descriptionAlone: 'Invite your flatmates and get started together.',
-		descriptionWithRoommates: 'Start with your first entry.',
 		dismiss: 'Hide this welcome notice for good',
 		openShopping: 'Open shopping',
+		descriptionRoommateIn: '{name} is in. Start with the first expense or shopping item.',
+		dismissSolo: 'Remind me later',
+		addExpense: 'Add expense',
+	},
+	soloInvite: {
+		text: 'You are still alone in this flat.',
 	},
 	invite: {
 		shareFailed: 'The invitation could not be shared.',
@@ -81,8 +86,8 @@ export default {
 	},
 	news: {
 		heading: 'New in your flat',
-		newOnNoticeboard: 'New on the noticeboard',
-		noNewEntries: 'No new entries yet.',
+		headingNew: 'New since your last visit · {count}',
+		headingNone: 'Nothing new since your last visit',
 		failed: 'News could not be loaded.',
 		loading: 'Loading news',
 		allActivity: 'All activity',

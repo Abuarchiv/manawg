@@ -40,6 +40,7 @@ const GERMAN_SUMMARIES: Case[] = [
 	['chore.updated', { title: 'Bad' }, 'Anna hat Bad aktualisiert.'],
 	['chore.deleted', { title: 'Bad' }, 'Anna hat Bad aus dem Putzplan entfernt.'],
 	['chore.completed', { title: 'Bad' }, 'Anna hat Bad erledigt.'],
+	['chore.completion_undone', { title: 'Bad' }, 'Anna hat Bad als erledigt zurückgenommen.'],
 	['event.created', { title: 'Grillen' }, 'Anna hat den Termin „Grillen“ angelegt.'],
 	['event.updated', { title: 'Grillen' }, 'Anna hat den Termin „Grillen“ aktualisiert.'],
 	[
@@ -55,6 +56,11 @@ const GERMAN_SUMMARIES: Case[] = [
 	['event.deleted', { title: 'Grillen' }, 'Anna hat den Termin „Grillen“ entfernt.'],
 	['expense.created', { description: 'Strom' }, 'Anna hat Strom eingetragen.'],
 	['expense.updated', { description: 'Strom' }, 'Anna hat Strom aktualisiert.'],
+	[
+		'expense.updated',
+		{ description: 'Strom', amountCents: 5000, previousAmountCents: 4000 },
+		'Anna hat Strom aktualisiert (40,00\u00a0€ → 50,00\u00a0€).',
+	],
 	['expense.deleted', { description: 'Strom' }, 'Anna hat Strom entfernt.'],
 	['expense.split.settled', { description: 'Strom' }, 'Anna hat einen Anteil für Strom beglichen.'],
 	[

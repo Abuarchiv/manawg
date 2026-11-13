@@ -101,6 +101,7 @@ export default {
 		showPassword: 'Show password',
 		hidePassword: 'Hide password',
 		dismissToast: 'Dismiss notification',
+		undo: 'Undo',
 		toasts: 'Notifications',
 		scrollToEnd: 'Scroll to the end',
 		scrollToStart: 'Scroll to the start',
@@ -146,7 +147,7 @@ export default {
 		rateLimited: 'Too many invitations at once. Try again in a moment.',
 		createFailed: 'The invitation could not be created',
 		createFailedRetry: 'The invitation could not be created. Try again.',
-		text: 'Join our flat “{wgName}” on ManaWG: {url}\n(The link is valid for {days, plural, one {# day} other {# days}}.)',
+		text: 'Join our flat “{wgName}” on ManaWG: {url}\nShared expenses, chore rota and shopping list. Free, no ads.\n(The link is valid for {days, plural, one {# day} other {# days}}.)',
 	},
 	inviteMail: {
 		emailInvalid: 'That does not look like an email address.',

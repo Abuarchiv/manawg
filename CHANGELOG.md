@@ -10,14 +10,67 @@ settled.
 
 ### Added
 
+- Members get a push when a new flatmate joins ("Mina joined Altbau"). It follows the
+  noticeboard notification setting; the person who joined does not get it.
+- Debtors get a push when an expense changes in amount, share or date ("your share 5.00 EUR to
+  8.00 EUR") and when it is deleted. Edits to category, description or receipt stay quiet. The
+  activity log shows the old and the new amount of an edit, and an edited expense shows "Edited" with
+  the date of the edit in the details.
+- The start page shows "New since your last visit": what other members added since you last had
+  the page open, with their name first. The marker stays in this browser only and follows the
+  server's clock. Without anything new, a single quiet line links to the activity list; without a
+  marker (first visit, blocked storage) the heading stays neutral.
+- Marking a task as done takes one tap and no confirm step. The toast has an Undo button that puts
+  the task, its due date and its assignee back; it works for two minutes, as long as nobody has
+  changed the task since, and it also removes a completion that is still waiting offline. A swap
+  request closed by the completion opens again. With the keyboard, focus moves to Undo. Late
+  tasks still ask first. Push notifications that were already sent are not withdrawn.
+- Adding an expense is quicker: the amount comes right after the description, the category is a row
+  of buttons instead of a drop-down, and a new expense starts on the category you used for the same
+  description before (otherwise the last one you used). When the form opens with a description
+  already filled in, the cursor is in the amount, and Enter there saves.
+- After saving an expense, the confirmation says what it means for you, for example "You get €4.80
+  back (Mina)" or "You owe Mina €10.00". The note that no money is transferred appears only for the
+  first expense of a flat.
 - Receipt scanning recognises Spanish text: with the interface in Spanish, the scanner loads the
   Spanish model as well, so `ñ` and accents are kept. Other languages do not download it.
 - The self-hosting guide has tested nginx and Traefik reverse-proxy examples with the `.env` values,
   the headers and limits ManaWG needs from a proxy, and a check that the sign-in limit sees each
   visitor separately ([Reverse proxy examples](docs/self-hosting.md#reverse-proxy-examples)).
+- While you are the only person in the flat, a short "invite flatmates" line stays on the Expenses
+  tab, the empty shopping list and the empty cleaning rota. It disappears once someone joins.
+
+### Changed
+
+- While you are alone in the flat, the Start card's dismiss button reads "Remind me later" and
+  hides it only for a week; with flatmates it stays hidden for good as before. Once a flatmate has
+  joined and nothing has been entered yet, the card names them, links to "Add expense" and "Open
+  shopping" and keeps the invite button.
+- An invitation link that no longer works offers a "Copy message" button with a ready-made request for
+  a new link to send to whoever invited you.
+- Invitation links are valid for 14 days instead of 7. The invitation page, the invitation mail and
+  the settings say so.
+- Joining through an invitation takes one tap when your account already has a name: the button reads
+  "Join as Mira", and "Change name" opens the name field. Creating a WG asks for the WG name only,
+  with "You are Mira · change" for the name.
+- The invitation page for visitors without an account says what ManaWG is for and how many
+  flatmates are already in. The shared invitation text says what ManaWG is in one line.
+- Opening the expense form from the shopping list now selects the category Groceries. For "Add as
+  expense" on a single bought item, an earlier expense with the same description keeps its category.
+- The balance card says "owes €5.00", "gets €12.00" or "settled" for each member instead of a
+  signed number, and leaves the list out in a flat of two, where the heading already says it. The
+  link to all reminders has a history icon; the bell stays for sending a reminder.
+- The settle-up dialog opens at once and fills in the amounts as soon as they are checked. When the
+  shares cover the whole balance it has one button, "Mark €10.00 as paid"; the cash option appears
+  only when it would cover more. The notes sit under "Details", and more than three shares are
+  collapsed.
 
 ### Fixed
 
+- A taken name on the join page now moves focus to the name field even when the field was hidden.
+- Going offline no longer puts a red error above the expenses, fixed costs, debts, pinboard or
+  activity you were already looking at. The offline bar says it; the error only appears when nothing could
+  be loaded or the server answered with an error.
 - The structured data (JSON-LD) of the app now lists all supported interface languages instead
   of German only.
 - Spanish shopping entries such as "2 kg de arroz" or "2 l de leche" no longer keep the "de" in the
@@ -57,6 +110,12 @@ settled.
 
 ### Changed
 
+- Quieter pushes: several shopping items added in a row replace one notification ("Mina added 3
+  items to the shopping list") instead of buzzing each time, and a burst of chat messages from
+  one person replaces the previous notification from that person without a new sound. Mentions,
+  due chores and money pushes still alert. Chore reminders, assigned or not, arrive as one push per
+  person and day ("Open for you: Bathroom, Trash (+1)") and only on the due day and the day after;
+  the chore stays in "For you" and in the cleaning rota.
 - The invitation page for visitors without an account names who invited them to which flat, offers
   Google next to *Create account* as the main action, and links to sign-in as a plain text link. A
   link that is expired, used up or wrong is reported before the sign-up instead of after it. A

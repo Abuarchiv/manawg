@@ -1,4 +1,5 @@
 import type { CachedFetchError } from '@/core/hooks/cached-fetch-store';
+import { isNetworkError } from '@/core/http/error-codes';
 
 /**
  * Pure rules behind `useSyncedCollection`: how unconfirmed local rows sit on top of the server
@@ -29,6 +30,13 @@ export interface LoadErrorContext {
 }
 
 export type HideLoadError = (error: CachedFetchError, context: LoadErrorContext) => boolean;
+
+/**
+ * Offline with rows on screen: the offline bar already says so, so a failed read adds no banner.
+ * A failure the server answered (401, 403, 5xx) still shows.
+ */
+export const hideStaleNetworkError: HideLoadError = (error, { hasData }) =>
+	hasData && isNetworkError(error.error, error.status);
 
 /** The message to show for a failed read, or null when the shown data stays without a banner. */
 export function loadErrorMessage(

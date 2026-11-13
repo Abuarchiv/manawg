@@ -90,6 +90,10 @@ test('an expense draft that only kept an older date counts as empty', () => {
 	};
 	assert.equal(isEmptyModuleDraft('expense', untouched, 'me'), true);
 	assert.equal(isEmptyModuleDraft('expense', { ...untouched, amountStr: '12' }, 'me'), false);
+	// The remembered category pre-selects the form and is no input of its own.
+	const remembered = { ...untouched, category: 'groceries', lastCategory: 'groceries' };
+	assert.equal(isEmptyModuleDraft('expense', remembered, 'me'), true);
+	assert.equal(isEmptyModuleDraft('expense', { ...remembered, category: 'leisure' }, 'me'), false);
 });
 
 test('a queued chore keeps the first due day the member picked', () => {

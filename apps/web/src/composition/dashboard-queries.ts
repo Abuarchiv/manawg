@@ -17,8 +17,7 @@ import { feedAuditCondition } from '@/core/db/feed-audit-filter';
 import { captureException } from '@/core/infra/observability';
 
 import { CHAT_AUDIT_EVENT_TYPES } from './activity-audit';
-
-export const ACTIVITY_LIMIT = 6;
+import { ACTIVITY_LIMIT } from './activity-types';
 
 // Reads that drive household counts must succeed; falling back to an empty
 // list would report a false zero. Optional activity sections may still degrade.

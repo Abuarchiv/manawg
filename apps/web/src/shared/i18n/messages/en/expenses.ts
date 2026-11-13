@@ -45,6 +45,7 @@ export default {
 		delete: 'Delete',
 		cancel: 'Cancel',
 		pendingNote: 'Waiting for a connection, then editable',
+		editedAt: 'Edited {date}',
 		openReceipt: 'Open receipt',
 		sharesAria: 'Expense shares',
 		you: 'You',

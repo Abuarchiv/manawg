@@ -29,6 +29,16 @@ export default {
 		title: 'Gasto nuevo',
 		body: '{actorName} añadió {title} por {amount} en {wgName}.',
 	},
+	expenseUpdated: {
+		title: 'Gasto modificado',
+		share: '{actorName} cambió {title}: tu parte {from} → {to}',
+		same: '{actorName} cambió {title}. Tu parte sigue en {amount}.',
+	},
+	expenseDeleted: {
+		title: 'Gasto eliminado',
+		debtor: '{actorName} eliminó {title}. Debes {amount} menos.',
+		payer: '{actorName} eliminó {title}. Te deben {amount} menos.',
+	},
 	recurringCharged: {
 		title: 'Nuevo cargo de gasto fijo',
 		body: 'Nuevo cargo de gasto fijo: {description} {amount}',
@@ -64,6 +74,10 @@ export default {
 		title: 'Publicación del tablón resuelta',
 		body: '{actorName} marcó una publicación como resuelta: {title}',
 	},
+	memberJoined: {
+		title: 'Novedad en tu piso',
+		body: '{actorName} se ha unido a {wgName}.',
+	},
 	choreDue: {
 		title: 'Plan de limpieza',
 		today: '{title} toca hoy en {wgName}.',
@@ -72,10 +86,14 @@ export default {
 		overdue:
 			'{title} lleva pendiente en {wgName} {days, plural, one {{days, number, ::group-off} día} other {{days, number, ::group-off} días}}.',
 		unassigned: 'No hay nadie asignado.',
+		many: 'Pendiente para ti: {titles}',
+		manyOpen: 'Pendiente en {wgName}: {titles}.',
 	},
 	shoppingAdded: {
 		title: 'Lista de la compra',
 		body: '{actorName} añadió {title} a la lista de la compra de {wgName}.',
+		bodyMany:
+			'{actorName} añadió {count, plural, one {1 artículo} other {{count, number, ::group-off} artículos}} a la lista de la compra.',
 	},
 	eventCreated: {
 		title: 'Evento nuevo',

@@ -59,7 +59,7 @@ export function ForYouSection({ items, loaded, failed, completion }: ForYouSecti
 				pending={completion.pendingChoreId === item.entityId}
 				confirming={completion.confirmItem?.entityId === item.entityId}
 				error={completion.completeError}
-				onCheck={() => completion.arm(item)}
+				onCheck={() => completion.check(item)}
 				onCancel={completion.cancel}
 				onConfirm={() => void completion.confirm(item)}
 			/>

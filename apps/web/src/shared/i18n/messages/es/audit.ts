@@ -30,13 +30,16 @@ export default {
 	choreUpdated: { feed: `${v('actualizaste', 'actualizó')} {title}.` },
 	choreDeleted: { feed: `${v('eliminaste', 'eliminó')} {title} del plan de limpieza.` },
 	choreCompleted: { feed: `${v('completaste', 'completó')} {title}.` },
+	choreCompletionUndone: { feed: `${v('desmarcaste', 'desmarcó')} {title} como completada.` },
 	eventCreated: { feed: `${v('añadiste', 'añadió')} el evento “{title}”.` },
 	eventUpdated: {
 		feed: `{occurrence, select, cancel {${v('eliminaste', 'eliminó')} una fecha de la serie “{title}”.} change {${v('modificaste', 'modificó')} una fecha de la serie “{title}”.} other {${v('actualizaste', 'actualizó')} el evento “{title}”.}}`,
 	},
 	eventDeleted: { feed: `${v('eliminaste', 'eliminó')} el evento “{title}”.` },
 	expenseCreated: { feed: `${v('añadiste', 'añadió')} {description}.` },
-	expenseUpdated: { feed: `${v('actualizaste', 'actualizó')} {description}.` },
+	expenseUpdated: {
+		feed: `${v('actualizaste', 'actualizó')} {description}{amountChange, select, yes { ({from} → {to})} other {}}.`,
+	},
 	expenseDeleted: { feed: `${v('eliminaste', 'eliminó')} {description}.` },
 	expenseSplitSettled: { feed: `${v('saldaste', 'saldó')} una parte de {description}.` },
 	expenseSplitReopened: { feed: `${v('reabriste', 'reabrió')} una parte de {description}.` },

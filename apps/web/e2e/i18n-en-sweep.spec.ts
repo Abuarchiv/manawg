@@ -6,9 +6,12 @@ import { expect, type Page, test } from '@playwright/test';
 import { E2E_INVITE_TOKEN } from '../src/fixtures/data';
 import {
 	dismissOnboarding,
+	EMPTY_DASHBOARD,
 	FIXTURE_WG,
+	mockDashboard,
 	mockUnreadCount,
 	navigateToFeature,
+	SOLO_WG,
 	seedLocalAccount,
 	setupMember,
 	skipUnlessFixtures,
@@ -180,33 +183,11 @@ test.describe('English sweep', () => {
 		});
 
 		test('new-WG invite card names the visible action', async ({ page }) => {
-			await page.route(`**${BASE}/dashboard`, (route) =>
-				route.fulfill({
-					json: {
-						balances: [],
-						spendByDay: [],
-						totalSpendByCurrency: {},
-						weekSpendByCurrency: {},
-						monthSpendByCurrency: {},
-						openShoppingCount: 0,
-						openShoppingTop: [],
-						dueChores: [],
-						dueRecurringExpenses: [],
-						activity: [],
-						latestAnnouncement: null,
-						myOpenAnnouncements: [],
-						absentMembers: [],
-						setup: {
-							choreCount: 0,
-							hasExpense: false,
-							hasShoppingItem: false,
-							hasAnnouncement: false,
-							notificationsEnabled: false,
-						},
-					},
-				}),
-			);
-			await navigateToFeature(page, WG);
+			// Only a solo WG offers the invitation on the Start card.
+			const soloBase = `/api/wg/${SOLO_WG.shareCode}`;
+			await mockUnreadCount(page, soloBase);
+			await mockDashboard(page, soloBase, EMPTY_DASHBOARD);
+			await navigateToFeature(page, `/wg/${SOLO_WG.shareCode}`);
 			await dismissOnboarding(page);
 			await expect(
 				page.getByRole('button', { name: 'Invite flatmates', exact: true }),

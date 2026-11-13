@@ -35,7 +35,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { MemberAvatar } from '@/components/wg/MemberAvatar';
 import { isPendingImageToken } from '@/core/offline/offline-images';
 import { formatEuroCents } from '@/core/utils/money';
-import { formatTimeFull } from '@/core/utils/time';
+import { formatShortDate, formatTimeFull } from '@/core/utils/time';
 import { hasSettledShares } from '@/features/expenses/expense-delete-guard';
 import { type ExpenseImpact, getExpenseImpact } from '@/features/expenses/expense-impact';
 import type { Expense, ExpenseSplit } from '@/features/expenses/expense-types';
@@ -52,6 +52,13 @@ const IMPACT_KEY = {
 	own: 'impactOwn',
 	none: 'impactNone',
 } as const satisfies Record<ExpenseImpact['kind'], string>;
+
+const EDITED_AFTER_MS = 60_000;
+
+/** An edit shows only when it came clearly after creation; a fresh row has both stamps equal. */
+function wasEdited({ createdAt, updatedAt }: Pick<Expense, 'createdAt' | 'updatedAt'>): boolean {
+	return Date.parse(updatedAt) - Date.parse(createdAt) > EDITED_AFTER_MS;
+}
 
 interface ExpenseRowProps {
 	expense: Expense;
@@ -232,6 +239,14 @@ export const ExpenseRow = memo(function ExpenseRow({
 							<time dateTime={expense.occurredAt}>
 								{formatTimeFull(expense.occurredAt, locale)}
 							</time>
+							{wasEdited(expense) && (
+								<>
+									{' · '}
+									<time dateTime={expense.updatedAt} className="whitespace-nowrap">
+										{t('editedAt', { date: formatShortDate(expense.updatedAt, undefined, locale) })}
+									</time>
+								</>
+							)}
 							{expense.id.startsWith('pending:') && ` · ${t('pendingNote')}`}
 						</p>
 						{/* An offline receipt is still a local token without a URL to open. */}

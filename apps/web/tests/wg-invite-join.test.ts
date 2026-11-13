@@ -39,6 +39,7 @@ mock.module('@/core/rate-limit', {
 		clientIpKey: () => '127.0.0.1',
 		wgWriteLimiter: {},
 		wgShareCodeMissLimiter: {},
+		invitePreviewLimiter: {},
 	},
 });
 
@@ -52,6 +53,7 @@ interface Fixture {
 	joinTokenOf: (wg: 'a' | 'b') => Promise<{ id: string; token: string }>;
 	join: (userId: string, code: string, inviteToken: string, name?: string) => Promise<Response>;
 	preview: (userId: string, token: string) => Promise<Response>;
+	guestPreview: (token: string) => Promise<Response>;
 	revoke: (userId: string, code: string, inviteId: string) => Promise<Response>;
 	memberCount: (wgId: string) => Promise<number>;
 	invite: (id: string) => Promise<typeof wgInvites.$inferSelect>;
@@ -64,6 +66,7 @@ async function withFixture(run: (fixture: Fixture) => Promise<void>) {
 	process.env.DATABASE_URL = url;
 	const membersRoute = await import('../src/app/api/wg/[code]/members/route.ts');
 	const previewRoute = await import('../src/app/api/wg/invites/[token]/route.ts');
+	const guestPreviewRoute = await import('../src/app/api/wg/invites/[token]/preview/route.ts');
 	const revokeRoute = await import('../src/app/api/wg/[code]/invites/[id]/route.ts');
 	const { createWgInvite } = await import('../src/core/db/wg-invites.ts');
 	const listRoute = await import('../src/app/api/wg/[code]/invites/route.ts');
@@ -117,6 +120,11 @@ async function withFixture(run: (fixture: Fixture) => Promise<void>) {
 					params: Promise.resolve({ token }),
 				});
 			},
+			guestPreview: (token) =>
+				guestPreviewRoute.GET(
+					new NextRequest(`http://localhost/api/wg/invites/${token}/preview`, { method: 'GET' }),
+					{ params: Promise.resolve({ token }) },
+				),
 			revoke: (userId, code, inviteId) => {
 				return revokeRoute.DELETE(
 					request(userId, `/api/wg/${code}/invites/${inviteId}`, 'DELETE'),
@@ -195,6 +203,25 @@ test('a valid invite previews the WG and joins as a plain member', { skip }, asy
 		const again = await f.preview(visitor, token);
 		assert.equal(again.status, 409);
 		assert.equal(await codeOf(again), 'already_member');
+	});
+});
+
+test('the guest preview counts active members only and leaks no names', { skip }, async () => {
+	await withFixture(async (f) => {
+		const { token } = await f.joinTokenOf('a');
+		await f.database.insert(schema.wgMembers).values({
+			wgId: f.a.id,
+			name: 'Leaver',
+			authUserId: randomUUID(),
+			deactivatedAt: new Date(),
+		});
+		await f.join(randomUUID(), f.a.code, token, 'Joiner');
+		const preview = await f.guestPreview(token);
+		assert.equal(preview.status, 200);
+		const body = (await preview.json()) as Json;
+		assert.equal(body.memberCount, 2);
+		assert.deepEqual(Object.keys(body).sort(), ['inviterName', 'memberCount', 'wgName']);
+		assert.equal(body.inviterName, 'Founder');
 	});
 });
 

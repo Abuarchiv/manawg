@@ -88,6 +88,9 @@ export default {
 		doneUnassigned: '{title} erledigt. Nächster Termin: {date}, noch niemand zugewiesen.',
 		doneNext:
 			'{title} erledigt. Als Nächstes {assignee, select, self {bist du} other {ist {name}}} am {date} dran.',
+		undone: '{title} ist wieder offen.',
+		undoUnavailable: 'Wurde schon geändert, Rückgängig nicht mehr möglich',
+		undoFailed: 'Rückgängig nicht möglich. Die Aufgabe bleibt erledigt.',
 	},
 	completeDialog: {
 		trigger: {
@@ -96,7 +99,7 @@ export default {
 		},
 		title: '„{title}“ erledigt?',
 		description:
-			'{upNext, select, self {Danach bist du dran. } named {Danach ist {name} dran. } nobody {Für die nächste Runde ist gerade niemand verfügbar. } other {}}Lässt sich nicht rückgängig machen.',
+			'{upNext, select, self {Danach bist du dran. } named {Danach ist {name} dran. } nobody {Für die nächste Runde ist gerade niemand verfügbar. } other {}}Du kannst es gleich rückgängig machen.',
 		cancel: 'Abbrechen',
 		saving: 'Speichert…',
 		confirm: { complete: 'Erledigt bestätigen', catchUp: 'Nachholen bestätigen' },

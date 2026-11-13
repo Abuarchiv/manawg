@@ -60,6 +60,9 @@ export default {
 	choreCompleted: {
 		feed: '{self, select, yes {hast} other {hat}} {title} erledigt.',
 	},
+	choreCompletionUndone: {
+		feed: '{self, select, yes {hast} other {hat}} {title} als erledigt zurückgenommen.',
+	},
 	eventCreated: {
 		feed: '{self, select, yes {hast} other {hat}} den Termin „{title}“ angelegt.',
 	},
@@ -73,7 +76,7 @@ export default {
 		feed: '{self, select, yes {hast} other {hat}} {description} eingetragen.',
 	},
 	expenseUpdated: {
-		feed: '{self, select, yes {hast} other {hat}} {description} aktualisiert.',
+		feed: '{self, select, yes {hast} other {hat}} {description} aktualisiert{amountChange, select, yes { ({from} → {to})} other {}}.',
 	},
 	expenseDeleted: {
 		feed: '{self, select, yes {hast} other {hat}} {description} entfernt.',

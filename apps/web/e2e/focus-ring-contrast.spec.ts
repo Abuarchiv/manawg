@@ -53,9 +53,11 @@ test.describe('focus ring contrast', () => {
 				page.locator('button[aria-pressed="false"]', { hasText: 'Von mir bezahlt' }),
 		},
 		{
-			name: 'news collapsible trigger',
+			// Without new entries the heading settles as a link to the activity list; the
+			// collapsible button it replaces exists only while the payload loads.
+			name: 'news heading link',
 			path: base,
-			locator: (page: Page) => page.locator('#wg-now-heading button'),
+			locator: (page: Page) => page.locator('#wg-now-heading a'),
 		},
 		{
 			name: 'today row link',

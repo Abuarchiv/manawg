@@ -20,5 +20,5 @@ export function inviteLookup(token: string): NextResponse {
 /** `GET /api/wg/invites/[token]/preview`: the guest page's teaser; unusable tokens get the bare 404. */
 export function invitePreview(token: string): NextResponse {
 	if (token !== E2E_INVITE_TOKEN) return notFound('invite_unavailable', 'invite_unavailable');
-	return NextResponse.json({ wgName: E2E_EXISTING_WG.name, inviterName: 'Mika' });
+	return NextResponse.json({ wgName: E2E_EXISTING_WG.name, inviterName: 'Mika', memberCount: 2 });
 }

@@ -9,6 +9,7 @@ import {
 	EmptyMedia,
 	EmptyTitle,
 } from '@/components/ui/empty';
+import { SoloInviteRow } from '@/components/wg/SoloInviteRow';
 import { QUICK_CHORE_TEMPLATES } from '@/features/chores/components/constants';
 import type { ChoreSuggestion } from '@/features/chores/hooks/use-chore-create';
 import { useMessage } from '@/shared/i18n/message';
@@ -62,6 +63,7 @@ export function ChoreListEmpty({
 					);
 				})}
 			</EmptyContent>
+			<SoloInviteRow centered />
 		</Empty>
 	);
 }

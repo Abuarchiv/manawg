@@ -25,6 +25,7 @@ import { parseBody } from '@/core/http/parse-body';
 import { requestLocale } from '@/core/i18n/request-locale';
 import { readIdempotencyKey } from '@/core/idempotency-store';
 import { inheritedMailPrefs } from '@/core/mail/unsubscribe';
+import { dispatchNotificationSafely } from '@/core/notifications/notification-dispatch';
 import { checkRateLimit, clientIpKey, wgWriteLimiter } from '@/core/rate-limit';
 import { isInviteToken } from '@/core/utils/invite-token';
 import type { Locale } from '@/shared/i18n/locale';
@@ -255,7 +256,7 @@ export const POST = withWgRoute('members POST', async (req, { code }) => {
 	const { user } = account;
 	const wg = await db.query.wgs.findFirst({
 		where: (w, { eq }) => eq(w.shareCode, code),
-		columns: { id: true },
+		columns: { id: true, name: true },
 	});
 	if (!wg) return shareCodeMissResponse(user.id, notFound('wg_not_found'));
 
@@ -292,6 +293,13 @@ export const POST = withWgRoute('members POST', async (req, { code }) => {
 			entityId: member.id,
 			actorName: member.name,
 			metadata: { name: member.name, inviteId },
+		});
+		// The existing members hear about it; the joiner does not. A failed push never fails the join.
+		await dispatchNotificationSafely({
+			wg: { id: wg.id, name: wg.name, shareCode: code },
+			event: 'member.joined',
+			payload: { actorName: member.name },
+			excludeMemberId: member.id,
 		});
 		return NextResponse.json({ member });
 	} catch (err) {

@@ -163,7 +163,10 @@ export const ChoreRow = memo(function ChoreRow({
 			<ItemActions className="ml-auto flex-nowrap gap-3">
 				<Button
 					onClick={() => {
-						if (!busy) onComplete(chore);
+						if (busy) return;
+						// Without the confirm step the row may leave its section right away.
+						if (status.action !== 'catchUp') confirmedRef.current = true;
+						onComplete(chore);
 					}}
 					aria-disabled={busy}
 					variant={status.state === 'planned' ? 'outline' : 'default'}

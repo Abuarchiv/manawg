@@ -158,7 +158,8 @@ export function useSyncedCollection<TData, TItem>(config: SyncedCollectionConfig
 					current.describeError,
 					current.hideError,
 				);
-				if (message !== null) setLoadError(message);
+				// A hidden failure also drops an older banner, like the cache-error effect below.
+				setLoadError(message);
 			}
 			setInitialLoading(false);
 			setRefreshing(false);
@@ -189,8 +190,7 @@ export function useSyncedCollection<TData, TItem>(config: SyncedCollectionConfig
 				describeError,
 				hideError,
 			);
-			if (message !== null) setLoadError(message);
-			else setLoadError(null);
+			setLoadError(message);
 			setInitialLoading(false);
 		} else if (data !== undefined) {
 			setLoadError(null);

@@ -8,6 +8,7 @@ import { choreCompletionFeedback } from '@/features/chores/chore-completion';
 import type { ChoreEditChanges, ChoreEditResult } from '@/features/chores/chore-edit';
 import { choreActionErrorMessage, choreEditErrorMessage } from '@/features/chores/chore-errors';
 import { chooseNextAvailableMember, predictNextDueAt } from '@/features/chores/chore-fairness';
+import { getChoreStatus } from '@/features/chores/chore-status';
 import type { Chore } from '@/features/chores/components/chore-types';
 import { pendingKeys } from '@/features/chores/pending-keys';
 import type { Locale } from '@/shared/i18n/locale';
@@ -15,7 +16,7 @@ import { type Message, useMessage } from '@/shared/i18n/message';
 import type { ChorePageContext } from './chore-page-context';
 import { useChoreCompletion } from './use-chore-completion';
 
-/** Completing (with a confirm tap), swap request, taking over and removing a chore. */
+/** Completing (a late chore after a confirm tap), swap request, taking over and removing a chore. */
 export function useChoreActions(ctx: ChorePageContext) {
 	const {
 		wg,
@@ -38,7 +39,7 @@ export function useChoreActions(ctx: ChorePageContext) {
 	const t = useTranslations('chores');
 	const render = useMessage();
 	const locale = useLocale() as Locale;
-	const completeChore = useChoreCompletion(wg, identity);
+	const { complete: completeChore, undoAction } = useChoreCompletion(wg, identity);
 	const [completeConfirmId, setCompleteConfirmId] = useState<string | null>(null);
 	// Chores whose swap request is already on the noticeboard; a second tap would post a duplicate.
 	const [swapRequestedIds, setSwapRequestedIds] = useState<ReadonlySet<string>>(new Set());
@@ -89,8 +90,9 @@ export function useChoreActions(ctx: ChorePageContext) {
 	async function handleComplete(chore: Chore): Promise<void> {
 		if (isPending(chore.id) || isStillQueued(chore)) return;
 
-		// First tap → arm; second tap → commit
-		if (completeConfirmId !== chore.id) {
+		// A late chore asks first (tap → arm, second tap → commit); every other one completes at once
+		// and offers an undo.
+		if (getChoreStatus(chore.nextDueAt).action === 'catchUp' && completeConfirmId !== chore.id) {
 			setActionError(null);
 			setCompleteConfirmId(chore.id);
 			return;
@@ -152,7 +154,13 @@ export function useChoreActions(ctx: ChorePageContext) {
 			locale,
 		);
 		const message = render(feedback.message);
-		if (feedback.tone === 'success') toast.success(message);
+		const undo = undoAction(outcome, chore, () => {
+			restore(previousChore);
+			refreshCount();
+			void load(false);
+		});
+		if (feedback.tone === 'success') toast.success(message, undo && { action: undo });
+		else if (undo) toast.info(message, { action: undo });
 		else if (feedback.tone === 'notice') setActionNotice(message);
 		else setActionError(message);
 		// While the dialog stays open its alert already shows the error; a toast would duplicate it.

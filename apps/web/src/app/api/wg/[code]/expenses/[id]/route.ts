@@ -1,6 +1,5 @@
 import { and, eq, inArray, isNotNull, isNull, ne, sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
-import { z } from 'zod';
 import { updateExpenseChatNotice, withdrawExpenseChatNotice } from '@/core/activity-feed';
 import { recordAuditEvent } from '@/core/audit';
 import { db, expenseSplits, expenses, wgMembers } from '@/core/db';
@@ -22,33 +21,19 @@ import {
 } from '@/core/http/api-errors';
 import { parseBody } from '@/core/http/parse-body';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
-import { imageUrlSchema, isAllowedImageUrlForWg } from '@/core/validators/image-url';
-import { MAX_SPLITS } from '@/features/expenses/expense-constants';
-import {
-	expenseAmountSchema,
-	expenseDescriptionSchema,
-	expenseSplitSchema,
-	occurredAtSchema,
-} from '@/features/expenses/expense-schemas';
-import { expenseCategoryValueSchema } from '@/features/expenses/server/expense-category-schema';
+import { isAllowedImageUrlForWg } from '@/core/validators/image-url';
+import type { ExpenseShare } from '@/features/expenses/expense-change-notices';
+import { notifyExpenseDeleted } from '@/features/expenses/server/expense-change-notify';
 import { storedExpenseHoldingEdit } from '@/features/expenses/server/expense-held-edit';
+import { patchSchema } from '@/features/expenses/server/expense-patch-schema';
 import { withExpensePaymentLock } from '@/features/expenses/server/expense-payments';
+import { recordExpenseUpdate } from '@/features/expenses/server/expense-update-record';
 import {
 	settledAtForOwnShare,
 	splitChangeViolation,
 	splitValidationErrorCode,
 	validateSplits,
 } from '@/features/expenses/split-math';
-
-const patchSchema = z.object({
-	description: expenseDescriptionSchema.optional(),
-	category: expenseCategoryValueSchema.optional(),
-	amountCents: expenseAmountSchema.optional(),
-	imageUrl: imageUrlSchema,
-	occurredAt: occurredAtSchema.optional(),
-	expectedUpdatedAt: z.string().datetime({ offset: true }).optional(),
-	splits: z.array(expenseSplitSchema).min(1).max(MAX_SPLITS).optional(),
-});
 
 export const DELETE = withWgRoute<{ id: string }>('expense DELETE', async (req, { code, id }) => {
 	if (!UUID_PATTERN.test(id)) return badRequest('id_invalid');
@@ -69,6 +54,7 @@ export const DELETE = withWgRoute<{ id: string }>('expense DELETE', async (req, 
 				paidByMemberId: expenses.paidByMemberId,
 				description: expenses.description,
 				amountCents: expenses.amountCents,
+				currency: expenses.currency,
 				imageUrl: expenses.imageUrl,
 			})
 			.from(expenses)
@@ -105,6 +91,13 @@ export const DELETE = withWgRoute<{ id: string }>('expense DELETE', async (req, 
 		if (settledShare.length > 0) {
 			return { ok: false as const, response: conflict('expense_has_settled_shares') };
 		}
+		const shares = await tx
+			.select({
+				debtorMemberId: expenseSplits.debtorMemberId,
+				amountCents: expenseSplits.amountCents,
+			})
+			.from(expenseSplits)
+			.where(eq(expenseSplits.expenseId, id));
 		const deleted = await tx
 			.delete(expenses)
 			.where(and(eq(expenses.id, id), eq(expenses.wgId, wgId)))
@@ -115,10 +108,10 @@ export const DELETE = withWgRoute<{ id: string }>('expense DELETE', async (req, 
 		await revokePrivateImageIfUnreferenced(tx, wgId, row.imageUrl);
 		// The chat notice "X hat Y eingetragen" would otherwise announce an expense that is gone.
 		await withdrawExpenseChatNotice(tx, wgId, id);
-		return { ok: true as const, row };
+		return { ok: true as const, row, shares };
 	});
 	if (!deletion.ok) return deletion.response;
-	const { row } = deletion;
+	const { row, shares } = deletion;
 	await recordAuditEvent({
 		wgId,
 		memberId: auth.member.memberId,
@@ -130,6 +123,14 @@ export const DELETE = withWgRoute<{ id: string }>('expense DELETE', async (req, 
 			description: row.description,
 			amountCents: row.amountCents,
 		},
+	});
+	await notifyExpenseDeleted({
+		wg: auth.wg,
+		actor: { memberId: auth.member.memberId, name: auth.member.name },
+		title: row.description,
+		currency: row.currency,
+		payerId: row.paidByMemberId,
+		shares,
 	});
 	return NextResponse.json({ deleted: true });
 });
@@ -191,6 +192,7 @@ export const PATCH = withWgRoute<{ id: string }>('expense PATCH', async (req, { 
 		.select({
 			paidByMemberId: expenses.paidByMemberId,
 			amountCents: expenses.amountCents,
+			occurredAt: expenses.occurredAt,
 			updatedAt: expenses.updatedAt,
 		})
 		.from(expenses)
@@ -226,6 +228,8 @@ export const PATCH = withWgRoute<{ id: string }>('expense PATCH', async (req, { 
 
 	// The amount change and the replaced splits are one edit, so they are written in one
 	// transaction: a failure leaves the old splits in place instead of an expense with none.
+	// The shares before an edit that replaces them; null when the edit leaves them alone.
+	const replaced: { shares: ExpenseShare[] | null } = { shares: null };
 	try {
 		await withExpensePaymentLock(wgId, async (tx) => {
 			let previousImageUrl: string | null = null;
@@ -250,6 +254,7 @@ export const PATCH = withWgRoute<{ id: string }>('expense PATCH', async (req, { 
 						.where(eq(expenseSplits.expenseId, id))
 				: [];
 			if (splits) {
+				replaced.shares = previousSplits;
 				const relevantDebtorIds = Array.from(
 					new Set([
 						...previousSplits.map((split) => split.debtorMemberId),
@@ -364,18 +369,13 @@ export const PATCH = withWgRoute<{ id: string }>('expense PATCH', async (req, { 
 		.select()
 		.from(expenseSplits)
 		.where(eq(expenseSplits.expenseId, id));
-	await recordAuditEvent({
-		wgId,
-		memberId: auth.member.memberId,
-		eventType: 'expense.updated',
-		entityType: 'expense',
-		entityId: id,
-		actorName: auth.member.name,
-		metadata: {
-			description: updatedRow.description,
-			amountCents: updatedRow.amountCents,
-			splitCount: updatedSplits.length,
-		},
+	await recordExpenseUpdate({
+		wg: auth.wg,
+		actor: { memberId: auth.member.memberId, name: auth.member.name },
+		before: { amountCents: row.amountCents, occurredAt: row.occurredAt },
+		replacedShares: replaced.shares,
+		after: updatedRow,
+		shares: updatedSplits,
 	});
 
 	return NextResponse.json({ ...updatedRow, splits: updatedSplits });

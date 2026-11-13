@@ -6,7 +6,7 @@
 // API endpoints are mocked per-test via `page.route()`.
 
 import { expect, type Page, test } from '@playwright/test';
-import { E2E_EXISTING_WG, FIXTURE_AUTH_USER_ID } from '../../src/fixtures/data';
+import { E2E_CREATED_WG, E2E_EXISTING_WG, FIXTURE_AUTH_USER_ID } from '../../src/fixtures/data';
 
 declare global {
 	interface Window {
@@ -20,6 +20,36 @@ export const FIXTURE_WG = {
 	shareCode: E2E_EXISTING_WG.shareCode,
 	memberId: E2E_EXISTING_WG.member.id,
 	memberName: E2E_EXISTING_WG.member.name,
+} as const;
+
+/** The fixture WG with a single member: the invitation stays visible while nobody else lives there. */
+export const SOLO_WG = {
+	shareCode: E2E_CREATED_WG.shareCode,
+	memberId: E2E_CREATED_WG.member.id,
+} as const;
+
+/** The WG dashboard of a flat without any entry yet. */
+export const EMPTY_DASHBOARD = {
+	balances: [],
+	spendByDay: [],
+	totalSpendByCurrency: {},
+	weekSpendByCurrency: {},
+	monthSpendByCurrency: {},
+	openShoppingCount: 0,
+	openShoppingTop: [],
+	dueChores: [],
+	dueRecurringExpenses: [],
+	activity: [],
+	latestAnnouncement: null,
+	myOpenAnnouncements: [],
+	absentMembers: [],
+	setup: {
+		choreCount: 0,
+		hasExpense: false,
+		hasShoppingItem: false,
+		hasAnnouncement: false,
+		notificationsEnabled: false,
+	},
 } as const;
 
 /** Skips the surrounding test or describe unless the app runs against the in-memory fixture server. */

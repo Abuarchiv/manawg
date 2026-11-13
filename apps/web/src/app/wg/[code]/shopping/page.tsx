@@ -6,12 +6,14 @@ import { useRef, useState } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
 	Empty,
+	EmptyContent,
 	EmptyDescription,
 	EmptyHeader,
 	EmptyMedia,
 	EmptyTitle,
 } from '@/components/ui/empty';
 import { LoadErrorBanner } from '@/components/wg/LoadErrorBanner';
+import { SoloInviteRow } from '@/components/wg/SoloInviteRow';
 import { SubNav } from '@/components/wg/SubNav';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { useCachedFetch } from '@/core/hooks/use-cached-fetch';
@@ -135,6 +137,9 @@ export default function ShoppingPage() {
 							{suggestionGroups.length > 0 ? t('emptyWithSuggestions') : t('empty')}
 						</EmptyDescription>
 					</EmptyHeader>
+					<EmptyContent>
+						<SoloInviteRow centered />
+					</EmptyContent>
 				</Empty>
 			) : (
 				<ShoppingList

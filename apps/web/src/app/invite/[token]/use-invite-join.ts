@@ -21,16 +21,21 @@ export type InvitePhase =
 	| { kind: 'dead'; reason: 'invalid' | 'expired' | 'unavailable' }
 	| { kind: 'error' };
 
-/** What a visitor without an account may learn from the link: the WG and who invited. */
-export type InvitePreview = { wgName: string; inviterName: string | null };
+/** What a visitor without an account may learn from the link: the WG, who invited and how many are in. */
+export type InvitePreview = { wgName: string; inviterName: string | null; memberCount: number };
 
 function parsePreview(body: unknown): InvitePreview | null {
 	if (typeof body !== 'object' || body === null) return null;
-	const { wgName, inviterName } = body as { wgName?: unknown; inviterName?: unknown };
+	const { wgName, inviterName, memberCount } = body as {
+		wgName?: unknown;
+		inviterName?: unknown;
+		memberCount?: unknown;
+	};
 	if (typeof wgName !== 'string' || wgName === '') return null;
 	return {
 		wgName,
 		inviterName: typeof inviterName === 'string' && inviterName ? inviterName : null,
+		memberCount: typeof memberCount === 'number' && Number.isInteger(memberCount) ? memberCount : 0,
 	};
 }
 

@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { wgLoadError } from '@/core/guards/load-errors';
 import { useCachedFetch } from '@/core/hooks/use-cached-fetch';
+import { isNetworkError } from '@/core/http/error-codes';
+import { hideStaleNetworkError } from '@/core/sync/collection-overlay';
 import { useSyncedCollection } from '@/core/sync/use-synced-collection';
 import { LIST_REFRESH_INTERVAL_MS } from '@/core/utils/use-visibility-paused-interval';
 import {
@@ -32,6 +34,16 @@ interface ExpenseDto {
 const EXPENSES_LEAD: Message = { key: 'common.loadError.lead.expenses' };
 const NO_EXPENSES: ExpenseDto[] = [];
 const NO_PAYMENTS: ExpensePaymentInput[] = [];
+
+/** Offline with the expenses on screen, the offline bar already says so. */
+function expensesLoadError(
+	error: { status: number; error: string },
+	hasExpenses: boolean,
+): Message | null {
+	return hasExpenses && isNetworkError(error.error, error.status)
+		? null
+		: wgLoadError(EXPENSES_LEAD, error.status, error.error);
+}
 
 /** An open debt between two members, with the age of its oldest unsettled share. */
 export interface ReminderRow {
@@ -67,6 +79,7 @@ export function useRemindersPage() {
 	// The expenses are one document the balances derive from; the history list below is the
 	// synced collection whose poll and mount load also refresh it.
 	const loadAllRef = useRef<(silent: boolean) => Promise<void>>(async () => undefined);
+	const hasExpensesRef = useRef(cachedExpenses !== undefined);
 	const history = useSyncedCollection<{ reminders: ReminderHistoryItem[] }, ReminderHistoryItem>({
 		url: `/api/wg/${encodedShareCode}/reminders`,
 		memberId: identity.memberId,
@@ -75,6 +88,12 @@ export function useRemindersPage() {
 		getId: (reminder) => reminder.id,
 		describeError: (error) =>
 			t(wgLoadError({ key: 'expenses-debts.page.loadError.reminders' }, error.status, error.error)),
+		// Offline with the expenses or the history on screen, only the offline bar speaks.
+		hideError: (error, context) =>
+			hideStaleNetworkError(error, {
+				...context,
+				hasData: context.hasData || hasExpensesRef.current,
+			}),
 		pollIntervalMs: LIST_REFRESH_INTERVAL_MS,
 		reload: (reason) => void loadAllRef.current(reason !== 'mount'),
 	});
@@ -85,7 +104,6 @@ export function useRemindersPage() {
 	const [expensesSettled, setExpensesSettled] = useState(cachedExpenses !== undefined);
 	const [expensesRefreshing, setExpensesRefreshing] = useState(false);
 	const [expensesError, setExpensesError] = useState<Message | null>(null);
-	const hasExpensesRef = useRef(cachedExpenses !== undefined);
 	// The skeleton shows only when the page opened without any cached list, until both reads settled.
 	const [openedWithoutCache] = useState(cachedExpenses === undefined && history.data === undefined);
 	const loading = openedWithoutCache && (!expensesSettled || history.initialLoading);
@@ -110,7 +128,7 @@ export function useRemindersPage() {
 				loadHistory({ silent: !initial }),
 			]);
 			setExpensesError(
-				expensesRes.ok ? null : wgLoadError(EXPENSES_LEAD, expensesRes.status, expensesRes.error),
+				expensesRes.ok ? null : expensesLoadError(expensesRes, hasExpensesRef.current),
 			);
 			setExpensesSettled(true);
 			setExpensesRefreshing(false);
@@ -125,11 +143,8 @@ export function useRemindersPage() {
 			setExpensesError(null);
 			setExpensesSettled(true);
 		}
-		if (expensesReadError) {
-			setExpensesError(
-				wgLoadError(EXPENSES_LEAD, expensesReadError.status, expensesReadError.error),
-			);
-		}
+		if (expensesReadError)
+			setExpensesError(expensesLoadError(expensesReadError, hasExpensesRef.current));
 	}, [cachedExpenses, expensesReadError]);
 
 	const memberName = useCallback(

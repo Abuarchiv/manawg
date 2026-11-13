@@ -284,7 +284,6 @@ test.describe('fixed-cost badge after booking', () => {
 					openShoppingTop: [],
 					dueChores: [],
 					activity: [],
-					latestAnnouncement: null,
 					myOpenAnnouncements: [],
 					dueRecurringExpenses: booked
 						? []

@@ -84,7 +84,6 @@ test.describe('daily overview home', () => {
 			openShoppingTop: ['Milch'],
 			dueChores,
 			activity: [],
-			latestAnnouncement: null,
 			myOpenAnnouncements: [
 				{
 					id: 'request-1',
@@ -394,21 +393,20 @@ test.describe('daily overview home', () => {
 
 		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}`);
 		await dismissOnboarding(page);
-		// After a failure the dialog stays open: retrying only means confirming again.
-		const confirmCompletion = async (): Promise<void> => {
-			await page.getByRole('button', { name: 'Erledigt bestätigen: Bad putzen' }).click();
-		};
-		const dialogError = page
-			.getByRole('alertdialog')
-			.getByText('Die Erledigung konnte nicht gespeichert werden: Versuche es gleich erneut.');
+		// One tap completes; after a failure the row is back and another tap retries.
+		const complete = page.getByRole('button', { name: 'Als erledigt markieren: Bad putzen' });
+		const failure = page.getByText(
+			'Die Erledigung konnte nicht gespeichert werden: Versuche es gleich erneut.',
+		);
 
-		await page.getByRole('button', { name: 'Als erledigt markieren: Bad putzen' }).click();
-		await confirmCompletion();
-		await expect(dialogError).toBeVisible();
-		await confirmCompletion();
-		await expect(dialogError).toBeVisible();
+		await complete.click();
+		await expect(failure.first()).toBeVisible();
+		await expect(complete).toBeVisible();
+		await complete.click();
+		await expect.poll(() => idempotencyKeys.length).toBe(2);
+		await expect(complete).toBeVisible();
 		// Offline the completion is queued like in the cleaning plan, with the same key.
-		await confirmCompletion();
+		await complete.click();
 		await expect(page.getByText(/Erledigung offline vorgemerkt/)).toBeVisible();
 		await expect(page.getByRole('alertdialog')).toHaveCount(0);
 		await expect(page.getByText('Bad putzen', { exact: true })).toHaveCount(0);
@@ -425,8 +423,9 @@ test.describe('daily overview home', () => {
 		const chore = {
 			id: 'mine',
 			title: 'Bad putzen',
-			nextDueAt: atBerlin(getBerlinWeekWindow(Date.now()).todayKey, 23 * 60),
-			overdue: false,
+			// Overdue: a late chore still asks first, and its dialog shows the saving state.
+			nextDueAt: new Date(Date.now() - 3 * 86_400_000).toISOString(),
+			overdue: true,
 			assignedMemberId: FIXTURE_WG.memberId,
 			assignedMemberName: FIXTURE_WG.memberName,
 			assignedColor: null,
@@ -446,12 +445,12 @@ test.describe('daily overview home', () => {
 
 		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}`);
 		await dismissOnboarding(page);
-		await page.getByRole('button', { name: 'Als erledigt markieren: Bad putzen' }).click();
-		await page.getByRole('button', { name: 'Erledigt bestätigen: Bad putzen' }).click();
+		await page.getByRole('button', { name: 'Aufgabe nachholen: Bad putzen' }).click();
+		await page.getByRole('button', { name: 'Nachholen bestätigen: Bad putzen' }).click();
 
 		// While the request is in flight the confirm button keeps focus (aria-disabled,
 		// not disabled) and the row subtitle says it is saving.
-		const confirm = page.getByRole('button', { name: 'Erledigt bestätigen: Bad putzen' });
+		const confirm = page.getByRole('button', { name: 'Nachholen bestätigen: Bad putzen' });
 		await expect(confirm).toHaveAttribute('aria-disabled', 'true');
 		await expect(confirm).toBeFocused();
 		await expect(confirm).toContainText('Speichert…');

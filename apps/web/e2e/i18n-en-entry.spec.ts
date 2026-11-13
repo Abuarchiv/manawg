@@ -520,7 +520,7 @@ test.describe('entry and auth in English', () => {
 				).toBeVisible();
 				await expect(page.getByText('Your flat “Altbau” has been created.')).toBeVisible();
 				await expect(
-					page.getByText('Send your flatmates the invite link. It is valid for 7 days.'),
+					page.getByText('Send your flatmates the invite link. It is valid for 14 days.'),
 				).toBeVisible();
 				await expect(page.getByRole('button', { name: 'Try again' })).toBeVisible();
 				await expectEnglishPage(page, width);

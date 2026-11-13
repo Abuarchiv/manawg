@@ -11,6 +11,7 @@ import { WgNewsSection } from './_components/WgNewsSection';
 import { useHomeChoreCompletion } from './_hooks/use-home-chore-completion';
 import { useHomeData } from './_hooks/use-home-data';
 import { useHomeView } from './_hooks/use-home-view';
+import { useLastSeen } from './_hooks/use-last-seen';
 
 const PushPrimingPrompt = dynamic(
 	() => import('@/components/app/PushPrimingPrompt').then((m) => m.PushPrimingPrompt),
@@ -24,14 +25,15 @@ export default function WgHomePage() {
 	const home = useHomeData(wg.shareCode, identity);
 	const { data, error, eventRead } = home;
 	const completion = useHomeChoreCompletion({ wg, identity, members, reload: home.load });
+	const lastSeen = useLastSeen(wg.id, identity.memberId, data?.generatedAt);
 	const view = useHomeView({
 		data,
 		eventOccurrences: home.eventOccurrences,
 		agendaNow: home.agendaNow,
 		shareCode: wg.shareCode,
 		memberId: identity.memberId,
-		memberName: identity.name,
-		queuedOccurrences: completion.queuedOccurrences,
+		lastSeen,
+		hiddenOccurrences: completion.hiddenOccurrences,
 	});
 
 	// Entries do not make the WG complete: until a second person lives in it, the invitation
@@ -96,13 +98,12 @@ export default function WgHomePage() {
 					choresFailed={Boolean(error)}
 				/>
 				<WgNewsSection
-					shareCode={wg.shareCode}
 					wgBaseHref={wgBaseHref}
 					loaded={Boolean(data)}
 					failed={Boolean(error)}
-					latestAnnouncement={view.latestAnnouncement}
-					latestIsPending={view.latestIsPending}
-					activityItems={view.activityItems}
+					newItems={view.newItems}
+					newItemsTruncated={view.newItemsTruncated}
+					lastSeen={lastSeen}
 				/>
 			</div>
 			<div>

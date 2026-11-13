@@ -92,6 +92,7 @@ test.describe('auth e-mail code flow', () => {
 				email: 'mina@example.invalid',
 				token: '12345678',
 			});
+			await page.getByRole('button', { name: 'Du heißt Mina Muster · ändern' }).click();
 			await expect(page.getByLabel('Dein Anzeigename')).toHaveValue('Mina Muster');
 		});
 	});

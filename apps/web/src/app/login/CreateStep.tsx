@@ -2,6 +2,7 @@
 
 import { ArrowRight } from 'lucide-react';
 import { useTranslations } from 'next-intl';
+import { useState } from 'react';
 import { BackButton } from '@/components/app/BackButton';
 import { ErrorBox } from '@/components/app/ErrorBox';
 import { TextField } from '@/components/app/TextField';
@@ -14,6 +15,8 @@ interface CreateStepProps {
 	wgName: string;
 	onWgNameChange: (value: string) => void;
 	creatorName: string;
+	/** True once the account-name lookup has answered; the name row waits for it so it does not jump. */
+	nameSettled: boolean;
 	onCreatorNameChange: (value: string) => void;
 	error: string | null;
 	invalidField: StartField | null;
@@ -27,6 +30,7 @@ export function CreateStep({
 	wgName,
 	onWgNameChange,
 	creatorName,
+	nameSettled,
 	onCreatorNameChange,
 	error,
 	invalidField,
@@ -36,6 +40,10 @@ export function CreateStep({
 	onBack,
 }: CreateStepProps) {
 	const t = useTranslations('entry.start');
+	// A known name needs no field: only the flat name is asked, the name opens on request or on an error.
+	const [editingName, setEditingName] = useState(false);
+	const hasName = creatorName.trim() !== '';
+	const showNameField = editingName || invalidField === 'creatorName' || (nameSettled && !hasName);
 	return (
 		<form
 			noValidate
@@ -64,22 +72,34 @@ export function CreateStep({
 					enterKeyHint="next"
 				/>
 				{error && invalidField === 'wgName' && <ErrorBox id="create-wg-error">{error}</ErrorBox>}
-				<TextField
-					id="creator-name"
-					label={t('displayName')}
-					placeholder={t('displayNamePlaceholder')}
-					value={creatorName}
-					onChange={(value) => {
-						if (error) clearError();
-						onCreatorNameChange(value);
-					}}
-					maxLength={NAME_MAX}
-					autoComplete="given-name"
-					required
-					invalid={invalidField === 'creatorName'}
-					describedBy={invalidField === 'creatorName' ? 'create-wg-error' : undefined}
-					enterKeyHint="done"
-				/>
+				{showNameField ? (
+					<TextField
+						id="creator-name"
+						label={t('displayName')}
+						placeholder={t('displayNamePlaceholder')}
+						value={creatorName}
+						onChange={(value) => {
+							setEditingName(true);
+							if (error) clearError();
+							onCreatorNameChange(value);
+						}}
+						maxLength={NAME_MAX}
+						autoComplete="given-name"
+						autoFocus={editingName}
+						required
+						invalid={invalidField === 'creatorName'}
+						describedBy={invalidField === 'creatorName' ? 'create-wg-error' : undefined}
+						enterKeyHint="done"
+					/>
+				) : hasName ? (
+					<button
+						type="button"
+						onClick={() => setEditingName(true)}
+						className="relative min-h-8 self-start text-left text-sm text-muted-foreground underline underline-offset-4 after:absolute after:inset-x-0 after:top-1/2 after:h-11 after:-translate-y-1/2 after:content-['']"
+					>
+						{t('displayNameKnown', { name: creatorName.trim() })}
+					</button>
+				) : null}
 				{error && invalidField === 'creatorName' && (
 					<ErrorBox id="create-wg-error">{error}</ErrorBox>
 				)}

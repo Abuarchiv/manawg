@@ -26,6 +26,16 @@ export default {
 		title: 'Neue Ausgabe',
 		body: '{actorName} hat in {wgName} {title} für {amount} eingetragen.',
 	},
+	expenseUpdated: {
+		title: 'Ausgabe geändert',
+		share: '{actorName} hat {title} geändert: dein Anteil {from} → {to}',
+		same: '{actorName} hat {title} geändert. Dein Anteil bleibt bei {amount}.',
+	},
+	expenseDeleted: {
+		title: 'Ausgabe gelöscht',
+		debtor: '{actorName} hat {title} gelöscht. Du schuldest {amount} weniger.',
+		payer: '{actorName} hat {title} gelöscht. Dir werden {amount} weniger geschuldet.',
+	},
 	recurringCharged: {
 		title: 'Neue Fixkosten-Buchung',
 		body: 'Neue Fixkosten-Buchung: {description} {amount}',
@@ -61,6 +71,10 @@ export default {
 		title: 'Pinnwand geklärt',
 		body: '{actorName} hat einen Beitrag als geklärt markiert: {title}',
 	},
+	memberJoined: {
+		title: 'Neu in deiner WG',
+		body: '{actorName} ist {wgName} beigetreten.',
+	},
 	choreDue: {
 		title: 'Putzplan',
 		today: '{title} ist heute in {wgName} fällig.',
@@ -69,10 +83,14 @@ export default {
 		overdue:
 			'{title} ist in {wgName} seit {days, plural, one {{days, number, ::group-off} Tag} other {{days, number, ::group-off} Tagen}} offen.',
 		unassigned: 'Niemand ist zuständig.',
+		many: 'Offen für dich: {titles}',
+		manyOpen: 'Offen in {wgName}: {titles}.',
 	},
 	shoppingAdded: {
 		title: 'Einkaufsliste',
 		body: '{actorName} hat {title} in {wgName} hinzugefügt.',
+		bodyMany:
+			'{actorName} hat {count, plural, one {1 Artikel} other {{count, number, ::group-off} Artikel}} zur Einkaufsliste hinzugefügt.',
 	},
 	eventCreated: {
 		title: 'Neuer Termin',

@@ -67,6 +67,8 @@ export default {
 		balances: 'Balances',
 		balancesLabel: 'Balance per member',
 		you: 'You',
+		balanceGets: 'gets {amount}',
+		balanceOwes: 'owes {amount}',
 		balanceSettled: 'settled',
 		howToSettle: 'How to settle up',
 		yourPayments: 'Your open payments',
@@ -89,10 +91,10 @@ export default {
 	},
 	review: {
 		title: 'Confirm a payment already made',
-		body: 'Only confirm if {payerSelf, select, yes {you have} other {{payer} has}} already paid {amount} to {payeeSelf, select, yes {you} other {{payee}}}. No money is transferred.',
-		cashNote:
-			'“Record the full balance as cash” confirms the whole combined balance of {amount} instead.',
+		body: 'Only confirm if {payerSelf, select, yes {you have already paid {payee} {amount}} other {{payer} has already paid {payeeSelf, select, yes {you} other {{payee}}} {amount}}}. No money is transferred.',
 		sharesLabel: 'Expense shares covered',
+		sharesToggle: 'Show {count} expense shares',
+		details: 'Details',
 		expense: 'Expense',
 		offset: 'Offset against what they owe you',
 		currentShare: 'Current open share',
@@ -104,7 +106,7 @@ export default {
 		cancel: 'Cancel',
 		saving: 'Saving…',
 		recordCash: 'Record the full balance as cash ({amount})',
-		recordPaid: 'Record {amount} as paid',
+		recordPaid: 'Mark {amount} as paid',
 	},
 	cash: {
 		title: 'Cash payments',
