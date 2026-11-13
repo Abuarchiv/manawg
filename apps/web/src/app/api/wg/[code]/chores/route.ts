@@ -11,10 +11,10 @@ import { withWgRoute } from '@/core/guards/with-wg-route';
 import { badRequest, rateLimitResponse, serverError } from '@/core/http/api-errors';
 import { parseBody } from '@/core/http/parse-body';
 import { readIdempotencyKey, setReplayWarning } from '@/core/idempotency-store';
-import { logApiError } from '@/core/infra/observability';
 import { dispatchNotificationSafely } from '@/core/notifications/notification-dispatch';
 import type { NotificationWarning } from '@/core/notifications/notification-warning';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
+import { persistWarningOrDrop } from '@/core/replay-warning';
 import { berlinDayKey, startOfBerlinDay } from '@/core/utils/berlin-day';
 import { MS_PER_DAY } from '@/core/utils/time';
 import { isRecurringAnchorAllowed } from '@/core/validators/recurring-due-date';
@@ -275,28 +275,14 @@ export const POST = withWgRoute('chores POST', async (req, { code }) => {
 		}));
 	}
 	if (key && warning !== null) {
-		try {
-			const persisted = await setReplayWarning(
-				scope,
-				key,
-				{
-					match: [{ path: ['chore', 'id'], equals: chore.id }],
-					warningPath: ['warning'],
-					replaces: [null],
-				},
-				warning,
-			);
-			if (!persisted) {
-				warning = null;
-				logApiError(
-					'[chores POST] warning replay update missed',
-					new Error('replay_warning_missed'),
-				);
-			}
-		} catch (err) {
-			warning = null;
-			logApiError('[chores POST] warning replay update failed', err);
-		}
+		const target = {
+			match: [{ path: ['chore', 'id'], equals: chore.id }],
+			warningPath: ['warning'],
+			replaces: [null],
+		};
+		warning = await persistWarningOrDrop('[chores POST]', warning, (w) =>
+			setReplayWarning(scope, key, target, w),
+		);
 	}
 	const responseBody: ChoreCreateResponseBody = { chore, warning };
 	return NextResponse.json(responseBody);

@@ -1,12 +1,13 @@
 import { and, eq, ne, sql } from 'drizzle-orm';
-import { LIMITS, wgMembers } from './schema';
+import { MEMBER_NAME_MAX_LENGTH } from '@/shared/lib/limits';
+import { wgMembers } from './schema';
 import type { DbTransaction } from './transaction';
 
 /** The first "base (n)" from 2 up that is not in `taken` (lower-cased), shortened to fit the limit. */
 function numberedName(base: string, taken: ReadonlySet<string>): string {
 	for (let attempt = 2; attempt < 1000; attempt += 1) {
 		const suffix = ` (${attempt})`;
-		const candidate = `${base.slice(0, Math.max(1, LIMITS.NAME_MAX - suffix.length))}${suffix}`;
+		const candidate = `${base.slice(0, Math.max(1, MEMBER_NAME_MAX_LENGTH - suffix.length))}${suffix}`;
 		if (!taken.has(candidate.toLowerCase())) return candidate;
 	}
 	return `${base.slice(0, 20)} ${crypto.randomUUID().slice(0, 8)}`;

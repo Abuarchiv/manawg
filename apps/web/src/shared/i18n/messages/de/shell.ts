@@ -141,7 +141,7 @@ export default {
 	},
 	inviteShare: {
 		limitReached:
-			'Es gibt schon 20 aktive Einladungen. Widerrufe eine, bevor du eine neue erstellst.',
+			'Es gibt schon {max, number} aktive Einladungen. Widerrufe eine, bevor du eine neue erstellst.',
 		rateLimited: 'Zu viele Einladungen auf einmal. Versuch es gleich noch mal.',
 		createFailed: 'Die Einladung konnte nicht erstellt werden',
 		createFailedRetry: 'Die Einladung konnte nicht erstellt werden. Versuch es noch mal.',
@@ -150,7 +150,7 @@ export default {
 	inviteMail: {
 		emailInvalid: 'Das sieht nicht wie eine E-Mail-Adresse aus.',
 		limitReached:
-			'Es gibt schon 20 aktive Einladungen. Widerrufe eine, bevor du eine neue verschickst.',
+			'Es gibt schon {max, number} aktive Einladungen. Widerrufe eine, bevor du eine neue verschickst.',
 		rateLimited: 'Zu viele Einladungen auf einmal. Versuch es in einer Stunde noch mal.',
 		mailUnavailable: 'Die Mail konnte nicht verschickt werden. Teile stattdessen den Link.',
 		failed: 'Das hat nicht geklappt. Versuch es noch mal.',

@@ -249,30 +249,47 @@ export const POST = withWgRoute('notifications POST', async (req, { code }) => {
 				key: readIdempotencyKey(req),
 				codec: notificationCodec,
 				beforeReplay: memberGate(writer),
+				// After the claim, before its transaction: the limiter and the test push (it writes nothing)
+				// hold no pool connection or claim row lock, and only the request that wins the claim
+				// counts. A stored replay was answered before this runs; a refusal releases the claim.
+				afterClaim: async () => {
+					if (action.action === 'test_notification') {
+						const limited = rateLimitResponse(
+							await checkRateLimit(notifTestLimiter, `notif-test:${wg.id}:${auth.member.memberId}`),
+							'test_notification_rate_limited',
+							'test_notification_rate_limited',
+						);
+						if (limited) return limited;
+						try {
+							await dispatchNotification({
+								wg,
+								event: 'notification.test',
+								payload: {},
+								targetMemberIds: [auth.member.memberId],
+								bypassPreferences: true,
+							});
+						} catch (err) {
+							if (err instanceof NoPushSubscriptionError) {
+								return conflict('no_push_subscription', 'no_push_subscription');
+							}
+							logApiError('[notifications POST] test notification failed', err);
+							return serverError(err, 'unexpected_error');
+						}
+						return null;
+					}
+					if (action.action === 'push_unsubscribe') {
+						return rateLimitResponse(
+							await checkRateLimit(
+								wgWriteLimiter,
+								`push-unsubscribe:${wg.id}:${auth.member.memberId}`,
+							),
+						);
+					}
+					return null;
+				},
 			},
 			async (tx) => {
 				if (action.action === 'test_notification') {
-					const rl = rateLimitResponse(
-						await checkRateLimit(notifTestLimiter, `notif-test:${wg.id}:${auth.member.memberId}`),
-						'test_notification_rate_limited',
-						'test_notification_rate_limited',
-					);
-					if (rl) return rejectWrite(rl);
-					try {
-						await dispatchNotification({
-							wg,
-							event: 'notification.test',
-							payload: {},
-							targetMemberIds: [auth.member.memberId],
-							bypassPreferences: true,
-						});
-					} catch (err) {
-						if (err instanceof NoPushSubscriptionError) {
-							return rejectWrite(conflict('no_push_subscription', 'no_push_subscription'));
-						}
-						logApiError('[notifications POST] test notification failed', err);
-						return rejectWrite(serverError(err, 'unexpected_error'));
-					}
 					return { status: 200, body: { ok: true } };
 				}
 				if (action.action === 'push_subscribe') {
@@ -288,10 +305,6 @@ export const POST = withWgRoute('notifications POST', async (req, { code }) => {
 						context: { audit: 'subscribed', name: member.name, pushOptIn: true },
 					};
 				}
-				const unsubscribeLimit = rateLimitResponse(
-					await checkRateLimit(wgWriteLimiter, `push-unsubscribe:${wg.id}:${auth.member.memberId}`),
-				);
-				if (unsubscribeLimit) return rejectWrite(unsubscribeLimit);
 				const removed = await unsubscribePush(tx, writer, requestEndpoint);
 				if (!removed) return rejectWrite(unauthorized('member_deactivated', 'member_deactivated'));
 				return {

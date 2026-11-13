@@ -25,6 +25,9 @@ browser
 - API paths in the matcher (`/api/account`, `/api/auth/*`, `/api/wg[/*]`, `/api/calendar/*`,
   `/api/upload/*`, `/api/cron/*`):
   1. `MIGRATION_READ_ONLY=true`: writes and crons get `503 migration_read_only`.
+     The mail unsubscribe (`POST /api/email/unsubscribe`, outside the matcher) deliberately keeps
+     writing: mail clients do not retry an RFC 8058 one-click post, and a lost opt-out is worse
+     than one write during a migration.
   2. Mutating requests need an `Origin` matching host and protocol, else `403 cross_origin_blocked`.
   3. Sliding-window limit per client IP: share-code lookup, read or write bucket
      (`core/rate-limit.ts`). With Upstash configured it counts in Redis. A standalone server

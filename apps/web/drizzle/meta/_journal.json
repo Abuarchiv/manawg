@@ -309,6 +309,13 @@
       "when": 1794056921497,
       "tag": "0043_member_locale_spanish",
       "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1794257760000,
+      "tag": "0044_audit_member_absence_entity_type",
+      "breakpoints": true
     }
   ]
 }

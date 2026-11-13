@@ -5,5 +5,3 @@ export * from './schema/expenses';
 export * from './schema/household';
 export * from './schema/system';
 export * from './schema/wg';
-
-export const LIMITS = { NAME_MAX: 80 } as const;

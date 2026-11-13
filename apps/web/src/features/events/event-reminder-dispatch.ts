@@ -1,7 +1,7 @@
 import { berlinDayKey } from '@/core/utils/berlin-day';
 import { DEFAULT_DURATION_MS } from './event-recurrence';
 
-const DISPATCH_BATCH_SIZE = 10;
+export const DISPATCH_BATCH_SIZE = 10;
 
 export type EventReminderCopy = 'today' | 'tomorrow';
 

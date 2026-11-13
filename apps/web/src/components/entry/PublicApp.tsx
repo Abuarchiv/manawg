@@ -18,7 +18,7 @@ import { useTranslations } from 'next-intl';
 import { Suspense, useEffect, useState } from 'react';
 import { AppBottomNav } from '@/components/app/AppBottomNav';
 import { ErrorBox } from '@/components/app/ErrorBox';
-import { HOME_NAV_LABEL, isActivePage, WG_SECTIONS } from '@/components/app/navigation';
+import { HOME_NAV_LABEL, WG_SECTIONS } from '@/components/app/navigation';
 import { RouteFocusOnNavigate } from '@/components/app/RouteFocusOnNavigate';
 import { LegalLinks } from '@/components/entry/LegalLinks';
 import { type AccountWg, MembershipCard } from '@/components/entry/MembershipCard';
@@ -32,13 +32,13 @@ import {
 	PRIMARY_MODULE_SLUGS,
 	type PublicModuleSlug,
 } from '@/components/entry/public-modules';
+import { RetryNotice } from '@/components/entry/RetryNotice';
 import { SignOutActions } from '@/components/entry/SignOutActions';
 import { InvitationNotice, WgWelcome } from '@/components/entry/WgWelcome';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Button, buttonVariants } from '@/components/ui/button';
+import { buttonVariants } from '@/components/ui/button';
 import { LogoMark } from '@/components/ui/LogoMark';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Spinner } from '@/components/ui/spinner';
 import { NavItem } from '@/components/wg/NavItem';
 import { SubNav } from '@/components/wg/SubNav';
 import { hasSessionCookie } from '@/core/auth/session-hint';
@@ -176,11 +176,11 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 
 	const section = WG_SECTIONS.find(
 		(item) =>
-			item.pages.some((page) => isActivePage(page.slug, activeModule)) ||
+			item.pages.some((page) => page.slug === activeModule) ||
 			item.related.some((slug) => slug === activeModule),
 	);
 	// Related pages (Erinnerungen, Import) have no segment of their own, so they keep a visible h1.
-	const inSectionPages = section?.pages.some((page) => isActivePage(page.slug, activeModule));
+	const inSectionPages = section?.pages.some((page) => page.slug === activeModule);
 	// On the home the list of WGs is already right below the header.
 	// The welcome block below already offers the same action for signed-in users without a WG.
 	const hideAccountLink = (multi && !module) || membershipState === 'authenticated-empty';
@@ -304,24 +304,14 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 						</output>
 					)}
 					{(membershipState === 'error' || (retried && membershipState === 'loading')) && (
-						<div className="flex flex-col gap-2">
-							<ErrorBox>{t('public.loadFailed')}</ErrorBox>
-							<Button
-								type="button"
-								variant="outline"
-								focusableWhenDisabled
-								disabled={retried}
-								aria-busy={retried}
-								className="aria-disabled:pointer-events-none aria-disabled:opacity-50"
-								onClick={() => {
-									setRetried(true);
-									setRetryNonce((value) => value + 1);
-								}}
-							>
-								{retried && <Spinner data-icon="inline-start" aria-hidden />}
-								{retried ? t('public.rechecking') : t('public.recheck')}
-							</Button>
-						</div>
+						<RetryNotice
+							message={t('public.loadFailed')}
+							loading={retried}
+							onRetry={() => {
+								setRetried(true);
+								setRetryNonce((value) => value + 1);
+							}}
+						/>
 					)}
 					{membershipState === 'authenticated-empty' && (
 						<SignOutActions

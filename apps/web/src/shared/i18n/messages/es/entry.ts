@@ -126,7 +126,7 @@ export default {
 		joinInsertFailed:
 			'No se ha podido guardar tu entrada al piso: revisa el piso e inténtalo de nuevo.',
 		joinRetry: 'No se ha podido completar la unión: inténtalo de nuevo en un momento.',
-		nameInvalid: 'Tu nombre debe tener entre 1 y 80 caracteres.',
+		nameInvalid: 'Tu nombre debe tener entre 1 y {max, number} caracteres.',
 		checkInput: 'Revisa lo que has introducido.',
 		joinOffline: 'No se ha podido completar la unión: revisa tu conexión e inténtalo de nuevo.',
 		joinFailed: 'No se ha podido entrar al piso. Inténtalo una vez más.',

@@ -197,7 +197,7 @@ export const POST = withWgRoute('absences POST', async (req, { code }) => {
 		wgId: wg.id,
 		memberId: auth.member.memberId,
 		eventType: 'absence.created',
-		entityType: 'absence',
+		entityType: 'member_absence',
 		entityId: absence.id,
 		actorName: auth.member.name,
 		metadata: {

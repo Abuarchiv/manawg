@@ -3,18 +3,16 @@ import { notFound } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { getTranslations } from 'next-intl/server';
 import { SubNav } from '@/components/wg/SubNav';
-import type { wgChatMessages } from '@/core/db';
 import { loadWgViewer } from '@/core/guards/load-wg-viewer';
 import { isValidShareCode, normalizeShareCode } from '@/core/utils/share-code';
 import { CHAT_FRAME_STYLE } from '@/features/chat/chat-frame';
+import type { ChatMessageDto } from '@/features/chat/chat-types';
 import { ChatView } from '@/features/chat/components/ChatView';
 import { loadFixtureWgView } from '@/fixtures/pages';
 
 interface PageProps {
 	params: Promise<{ code: string }>;
 }
-
-type MessageRow = typeof wgChatMessages.$inferSelect;
 
 export const dynamic = 'force-dynamic';
 
@@ -47,7 +45,7 @@ function ChatPageContent({
 	messages,
 }: {
 	wgRow: { id: string; shareCode: string };
-	messages: MessageRow[];
+	messages: ChatMessageDto[];
 }) {
 	const t = useTranslations('chat.page');
 	return (
@@ -64,18 +62,7 @@ function ChatPageContent({
 				key={wgRow.id}
 				wgId={wgRow.id}
 				shareCode={wgRow.shareCode}
-				initialMessages={messages.map((m) => ({
-					...m,
-					body: m.deletedAt ? null : m.body,
-					imageUrl: m.deletedAt ? null : m.imageUrl,
-					systemPayload:
-						m.systemPayload && typeof m.systemPayload === 'object'
-							? (m.systemPayload as Record<string, unknown>)
-							: null,
-					createdAt: m.createdAt.toISOString(),
-					editedAt: m.editedAt?.toISOString() ?? null,
-					deletedAt: m.deletedAt?.toISOString() ?? null,
-				}))}
+				initialMessages={messages}
 				initialReactions={[]}
 			/>
 		</div>

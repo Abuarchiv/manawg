@@ -22,6 +22,7 @@ import {
 	type NotificationDispatchWarning,
 } from '@/core/notifications/notification-dispatch';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
+import { persistWarningOrDrop } from '@/core/replay-warning';
 import { announcementPushTitle } from '@/features/announcements/announcement-push-title';
 import { COMMENT_MAX } from '@/features/announcements/constants';
 
@@ -83,10 +84,6 @@ export const POST = withWgRoute<{ id: string }>(
 			req,
 			scope,
 			async (tx) => {
-				const limited = rateLimitedReplayResponse(
-					await checkRateLimit(wgWriteLimiter, `comment:${wg.id}:${auth.member.memberId}`),
-				);
-				if (limited) return { response: limited, effect: null };
 				const actor = await lockActiveAccountMember(
 					tx,
 					wg.id,
@@ -135,6 +132,11 @@ export const POST = withWgRoute<{ id: string }>(
 				};
 			},
 			wg.id,
+			// Outside the transaction: the limiter's network call must not hold the WG lock.
+			async () =>
+				rateLimitedReplayResponse(
+					await checkRateLimit(wgWriteLimiter, `comment:${wg.id}:${auth.member.memberId}`),
+				),
 		);
 		if (!outcome.effect) {
 			return NextResponse.json(outcome.response.body, { status: outcome.response.status });
@@ -183,19 +185,11 @@ export const POST = withWgRoute<{ id: string }>(
 			logApiError('[announcement/comments] post-commit notification failed', err);
 		}
 
-		if (warning && outcome.key) {
-			try {
-				if (!(await persistReplayWarning(scope, outcome.key, comment.id, warning))) {
-					logApiError(
-						'[announcement/comments] replay warning persistence failed',
-						new Error('replay_row_missing'),
-					);
-					warning = null;
-				}
-			} catch (err) {
-				logApiError('[announcement/comments] replay warning persistence failed', err);
-				warning = null;
-			}
+		const replayKey = outcome.key;
+		if (warning && replayKey) {
+			warning = await persistWarningOrDrop('[announcement/comments]', warning, (w) =>
+				persistReplayWarning(scope, replayKey, comment.id, w),
+			);
 		}
 		return NextResponse.json({ ...(outcome.response.body as { comment: unknown }), warning });
 	},

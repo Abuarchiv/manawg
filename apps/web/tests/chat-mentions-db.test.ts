@@ -104,3 +104,26 @@ test('a name from another flat is no mention', { skip }, async () => {
 	assert.deepEqual(await mentioned(messageId), []);
 	assert.ok(away.ids.Emil);
 });
+
+test('a sent mention id counts only when its @name is in the body', { skip }, async () => {
+	const { wgId, ids } = await newWg(['Fiona', 'Gina', 'Hugo']);
+	const { withTransaction } = await import('../src/core/db/index.ts');
+	const { resolveMentionIds } = await import('../src/features/chat/server/chat-mentions.ts');
+	const resolve = (body: string | null, requestedMemberIds?: string[]) =>
+		withTransaction((tx) =>
+			resolveMentionIds(tx, {
+				wgId,
+				senderMemberId: ids.Fiona ?? '',
+				body,
+				...(requestedMemberIds && { requestedMemberIds }),
+			}),
+		);
+	const everyone = [ids.Gina ?? '', ids.Hugo ?? '', ids.Fiona ?? ''];
+
+	assert.deepEqual(await resolve('hi @Gina', everyone), [ids.Gina]);
+	assert.deepEqual(await resolve('hi everyone', everyone), []);
+	assert.deepEqual(await resolve('hi @Gina and @Hugo', [ids.Hugo ?? '']), [ids.Hugo]);
+	assert.deepEqual(await resolve('hi @Gina', ['not-a-uuid']), []);
+	assert.deepEqual(await resolve(null, everyone), []);
+	assert.deepEqual((await resolve('@Gina @Hugo')).sort(), [ids.Gina, ids.Hugo].sort());
+});

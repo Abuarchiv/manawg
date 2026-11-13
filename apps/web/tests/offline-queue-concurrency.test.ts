@@ -294,7 +294,7 @@ test('a lost connection stops the replay and backs off only the action it tried'
 		storage,
 		apiFetch: async () => {
 			requests += 1;
-			return { ok: false, status: 0, error: 'Netzwerkfehler' };
+			return { ok: false, status: 0, error: 'network_error' };
 		},
 	});
 	await module.syncOfflineActions('TEST1234', { force: true, memberId: 'member-a' });

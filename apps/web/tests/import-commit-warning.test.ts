@@ -173,24 +173,24 @@ test('warning update targets the committed import row with a scoped JSONB update
 	assert.ok(db.where.params.includes('import-1'));
 });
 
-test('immediate response preserves a known warning when persistence fails', async () => {
+test('immediate response drops the warning when it could not be stored, so a replay agrees', async () => {
 	const saved = await postWith('saved');
 	assert.equal(saved.response.status, 200);
 	assert.equal((await saved.response.json()).warning, warning);
 	assert.equal(saved.logs, 0);
 
 	const missing = await postWith('missing');
-	assert.equal((await missing.response.json()).warning, warning);
+	assert.equal((await missing.response.json()).warning, null);
 	assert.equal(missing.logs, 1);
 
 	const failed = await postWith('throws');
-	assert.equal((await failed.response.json()).warning, warning);
+	assert.equal((await failed.response.json()).warning, null);
 	assert.equal(failed.logs, 1);
 });
 
 // Releasing the claim after a failed commit is the primitive's job (tests/idempotent-write).
 test('a failed commit answers with the real error on every same-key retry', async () => {
-	const failing = () => Promise.reject(new Error('member_not_in_wg'));
+	const failing = () => Promise.reject(new TransactionAbort('member_not_in_wg'));
 	assert.equal((await postWith('saved', failing)).response.status, 400);
 	assert.equal((await postWith('saved', failing)).response.status, 400);
 

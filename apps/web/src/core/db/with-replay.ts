@@ -7,9 +7,6 @@ import {
 import { type DbTransaction, lockExpensePayments, withTransaction } from '@/core/db/transaction';
 import { readIdempotencyKey, setReplayWarning } from '@/core/idempotency-store';
 
-/** Rate-limit (429) and outage (503) answers are never stored: a retry must run again. */
-const TRANSIENT_STATUSES: ReadonlySet<number> = new Set([429, 503]);
-
 export interface IdempotentReplayResponse {
 	status: number;
 	body: unknown;
@@ -35,15 +32,20 @@ const replayCodec: ReplayCodec<unknown> = {
 /**
  * A write whose outcome is stored as `{ status, body }` behind the shared claim (announcement posts,
  * comments, reactions, shopping item updates).
- * Every outcome except a rate limit (429) or outage (503) is stored, so a retry of a rejected
- * write replays the rejection; a rate-limited write can run again once the limit clears. `wgId` takes the WG's
- * payment lock first, in the same order as expense writes.
+ * Every outcome of `mutate` is stored, so a retry of a rejected write replays the rejection.
+ * `wgId` takes the WG's payment lock first, in the same order as expense writes.
+ *
+ * `admit` is where rate limits run: after a stored replay lookup missed and the claim is won, but
+ * before the lock and the transaction, so its network call holds neither and only the request that
+ * writes spends budget. A non-null answer releases the claim and ends the request unstored; a
+ * stored replay is looked up first, so it wins over a limit.
  */
 export async function withIdempotentReplay<T>(
 	req: Request,
 	scope: string,
 	mutate: (tx: DbTransaction) => Promise<IdempotentReplayMutation<T>>,
 	wgId?: string,
+	admit?: () => Promise<IdempotentReplayResponse | null>,
 ): Promise<IdempotentReplayMutation<T> & { key: string | null }> {
 	const key = readIdempotencyKey(req);
 	const result = await withIdempotentWrite(
@@ -51,7 +53,8 @@ export async function withIdempotentReplay<T>(
 			scope,
 			key,
 			codec: replayCodec,
-			storeStatus: (status) => !TRANSIENT_STATUSES.has(status),
+			storeStatus: () => true,
+			afterClaim: admit ?? (async () => null),
 			inTransaction: (work) =>
 				withTransaction(async (tx) => {
 					if (wgId) await lockExpensePayments(tx, wgId);
@@ -64,6 +67,7 @@ export async function withIdempotentReplay<T>(
 		},
 	);
 	if (result.kind === 'written' && result.context) return { ...result.context, key };
+	if (result.kind === 'stopped') return { response: result.response, effect: null, key };
 	const { kind: _kind, ...response } = result;
 	return { response, effect: null, key };
 }

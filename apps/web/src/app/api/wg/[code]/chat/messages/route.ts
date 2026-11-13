@@ -19,9 +19,9 @@ import { badRequest, HTTP, rateLimitedReplayResponse, unauthorized } from '@/cor
 import { parseBody } from '@/core/http/parse-body';
 import { readIdempotencyKey, setReplayWarning } from '@/core/idempotency-store';
 import { readListLimit } from '@/core/infra/env';
-import { logApiError } from '@/core/infra/observability';
 import { dispatchNotificationSafely } from '@/core/notifications/notification-dispatch';
 import { chatMessageLimiter, checkRateLimit } from '@/core/rate-limit';
+import { persistWarningOrDrop } from '@/core/replay-warning';
 import {
 	CHAT_BODY_MAX,
 	CHAT_REFRESH_BATCH_SIZE,
@@ -31,6 +31,7 @@ import {
 	sanitizeMessageBody,
 } from '@/features/chat/chat-pure';
 import { CHAT_PAGE_SIZE } from '@/features/chat/chat-refresh';
+import { resolveMentionIds } from '@/features/chat/server/chat-mentions';
 import { buildChatCursorWhere } from '@/features/chat/server/chat-unread-query';
 import { loadOwnReadMarker } from '@/features/chat/server/own-read-marker';
 
@@ -197,6 +198,12 @@ export const POST = withWgRoute('chat messages POST', async (req, { code }) => {
 				key,
 				codec: chatMessageCodec,
 				storeStatus: storeChatStatus,
+				// After the claim, before the WG lock: the limiter's network call holds no lock and only the
+				// request that sends counts. A stored replay was answered before this runs.
+				afterClaim: async () =>
+					rateLimitedReplayResponse(
+						await checkRateLimit(chatMessageLimiter, `chat:${wg.id}:${member.memberId}`),
+					),
 				inTransaction: (work) =>
 					withTransaction(async (tx) => {
 						// The per-WG write lock is shared with payments and WG deletion, so deletion waits for sends.
@@ -220,11 +227,6 @@ export const POST = withWgRoute('chat messages POST', async (req, { code }) => {
 					// A shared lock until commit: moving the member out waits for this write.
 					.for('share');
 				if (!sender) return rejectWrite(unauthorized('member_deactivated'));
-				// The rate limit runs under the claim, so only the request that sends counts.
-				const limited = rateLimitedReplayResponse(
-					await checkRateLimit(chatMessageLimiter, `chat:${wg.id}:${member.memberId}`),
-				);
-				if (limited) return limited;
 				return insertMessage(tx, {
 					wgId: wg.id,
 					senderMemberId: member.memberId,
@@ -235,6 +237,9 @@ export const POST = withWgRoute('chat messages POST', async (req, { code }) => {
 			},
 		);
 	const result = await send();
+	if (result.kind === 'stopped') {
+		return NextResponse.json(result.response.body, { status: result.response.status });
+	}
 	if (result.kind === 'replayed' || !result.context) {
 		return NextResponse.json(result.body, { status: result.status });
 	}
@@ -282,23 +287,14 @@ export const POST = withWgRoute('chat messages POST', async (req, { code }) => {
 				? 'notification_delivery_failed'
 				: null;
 	if (warning && key) {
-		try {
-			const target = {
-				match: [{ path: ['body', 'message', 'id'], equals: created.id }],
-				warningPath: ['body', 'warning'],
-				replaces: [null, warning],
-			};
-			if (!(await setReplayWarning(scope, key, target, warning))) {
-				logApiError(
-					'[chat/messages] replay warning persistence failed',
-					new Error('replay_row_missing'),
-				);
-				warning = null;
-			}
-		} catch (err) {
-			logApiError('[chat/messages] replay warning persistence failed', err);
-			warning = null;
-		}
+		const target = {
+			match: [{ path: ['body', 'message', 'id'], equals: created.id }],
+			warningPath: ['body', 'warning'],
+			replaces: [null, warning],
+		};
+		warning = await persistWarningOrDrop('[chat/messages]', warning, (w) =>
+			setReplayWarning(scope, key, target, w),
+		);
 	}
 	return NextResponse.json({ message: created, mentions: mentionIds, warning });
 });
@@ -333,17 +329,12 @@ async function insertMessage(
 			return { status: HTTP.BAD_REQUEST, body: { error: 'reply_to_not_found' } };
 		}
 	}
-	const requestedMentionIds = Array.from(
-		new Set(input.requestedMentionIds.filter((id) => UUID_PATTERN.test(id))),
-	);
-	let validMentionIds: string[] = [];
-	if (requestedMentionIds.length > 0) {
-		const validRows = await tx
-			.select({ id: wgMembers.id })
-			.from(wgMembers)
-			.where(and(eq(wgMembers.wgId, input.wgId), inArray(wgMembers.id, requestedMentionIds)));
-		validMentionIds = validRows.map((row) => row.id).filter((id) => id !== input.senderMemberId);
-	}
+	const validMentionIds = await resolveMentionIds(tx, {
+		wgId: input.wgId,
+		senderMemberId: input.senderMemberId,
+		body: input.body,
+		requestedMemberIds: input.requestedMentionIds,
+	});
 
 	const [inserted] = await tx
 		.insert(wgChatMessages)

@@ -2,7 +2,7 @@ import { eurosToCents, formatCentsInput, parseEuroAmount } from '@/core/utils/am
 import { inputDateToIso, isoToInputDate } from '@/core/utils/local-date';
 import { isRecurringDueAtInRange } from '@/core/validators/recurring-due-range';
 import type { ExpenseCategory } from '@/features/expenses/expense-categories';
-import { AMOUNT_MAX_EUROS } from '@/features/expenses/expense-constants';
+import { amountErrorReason } from '@/features/expenses/expense-constants';
 import { participantsOrAll } from '@/features/expenses/expense-form-draft';
 import { equalSplitParticipants, type SplitMode } from '@/features/expenses/expense-split-input';
 import type { MemberOption, RecurringSplit } from '@/features/expenses/expense-types';
@@ -77,14 +77,15 @@ export function initialManualMap(
 	);
 }
 
+const RECURRING_AMOUNT_ERROR_KEYS = {
+	decimals: 'expenses-recurring.form.error.amountDecimals',
+	tooLarge: 'expenses-recurring.form.error.amountMax',
+	invalid: 'expenses-recurring.form.error.amountPositive',
+} as const;
+
 /** Why an amount field is rejected; above the maximum the amount is too large, not too small. */
 export function recurringAmountError(euros: number | null, raw: string): Message {
-	if (euros === null && /[.,]\d{3,}\s*(€|EUR)?$/i.test(raw.trim())) {
-		return { key: 'expenses-recurring.form.error.amountDecimals' };
-	}
-	return euros !== null && euros > AMOUNT_MAX_EUROS
-		? { key: 'expenses-recurring.form.error.amountMax' }
-		: { key: 'expenses-recurring.form.error.amountPositive' };
+	return { key: RECURRING_AMOUNT_ERROR_KEYS[amountErrorReason(euros, raw)] };
 }
 
 /**

@@ -187,7 +187,7 @@ describe('issue swarm routes', () => {
 			assert.deepEqual(await apiFetch('/api/test'), {
 				ok: false,
 				status: 0,
-				error: 'Unerwartete Serverantwort',
+				error: 'invalid_response',
 			});
 		} finally {
 			globalThis.fetch = originalFetch;
@@ -206,7 +206,7 @@ describe('issue swarm routes', () => {
 			assert.deepEqual(await apiFetch('/api/test'), {
 				ok: false,
 				status: 0,
-				error: 'Unerwartete Serverantwort',
+				error: 'invalid_response',
 			});
 		} finally {
 			globalThis.fetch = originalFetch;

@@ -128,13 +128,6 @@ export default {
 			'Allocated {sum} of {total} · {state, select, match {matches} short {{amount} still open} other {{amount} over}}',
 		equalHint: 'Enter an amount and it will be split equally.',
 	},
-	interval: {
-		monthly: 'monthly',
-		quarterly: 'quarterly',
-		halfYearly: 'every six months',
-		yearly: 'yearly',
-		everyMonths: 'every {count} months',
-	},
 	errors: {
 		saveCreated: 'The fixed cost could not be added',
 		saveUpdated: 'The fixed cost could not be updated',

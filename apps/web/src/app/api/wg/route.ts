@@ -10,7 +10,6 @@ import {
 	withIdempotentWrite,
 } from '@/core/db/idempotent-write';
 import { isUniqueViolation } from '@/core/db/pg-errors';
-import { LIMITS } from '@/core/db/schema';
 import { TransactionAbort, withTransaction } from '@/core/db/transaction';
 import { requireAccount } from '@/core/guards/require-account';
 import { conflict, rateLimitResponse, serverError } from '@/core/http/api-errors';
@@ -21,7 +20,7 @@ import { logApiError } from '@/core/infra/observability';
 import { inheritedMailPrefs } from '@/core/mail/unsubscribe';
 import { checkRateLimit, clientIpKey, rateLimitFailMode, registerLimiter } from '@/core/rate-limit';
 import { generateShareCode, isValidShareCode } from '@/core/utils/share-code';
-import { WG_NAME_MAX_LENGTH } from '@/shared/lib/limits';
+import { MEMBER_NAME_MAX_LENGTH, WG_NAME_MAX_LENGTH } from '@/shared/lib/limits';
 
 const WG_NAME_MIN = 1;
 const SHARE_CODE_RETRIES = 5;
@@ -30,7 +29,7 @@ const wgCreateCodec = responseCodec();
 
 const createWgSchema = z.object({
 	name: z.string().trim().min(WG_NAME_MIN).max(WG_NAME_MAX_LENGTH),
-	creatorName: z.string().trim().min(WG_NAME_MIN).max(LIMITS.NAME_MAX),
+	creatorName: z.string().trim().min(WG_NAME_MIN).max(MEMBER_NAME_MAX_LENGTH),
 });
 
 export async function POST(req: NextRequest): Promise<NextResponse> {

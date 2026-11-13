@@ -31,6 +31,7 @@ const wgChatMentions = pgTable('wg_chat_mentions', {
 const wgMembers = pgTable('wg_members', {
 	id: uuid('id'),
 	wgId: uuid('wg_id'),
+	name: text('name'),
 	deactivatedAt: timestamp('deactivated_at', { withTimezone: true }),
 });
 
@@ -145,7 +146,7 @@ const withTransaction = async <R>(operation: (tx: unknown) => Promise<R>): Promi
 			from: (table: unknown) => ({
 				where: () =>
 					table === wgMembers
-						? Object.assign(Promise.resolve([{ id: mentionedId }]), {
+						? Object.assign(Promise.resolve([{ id: mentionedId, name: 'Ben' }]), {
 								// The sender's active-member re-check under the lock.
 								limit: () => ({ for: async () => (state.senderActive ? [{ id: memberId }] : []) }),
 							})
@@ -309,7 +310,7 @@ function harness() {
 				new Request('https://example.invalid', {
 					method: 'POST',
 					headers: { 'Idempotency-Key': key },
-					body: JSON.stringify({ body: 'Hello', mentionMemberIds: [mentionedId] }),
+					body: JSON.stringify({ body: 'Hello @Ben', mentionMemberIds: [mentionedId] }),
 				}) as never,
 				{ params: Promise.resolve({ code: 'MTE8PZAT' }) } as never,
 			),
