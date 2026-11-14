@@ -115,8 +115,9 @@ dazu.
 
 ### Umzug von Splitwise, Splid, Tricount oder Settle Up
 
-Exportiere eine CSV-Datei aus Splitwise, Splid, Tricount oder Settle Up (bei Tricount den
-Excel-Export als CSV speichern) und importiere sie unter *Ausgaben → Import*.
+Exportiere eine CSV-Datei aus Splitwise, Splid oder Settle Up und importiere sie unter
+*Ausgaben → Import*. Tricount hat den Export mit Version 8 (2024) entfernt; eine Datei aus einer
+früheren Version lässt sich weiter importieren (einen Excel-Export vorher als CSV speichern).
 ManaWG ordnet die Namen deinen Mitbewohnern zu, überspringt Zeilen, die es schon gibt, und kann
 einen ganzen Import rückgängig machen. Ausgaben lassen sich auch aus einem Screenshot lesen; die
 Texterkennung läuft in deinem Browser, das Bild verlässt dein Gerät also nicht.
