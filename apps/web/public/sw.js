@@ -128,14 +128,24 @@ const fetchWithTimeout = async (request) => {
 	}
 };
 
-// The worker has no catalog, so the one fallback sentence follows the browser language.
-const pushFallbackBody = (language) => {
-	if (language.startsWith('en')) return 'The notification could not be read.';
-	if (language.startsWith('es')) return 'No se pudo leer la notificación.';
-	return 'Benachrichtigung konnte nicht gelesen werden.';
+// The worker has no catalog, so the one fallback sentence follows the device languages: German
+// only for a German device, Spanish for a Spanish one, English for every unsupported language.
+const PUSH_FALLBACK_BODIES = {
+	de: 'Benachrichtigung konnte nicht gelesen werden.',
+	en: 'The notification could not be read.',
+	es: 'No se pudo leer la notificación.',
+};
+const pushFallbackBody = (languages) => {
+	for (const language of languages) {
+		const primary = typeof language === 'string' ? language.toLowerCase().split('-')[0] : '';
+		if (Object.hasOwn(PUSH_FALLBACK_BODIES, primary)) return PUSH_FALLBACK_BODIES[primary];
+	}
+	return PUSH_FALLBACK_BODIES.en;
 };
 const fallbackPushData = () => ({
-	body: pushFallbackBody(self.navigator.language.toLowerCase()),
+	body: pushFallbackBody(
+		self.navigator.languages?.length ? self.navigator.languages : [self.navigator.language],
+	),
 	title: 'ManaWG',
 	url: '/',
 });
