@@ -67,6 +67,8 @@ settled.
 
 ### Fixed
 
+- The import instructions in the README no longer tell you to export from Tricount, which removed
+  its export in version 8 (2024). Files exported from an earlier Tricount version still import.
 - A taken name on the join page now moves focus to the name field even when the field was hidden.
 - Going offline no longer puts a red error above the expenses, fixed costs, debts, pinboard or
   activity you were already looking at. The offline bar says it; the error only appears when nothing could
