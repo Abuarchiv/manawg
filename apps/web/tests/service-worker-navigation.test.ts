@@ -310,3 +310,51 @@ for (const failure of ['rejects', 'answers with an error']) {
 		assert.match((await shell.get(OFFLINE)?.text()) ?? '', /chunks\/old\.js/);
 	});
 }
+
+type PushLanguage = { language: string; languages?: string[] };
+
+// The worker reads navigator and registration from its scope when the push event fires, so a test
+// swaps those two around one unreadable payload and reads back what the notification would show.
+async function pushFallback(language: PushLanguage) {
+	const scope = worker.self as Record<string, unknown>;
+	scope.navigator = language;
+	const shown: { title: string; body: string }[] = [];
+	scope.registration = {
+		showNotification: async (title: string, options: { body: string }) => {
+			shown.push({ title, body: options.body });
+		},
+	};
+	let completion: Promise<unknown> | undefined;
+	handlers.get('push')?.({
+		data: {
+			json: () => {
+				throw new Error('not JSON');
+			},
+		},
+		waitUntil: (promise: Promise<unknown>) => {
+			completion = promise;
+		},
+	});
+	await completion;
+	return shown;
+}
+
+test('an unreadable push on a French device falls back to English', async () => {
+	const shown = await pushFallback({ language: 'fr-FR', languages: ['fr-FR'] });
+
+	assert.deepEqual(shown, [{ title: 'ManaWG', body: 'The notification could not be read.' }]);
+});
+
+test('an unreadable push on a German device keeps the German sentence', async () => {
+	const shown = await pushFallback({ language: 'de-DE', languages: ['de-DE'] });
+
+	assert.deepEqual(shown, [
+		{ title: 'ManaWG', body: 'Benachrichtigung konnte nicht gelesen werden.' },
+	]);
+});
+
+test('an unreadable push reads navigator.languages past an unsupported first entry', async () => {
+	const shown = await pushFallback({ language: 'fr-FR', languages: ['fr-FR', 'es-ES'] });
+
+	assert.deepEqual(shown, [{ title: 'ManaWG', body: 'No se pudo leer la notificación.' }]);
+});
