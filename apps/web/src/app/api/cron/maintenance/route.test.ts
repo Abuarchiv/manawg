@@ -65,6 +65,13 @@ mock.module('@/core/db/private-image-deletions', {
 		purgeFinishedPrivateImageDeletions: async () => 0,
 	},
 });
+mock.module('@/core/mail/solo-invite', {
+	namedExports: {
+		sendSoloInviteMails: async () => {
+			throw new Error('solo invite mails need the Auth service role');
+		},
+	},
+});
 mock.module('@/core/mail/mail-retention', {
 	namedExports: { purgeOldMailLog: async () => 0 },
 });

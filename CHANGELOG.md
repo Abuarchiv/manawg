@@ -10,6 +10,11 @@ settled.
 
 ### Added
 
+- The creator of a flat that is still alone a day after it was created gets one email with a
+  button to invite flatmates. It goes out once per flat, between 24 and 72 hours after creation,
+  from the daily maintenance job, in the member's language, and only to a confirmed address. Its
+  unsubscribe link turns off setup tips by email for every flat of the account. Self-hosted
+  instances apply the new column with the usual migrations on start.
 - Members get a push when a new flatmate joins ("Mina joined Altbau"). It follows the
   noticeboard notification setting; the person who joined does not get it.
 - Debtors get a push when an expense changes in amount, share or date ("your share 5.00 EUR to

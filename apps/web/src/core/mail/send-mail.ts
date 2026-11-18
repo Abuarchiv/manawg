@@ -5,7 +5,7 @@ import { logApiError } from '@/core/infra/observability';
 import type { RenderedMail } from './brand-mail';
 import { createMailTransport, type MailTransport, maskEmail, readAllowlist } from './transport';
 
-type MailKind = 'welcome' | 'invitation' | 'reminder' | 'account_deleted';
+type MailKind = 'welcome' | 'invitation' | 'reminder' | 'solo_invite' | 'account_deleted';
 
 export interface SendMailInput {
 	kind: MailKind;
@@ -15,7 +15,7 @@ export interface SendMailInput {
 	mail: RenderedMail;
 	wgId?: string;
 	memberId?: string;
-	/** Present for optional mails (reminder); drives the List-Unsubscribe header. */
+	/** Present for optional mails (reminder, solo invite); drives the List-Unsubscribe header. */
 	unsubscribeUrl?: string;
 }
 

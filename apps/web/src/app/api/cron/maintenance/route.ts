@@ -18,6 +18,7 @@ import { logApiError, withCronLogging } from '@/core/infra/observability';
 import { removeSupabaseImages } from '@/core/infra/supabase-storage';
 import { confirmedRecipientOf, sendAccountDeletedMail } from '@/core/mail/account-deleted';
 import { purgeOldMailLog } from '@/core/mail/mail-retention';
+import { sendSoloInviteMails } from '@/core/mail/solo-invite';
 import { DEFAULT_LOCALE } from '@/shared/i18n/locale';
 
 export const maxDuration = 60;
@@ -133,7 +134,8 @@ async function purgeRetention(): Promise<void> {
 
 /**
  * Purges expired replay rows and old ledger rows, retries pending account deletions,
- * removes queued private images and queues orphaned uploads for removal.
+ * removes queued private images, queues orphaned uploads for removal and sends the invitation
+ * reminder to WGs that are still alone.
  */
 export const GET = withCronLogging(
 	'maintenance',
@@ -159,11 +161,13 @@ export const GET = withCronLogging(
 						return confirmed;
 					}
 				: null;
-		const [purge, deletions, privateImages, orphans] = await Promise.allSettled([
+		const [purge, deletions, privateImages, orphans, soloInvites] = await Promise.allSettled([
 			purgeExpiredIdempotencyResponses(),
 			retryPendingAccountDeletions(deleteAuth),
 			cleanupPrivateImages(),
 			sweepOrphans(),
+			// Addresses come from Auth, so without the service role there is nobody to write to.
+			auth ? sendSoloInviteMails() : Promise.resolve(null),
 		]);
 		await purgeRetention();
 		if (orphans.status === 'rejected')
@@ -176,6 +180,8 @@ export const GET = withCronLogging(
 		if (privateImages.status === 'rejected') {
 			logApiError('[maintenance] private image cleanup failed', privateImages.reason);
 		}
+		if (soloInvites.status === 'rejected')
+			logApiError('[maintenance] solo invite mails failed', soloInvites.reason);
 		const recoveryPending =
 			deletions.status === 'fulfilled' &&
 			(!deleteAuth ? deletions.value.pending > 0 : deletions.value.failed > 0);
@@ -188,6 +194,7 @@ export const GET = withCronLogging(
 			purge.status === 'fulfilled' &&
 			deletions.status === 'fulfilled' &&
 			orphans.status === 'fulfilled' &&
+			soloInvites.status === 'fulfilled' &&
 			!recoveryPending &&
 			!imageCleanupProblem;
 		return NextResponse.json(
@@ -195,6 +202,7 @@ export const GET = withCronLogging(
 				ok,
 				purgedIdempotencyRows: purge.status === 'fulfilled' ? purge.value : null,
 				orphanUploads: orphans.status === 'fulfilled' ? orphans.value : null,
+				soloInviteMails: soloInvites.status === 'fulfilled' ? soloInvites.value : null,
 				accountDeletions:
 					deletions.status === 'fulfilled'
 						? { ...deletions.value, authAdminAvailable: Boolean(deleteAuth) }

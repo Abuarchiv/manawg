@@ -17,6 +17,13 @@ export default {
 				'Tus compañeros de piso ya no podrán recordarte importes pendientes por correo ni por push. Tus saldos seguirán visibles en la app.',
 			done: 'Ya no recibirás recordatorios. Puedes volver a activarlos en Ajustes, dentro de la app.',
 		},
+		onboarding: {
+			title: 'Darse de baja de los consejos para empezar',
+			question: '¿Darte de baja de los consejos para configurar el piso?',
+			explain:
+				'Ya no recibirás ningún correo que te recuerde invitar a tus compañeros de piso. En la app no cambia nada.',
+			done: 'Ya no recibirás consejos para configurar el piso por correo.',
+		},
 		submit: 'Darme de baja',
 		hint: 'Puedes volver a activarlo en Ajustes cuando quieras.',
 		doneTitle: 'Baja confirmada',

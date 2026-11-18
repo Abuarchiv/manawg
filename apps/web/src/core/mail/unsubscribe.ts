@@ -10,7 +10,7 @@ import { APP_ORIGIN } from './brand-mail';
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** Which optional mail an unsubscribe link turns off. */
-const UNSUBSCRIBE_KINDS = ['statement', 'reminders'] as const;
+const UNSUBSCRIBE_KINDS = ['statement', 'reminders', 'onboarding'] as const;
 export type UnsubscribeKind = (typeof UNSUBSCRIBE_KINDS)[number];
 
 export interface UnsubscribeToken {
@@ -81,6 +81,7 @@ export async function memberLocale(memberId: string): Promise<Locale | null> {
 const PREFERENCE_KEY = {
 	statement: 'notifyStatementEmail',
 	reminders: 'notifyReminders',
+	onboarding: 'notifyOnboardingEmail',
 } as const;
 
 /**
@@ -113,5 +114,6 @@ export function inheritedMailPrefs(authUserId: string | null) {
 	return {
 		notifyStatementEmail: fromActive(wgMembers.notifyStatementEmail),
 		notifyReminders: fromActive(wgMembers.notifyReminders),
+		notifyOnboardingEmail: fromActive(wgMembers.notifyOnboardingEmail),
 	};
 }

@@ -48,6 +48,15 @@ export default {
 		footer:
 			'La misma persona puede enviarte un recordatorio como máximo una vez cada dos días, y solo si los has activado.',
 	},
+	soloInvite: {
+		subject: 'Aún no hay nadie más en {wgName}',
+		preheader: 'Con un enlace, tus compañeros de piso ya están dentro.',
+		eyebrow: 'Invitar',
+		title: 'Aún no hay nadie más en {wgName}.',
+		body: 'Comparte el enlace de invitación desde la app por WhatsApp, Signal o correo, y cada uno apunta sus propios gastos.',
+		button: 'Invitar a compañeros de piso',
+		footer: 'Este correo solo llega una vez, un día después de crear el piso.',
+	},
 	accountDeleted: {
 		subject: 'Tu cuenta ha sido eliminada',
 		preheader: 'Se ha eliminado tu acceso.',

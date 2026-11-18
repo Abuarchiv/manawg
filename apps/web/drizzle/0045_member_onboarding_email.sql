@@ -1,0 +1,1 @@
+ALTER TABLE "wg_members" ADD COLUMN "notify_onboarding_email" boolean DEFAULT true NOT NULL;

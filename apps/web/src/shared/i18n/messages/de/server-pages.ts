@@ -14,6 +14,13 @@ export default {
 				'Mitbewohner können dich dann nicht mehr per E-Mail oder Push an offene Beträge erinnern. Deine Salden bleiben in der App sichtbar.',
 			done: 'Du bekommst keine Erinnerungen mehr. Unter Einstellungen in der App kannst du sie wieder einschalten.',
 		},
+		onboarding: {
+			title: 'Hinweise zum Einrichten abbestellen',
+			question: 'Hinweise zum Einrichten der WG abbestellen?',
+			explain:
+				'Du bekommst dann keine E-Mail mehr, die dich ans Einladen deiner Mitbewohner erinnert. In der App ändert sich nichts.',
+			done: 'Du bekommst keine Hinweise zum Einrichten mehr per E-Mail.',
+		},
 		submit: 'Abbestellen',
 		hint: 'Du kannst es jederzeit unter Einstellungen wieder einschalten.',
 		doneTitle: 'Abbestellt',
