@@ -46,6 +46,15 @@ export default {
 		footer:
 			'Erinnerungen kommen höchstens alle zwei Tage von derselben Person und nur, wenn du sie eingeschaltet hast.',
 	},
+	soloInvite: {
+		subject: 'Noch allein in {wgName}',
+		preheader: 'Ein Link reicht, dann sind deine Mitbewohner dabei.',
+		eyebrow: 'Einladen',
+		title: 'Du bist noch allein in {wgName}.',
+		body: 'Teile den Einladungslink aus der App per WhatsApp, Signal oder E-Mail, dann tragen alle ihre Ausgaben selbst ein.',
+		button: 'Mitbewohner einladen',
+		footer: 'Diese E-Mail kommt nur einmal, einen Tag nachdem du die WG angelegt hast.',
+	},
 	accountDeleted: {
 		subject: 'Dein Konto ist gelöscht',
 		preheader: 'Dein Login ist entfernt.',

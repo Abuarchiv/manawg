@@ -43,10 +43,12 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 	if (!parsed) return invalid(req);
 	const locale = (await memberLocale(parsed.memberId)) ?? requestLocale(req);
 	const t = serverT(locale, 'server-pages');
+	// Setup tips have no switch in the settings, so their page does not point there.
+	const hint = parsed.kind === 'onboarding' ? '' : `<small>${t('unsubscribe.hint')}</small>`;
 	return page(
 		locale,
 		t(`unsubscribe.${parsed.kind}.title`),
-		`<h1>${t(`unsubscribe.${parsed.kind}.question`)}</h1><p>${t(`unsubscribe.${parsed.kind}.explain`)}</p><form method="post" action="/api/email/unsubscribe?t=${encodeURIComponent(token)}"><input type="hidden" name="List-Unsubscribe" value="One-Click"><button type="submit">${t('unsubscribe.submit')}</button></form><small>${t('unsubscribe.hint')}</small>`,
+		`<h1>${t(`unsubscribe.${parsed.kind}.question`)}</h1><p>${t(`unsubscribe.${parsed.kind}.explain`)}</p><form method="post" action="/api/email/unsubscribe?t=${encodeURIComponent(token)}"><input type="hidden" name="List-Unsubscribe" value="One-Click"><button type="submit">${t('unsubscribe.submit')}</button></form>${hint}`,
 	);
 }
 

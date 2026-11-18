@@ -137,6 +137,7 @@ mock.module('@/core/mail/mail-retention', {
 		},
 	},
 });
+mock.module('@/core/mail/solo-invite', { namedExports: { sendSoloInviteMails: async () => null } });
 mock.module('@/core/infra/cron-auth', { namedExports: { requireCronSecret: () => null } });
 mock.module('@/core/infra/sentry', {
 	namedExports: { captureSentryException() {}, logSentryApiError() {} },
@@ -165,6 +166,7 @@ test('maintenance attempts deletion recovery when idempotency cleanup fails', as
 		ok: false,
 		purgedIdempotencyRows: null,
 		orphanUploads: null,
+		soloInviteMails: null,
 		accountDeletions: { ...harness.recoveryResult, authAdminAvailable: false },
 		privateImageCleanup: {
 			attempted: 0,
@@ -188,6 +190,7 @@ test('maintenance attempts deletion recovery when idempotency cleanup fails', as
 		ok: true,
 		purgedIdempotencyRows: 1,
 		orphanUploads: null,
+		soloInviteMails: null,
 		accountDeletions: { ...harness.recoveryResult, authAdminAvailable: false },
 		privateImageCleanup: {
 			attempted: 0,

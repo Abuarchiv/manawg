@@ -316,6 +316,13 @@
       "when": 1794257760000,
       "tag": "0044_audit_member_absence_entity_type",
       "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "7",
+      "when": 1795027503047,
+      "tag": "0045_member_onboarding_email",
+      "breakpoints": true
     }
   ]
 }

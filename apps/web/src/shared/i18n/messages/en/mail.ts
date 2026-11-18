@@ -48,6 +48,15 @@ export default {
 		footer:
 			'Reminders come at most once every two days from the same person, and only if you have turned them on.',
 	},
+	soloInvite: {
+		subject: 'Still on your own in {wgName}',
+		preheader: 'One link and your flatmates are in.',
+		eyebrow: 'Invite',
+		title: 'You are still on your own in {wgName}.',
+		body: 'Share the invitation link from the app by WhatsApp, Signal or email, and everyone adds their own expenses.',
+		button: 'Invite flatmates',
+		footer: 'This email comes only once, a day after you created the flat.',
+	},
 	accountDeleted: {
 		subject: 'Your account has been deleted',
 		preheader: 'Your login has been removed.',

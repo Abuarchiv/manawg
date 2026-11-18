@@ -145,6 +145,29 @@ export function renderReminderMail(input: {
 	});
 }
 
+/** Invitation nudge: the creator of a WG that is still alone a day later gets one button to the WG home. */
+export function renderSoloInviteMail(input: {
+	wgName: string;
+	shareCode: string;
+	unsubscribeUrl: string;
+	locale?: Locale;
+}): RenderedMail {
+	const locale = input.locale ?? DEFAULT_LOCALE;
+	const t = serverT(locale, 'mail');
+	const wg = { wgName: input.wgName };
+	return renderBrandMail({
+		locale,
+		subject: t('soloInvite.subject', wg),
+		preheader: t('soloInvite.preheader'),
+		eyebrow: t('soloInvite.eyebrow'),
+		title: t('soloInvite.title', wg),
+		blocks: [{ kind: 'paragraph', text: t('soloInvite.body') }],
+		button: { label: t('soloInvite.button'), url: WG_PATH(input.shareCode) },
+		footerNote: t('soloInvite.footer'),
+		footerLinks: [{ label: t('shell.unsubscribe'), url: input.unsubscribeUrl }],
+	});
+}
+
 /** Farewell mail, the last one an account receives. */
 export function renderAccountDeletedMail(locale: Locale = DEFAULT_LOCALE): RenderedMail {
 	const t = serverT(locale, 'mail');
