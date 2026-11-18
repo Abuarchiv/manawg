@@ -480,6 +480,31 @@ test.describe('daily overview home', () => {
 		await expect(page.getByText('Ausgeglichen', { exact: true })).toHaveCount(0);
 	});
 
+	test('a page nobody touches stops polling until the next input', async ({ page }) => {
+		await page.clock.install({ time: new Date('2026-09-27T10:00:00.000Z') });
+		await setupMember(page);
+		await mockChoresDashboard(page, []);
+		let unreadReads = 0;
+		await page.route(`**${BASE}/chat/unread-count`, (route) => {
+			unreadReads++;
+			return route.fulfill({ status: 200, json: { count: 0, overflow: false } });
+		});
+
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}`);
+		await dismissOnboarding(page);
+		await expect.poll(() => unreadReads).toBeGreaterThan(0);
+
+		// Past the five idle minutes, a whole poll period passes without a request.
+		await page.clock.fastForward(6 * 60_000);
+		const idleReads = unreadReads;
+		await page.clock.runFor(60_000);
+		expect(unreadReads).toBe(idleReads);
+
+		await page.keyboard.press('Shift');
+		await page.clock.runFor(2_000);
+		await expect.poll(() => unreadReads).toBeGreaterThan(idleReads);
+	});
+
 	test('refreshes the agenda range after Berlin midnight on resume', async ({ page }) => {
 		await page.clock.install({ time: new Date('2026-09-27T21:59:30.000Z') });
 		await setupMember(page);
