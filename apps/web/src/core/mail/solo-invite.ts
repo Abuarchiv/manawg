@@ -7,9 +7,11 @@ import { sendMailSafely } from './send-mail';
 import { renderSoloInviteMail } from './templates';
 import { unsubscribeUrl } from './unsubscribe';
 
-// Sent one after another within the cron's minute; a run with more due WGs leaves the rest to the
-// next day, which the 48 h window still covers. Batch the provider calls if a day ever has more.
+// Sent one after another inside the maintenance cron (60 s limit, killed after that). No new
+// mail starts after the budget, and one provider request takes at most 15 s; what is left waits
+// for the next day, which the 48 h window still covers.
 const RUN_LIMIT = 50;
+const SEND_BUDGET_MS = 30_000;
 
 export interface SoloInviteRun {
 	candidates: number;
@@ -17,6 +19,8 @@ export interface SoloInviteRun {
 	/** No confirmed address, or the mail already went out. */
 	skipped: number;
 	failed: number;
+	/** Left for the next run: the time budget ran out or the provider asked to wait. */
+	deferred: number;
 }
 
 /**
@@ -60,12 +64,23 @@ export function findSoloInviteCandidates(limit = RUN_LIMIT) {
 }
 
 /** Sends the one invitation reminder per still-alone WG (dedupe key `solo_invite:<wgId>`). */
-export async function sendSoloInviteMails(): Promise<SoloInviteRun> {
+export async function sendSoloInviteMails(budgetMs = SEND_BUDGET_MS): Promise<SoloInviteRun> {
+	const deadline = Date.now() + budgetMs;
 	const candidates = await findSoloInviteCandidates();
-	const run: SoloInviteRun = { candidates: candidates.length, sent: 0, skipped: 0, failed: 0 };
+	const run: SoloInviteRun = {
+		candidates: candidates.length,
+		sent: 0,
+		skipped: 0,
+		failed: 0,
+		deferred: 0,
+	};
 	if (candidates.length === 0) return run;
 	const { emails } = await loadConfirmedEmails(candidates.map((row) => row.authUserId));
-	for (const row of candidates) {
+	for (const [index, row] of candidates.entries()) {
+		if (Date.now() > deadline) {
+			run.deferred += candidates.length - index;
+			break;
+		}
 		const to = emails.get(row.authUserId);
 		if (!to) {
 			run.skipped++;
@@ -88,7 +103,11 @@ export async function sendSoloInviteMails(): Promise<SoloInviteRun> {
 		});
 		if (result === 'sent' || result === 'unconfirmed') run.sent++;
 		else if (result === 'duplicate') run.skipped++;
-		else run.failed++;
+		else if (result === 'deferred') {
+			// Quota reached: the next mails would be deferred as well.
+			run.deferred += candidates.length - index;
+			break;
+		} else run.failed++;
 	}
 	return run;
 }

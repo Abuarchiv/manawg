@@ -114,6 +114,7 @@ export function inheritedMailPrefs(authUserId: string | null) {
 	return {
 		notifyStatementEmail: fromActive(wgMembers.notifyStatementEmail),
 		notifyReminders: fromActive(wgMembers.notifyReminders),
-		notifyOnboardingEmail: fromActive(wgMembers.notifyOnboardingEmail),
+		// No settings switch can undo this opt-out, so it also survives moving out of every WG.
+		notifyOnboardingEmail: sql<boolean>`coalesce((select bool_and(${wgMembers.notifyOnboardingEmail}) from ${wgMembers} where ${wgMembers.authUserId} = ${authUserId}), true)`,
 	};
 }

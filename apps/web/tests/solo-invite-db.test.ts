@@ -111,6 +111,11 @@ test('only WGs still alone 24 to 72 hours after creation get the reminder, once'
 	await core.db.insert(core.accountDeletions).values({ authUserId: deleting.adminAuth });
 	deletedAccounts.push(deleting.adminAuth);
 
+	const outOfTime = await soloInvite.sendSoloInviteMails(-1);
+	assert.equal(outOfTime.sent, 0);
+	assert.ok(outOfTime.deferred >= 2, 'nothing starts once the time budget is spent');
+	assert.deepEqual(await mailedWgs(), new Set());
+
 	const first = await soloInvite.sendSoloInviteMails();
 	assert.ok(first.sent >= 2);
 	assert.deepEqual(await mailedWgs(), new Set([due.wgId, movedOut.wgId]));
