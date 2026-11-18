@@ -47,6 +47,9 @@ settled.
 
 ### Changed
 
+- A page nobody has used for five minutes stops refreshing its lists, the chat and the unread
+  count, even while it stays in front. The first click, key press or scroll refreshes it at once.
+  A tab left open all day no longer sends thousands of requests to the server.
 - While you are alone in the flat, the Start card's dismiss button reads "Remind me later" and
   hides it only for a week; with flatmates it stays hidden for good as before. Once a flatmate has
   joined and nothing has been entered yet, the card names them, links to "Add expense" and "Open
