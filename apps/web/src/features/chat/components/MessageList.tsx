@@ -160,7 +160,7 @@ export function MessageList({
 								</p>
 							)}
 							<Button variant="ghost" disabled={loadingOlder} onClick={onLoadOlder}>
-								{loadingOlder && <Spinner data-icon="inline-start" />}
+								{loadingOlder && <Spinner data-icon="inline-start" aria-hidden />}
 								{loadingOlder ? t('olderLoading') : olderError ? t('retry') : t('loadOlder')}
 							</Button>
 						</div>

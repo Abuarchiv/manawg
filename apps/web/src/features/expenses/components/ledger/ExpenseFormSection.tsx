@@ -351,7 +351,7 @@ export function ExpenseFormSection({
 									disabled={submitBlocked}
 									aria-label={message(submitLabel.accessibleName)}
 								>
-									{formSaving && <Spinner data-icon="inline-start" />}
+									{formSaving && <Spinner data-icon="inline-start" aria-hidden />}
 									{message(submitLabel.text)}
 								</Button>
 								<Button

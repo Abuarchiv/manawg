@@ -140,7 +140,7 @@ export function ImportPreviewStep({ headingRef, wizard }: StepProps) {
 					disabled={busy || selectedCount === 0}
 					onClick={() => void wizard.submitCommit()}
 				>
-					{busy && <Spinner data-icon="inline-start" />}
+					{busy && <Spinner data-icon="inline-start" aria-hidden />}
 					{t('actions.import', { count: String(selectedCount) })}
 				</Button>
 				<Button variant="outline" disabled={busy} onClick={() => wizard.goTo('mapping')}>

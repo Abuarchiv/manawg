@@ -174,7 +174,7 @@ export function RecurringTemplateItem({
 							disabled={pending}
 							aria-label={t('bookAria', { description: item.description })}
 						>
-							{creating && <Spinner data-icon="inline-start" />}
+							{creating && <Spinner data-icon="inline-start" aria-hidden />}
 							{t('book')}
 						</Button>
 					) : alreadyCreated ? (

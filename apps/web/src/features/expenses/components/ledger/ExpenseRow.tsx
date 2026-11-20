@@ -295,7 +295,7 @@ export const ExpenseRow = memo(function ExpenseRow({
 												})}
 											>
 												{pendingIds.has(split.id) ? (
-													<Spinner data-icon="inline-start" />
+													<Spinner data-icon="inline-start" aria-hidden />
 												) : (
 													<Check data-icon="inline-start" />
 												)}

@@ -168,7 +168,7 @@ export function ExpenseExtras({
 								}}
 								disabled={formSaving}
 							>
-								{templateSaving && <Spinner data-icon="inline-start" />}
+								{templateSaving && <Spinner data-icon="inline-start" aria-hidden />}
 								{t('saveAsTemplate')}
 							</Button>
 						)}
