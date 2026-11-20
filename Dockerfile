@@ -22,6 +22,11 @@ ARG NEXT_PUBLIC_VAPID_PUBLIC_KEY=""
 ARG NEXT_PUBLIC_SENTRY_DSN=""
 ARG NEXT_PUBLIC_POSTHOG_KEY=""
 ARG NEXT_PUBLIC_POSTHOG_HOST=""
+# Sentry release name (for example the commit SHA). With SENTRY_ORG, SENTRY_PROJECT and the build
+# secret sentry_auth_token the build also uploads source maps; the token never enters a layer.
+ARG SENTRY_RELEASE=""
+ARG SENTRY_ORG=""
+ARG SENTRY_PROJECT=""
 ENV NEXT_TELEMETRY_DISABLED=1 \
 	NEXT_OUTPUT_STANDALONE=true \
 	NEXT_DEPLOYMENT_ID=manawg-selfhost-config \
@@ -34,7 +39,8 @@ ENV NEXT_TELEMETRY_DISABLED=1 \
 	NEXT_PUBLIC_SENTRY_DSN=${NEXT_PUBLIC_SENTRY_DSN} \
 	NEXT_PUBLIC_POSTHOG_KEY=${NEXT_PUBLIC_POSTHOG_KEY} \
 	NEXT_PUBLIC_POSTHOG_HOST=${NEXT_PUBLIC_POSTHOG_HOST}
-RUN pnpm --filter @manawg/web build
+RUN --mount=type=secret,id=sentry_auth_token,env=SENTRY_AUTH_TOKEN \
+	SENTRY_RELEASE="${SENTRY_RELEASE:-local}" pnpm --filter @manawg/web build
 # The setup step (migrations, bucket, mail templates) ships as one file with its dependencies.
 WORKDIR /repo/apps/web
 RUN "$(node -p "require.resolve('esbuild/bin/esbuild', { paths: [require('node:path').dirname(require.resolve('drizzle-kit'))] })")" \
