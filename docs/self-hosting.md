@@ -307,7 +307,7 @@ Optional features stay off without their settings, and the app keeps working:
   build your own image with `docker compose up -d --build`.
 - **Rate limiting** runs in the app's memory. That is enough for one app container; Upstash Redis
   is not needed.
-- **Error reporting and product analytics** (Sentry, PostHog) are off.
+- **Error reporting and product analytics** (Sentry, PostHog) are off. To turn on Sentry, build your own image with `--build-arg NEXT_PUBLIC_SENTRY_DSN=…` and `--build-arg SENTRY_RELEASE=<commit>`. For readable stack traces add `SENTRY_ORG`, `SENTRY_PROJECT` and the build secret `--secret id=sentry_auth_token,env=SENTRY_AUTH_TOKEN`, which uploads source maps without storing the token in the image.
 
 `/api/health` reports what is off under `degradedFeatures`; `docker compose logs app` shows the
 boot lines starting with `[env]`.

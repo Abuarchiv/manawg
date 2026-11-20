@@ -10,6 +10,9 @@ settled.
 
 ### Added
 
+- The Docker image takes `SENTRY_RELEASE`, `SENTRY_ORG` and `SENTRY_PROJECT` build arguments and
+  a `sentry_auth_token` build secret. With them, error reports carry the release and point at the
+  original source lines; the token is not stored in the image.
 - The creator of a flat that is still alone a day after it was created gets one email with a
   button to invite flatmates. It goes out once per flat, between 24 and 72 hours after creation,
   from the daily maintenance job, in the member's language, and only to a confirmed address. Its
