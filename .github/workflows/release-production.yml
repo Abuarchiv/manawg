@@ -1,6 +1,9 @@
 # One dispatch for the documented release: main tip -> Preview gate -> production migration ->
 # production deployment -> tag, GitHub release and Docker image for the version in package.json.
 # Each stage waits for the previous one and stops the release on failure.
+# Vercel is optional: without a Vercel Preview of the commit the Preview gate is the Preview
+# database migration check, and the deploy hook can point at a self-hosted instance
+# (docs/development.md, Releases).
 name: Release production
 
 on:
@@ -29,6 +32,8 @@ jobs:
     permissions:
       actions: write
       contents: write
+      deployments: read
+      statuses: read
     timeout-minutes: 150
     environment:
       name: Production
@@ -44,13 +49,13 @@ jobs:
         id: candidate
         env:
           CONFIRMATION: ${{ inputs.confirmation }}
-          DEPLOY_HOOK: ${{ secrets.VERCEL_PRODUCTION_DEPLOY_HOOK }}
+          DEPLOY_HOOK: ${{ secrets.PRODUCTION_DEPLOY_HOOK || secrets.VERCEL_PRODUCTION_DEPLOY_HOOK }}
           PREVIEW_GATE: ${{ vars.PREVIEW_GATE }}
         run: |
           [ "$GITHUB_REF" = refs/heads/main ] || { echo 'Release only from main.' >&2; exit 1; }
           [ "$CONFIRMATION" = RELEASE_PRODUCTION ] || { echo 'Confirmation must be RELEASE_PRODUCTION.' >&2; exit 1; }
           [ "$PREVIEW_GATE" = on ] || { echo 'Repository variable PREVIEW_GATE must be on; without it no Preview run exists to pass the gate.' >&2; exit 1; }
-          [ -n "$DEPLOY_HOOK" ] || { echo 'Production secret VERCEL_PRODUCTION_DEPLOY_HOOK is missing.' >&2; exit 1; }
+          [ -n "$DEPLOY_HOOK" ] || { echo 'Production secret PRODUCTION_DEPLOY_HOOK (or VERCEL_PRODUCTION_DEPLOY_HOOK) is missing.' >&2; exit 1; }
           echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
           echo "Candidate: $(git rev-parse HEAD)" >> "$GITHUB_STEP_SUMMARY"
 
@@ -93,28 +98,59 @@ jobs:
         id: preview
         env:
           SHA: ${{ steps.candidate.outputs.sha }}
+          VERCEL_PROJECT_NAME: ${{ vars.VERCEL_PROJECT_NAME }}
+          VERCEL_TEAM_SLUG: ${{ vars.VERCEL_TEAM_SLUG }}
         run: |
-          # Vercel builds preview-main and reports a deployment_status; that Preview run is the gate.
+          # With Vercel, it builds preview-main and reports a deployment_status; that Preview run
+          # (migration check and end-to-end tests) is the gate. Without Vercel, or when Vercel
+          # rejects the commit without deploying it, the gate is the Preview migration check that
+          # preview.yml runs after main CI. selectPreviewGate decides; migrate-production.yml
+          # decides again on its own.
+          mode() {
+            gh api "repos/$GITHUB_REPOSITORY/commits/$SHA/statuses?per_page=100" > "$RUNNER_TEMP/statuses.json"
+            gh api "repos/$GITHUB_REPOSITORY/deployments?sha=$SHA&per_page=100" > "$RUNNER_TEMP/deployments.json"
+            node --input-type=module <<'NODE'
+          import { readFileSync } from 'node:fs';
+          import { selectPreviewGate } from './apps/web/scripts/release-workflow-gates.mjs';
+
+          const read = (name) => JSON.parse(readFileSync(`${process.env.RUNNER_TEMP}/${name}.json`, 'utf8'));
+          process.stdout.write(
+            selectPreviewGate({ env: process.env, statuses: read('statuses'), deployments: read('deployments') }),
+          );
+          NODE
+          }
+          # gate <event> <jq job filter>: one line "<run id> <status/conclusion>..." per Preview run.
           gate() {
-            for id in $(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/preview.yml/runs?head_sha=$SHA&event=deployment_status&per_page=50" \
+            for id in $(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/preview.yml/runs?head_sha=$SHA&event=$1&per_page=50" \
               --jq '.workflow_runs[].id'); do
               gh api "repos/$GITHUB_REPOSITORY/actions/runs/$id/jobs?per_page=100" \
-                --jq "[.jobs[] | select(.name == \"db-supabase-preview\" or .name == \"e2e-preview\") | .status + \"/\" + (.conclusion // \"\")] | sort | \"$id \" + join(\" \")"
+                --jq "[.jobs[] | select($2) | .status + \"/\" + (.conclusion // \"\")] | sort | \"$id \" + join(\" \")"
             done
           }
-          if [ "$(git ls-remote origin refs/heads/preview-main | cut -f1)" != "$SHA" ]; then
+          if [ -n "$VERCEL_PROJECT_NAME" ] && [ -n "$VERCEL_TEAM_SLUG" ] &&
+            [ "$(git ls-remote origin refs/heads/preview-main | cut -f1)" != "$SHA" ]; then
             git push --force origin "$SHA:refs/heads/preview-main"
+            # Give Vercel time to report on the pushed commit before its status is read.
+            sleep 30
           fi
           for _ in $(seq 120); do
-            runs="$(gate)"
-            passed="$(grep -m1 ' completed/success completed/success$' <<<"$runs" | cut -d' ' -f1 || true)"
+            gate_mode="$(mode)"
+            case "$gate_mode" in
+              vercel)
+                runs="$(gate deployment_status '.name == "db-supabase-preview" or .name == "e2e-preview"')"
+                passed="$(grep -m1 ' completed/success completed/success$' <<<"$runs" | cut -d' ' -f1 || true)" ;;
+              database)
+                runs="$(gate workflow_run '.name == "db-supabase-preview"')"
+                passed="$(grep -m1 ' completed/success$' <<<"$runs" | cut -d' ' -f1 || true)" ;;
+              *) runs='Vercel has not reported on the commit yet.'; passed='' ;;
+            esac
             if [ -n "$passed" ]; then
               echo "run_id=$passed" >> "$GITHUB_OUTPUT"
-              echo "Preview gate run: $passed" >> "$GITHUB_STEP_SUMMARY"
+              echo "Preview gate ($gate_mode) run: $passed" >> "$GITHUB_STEP_SUMMARY"
               exit 0
             fi
             if grep -qE 'completed/(failure|timed_out)' <<<"$runs"; then
-              echo "Preview gate failed for $SHA:" >&2
+              echo "Preview gate ($gate_mode) failed for $SHA:" >&2
               echo "$runs" >&2
               exit 1
             fi
@@ -125,7 +161,7 @@ jobs:
             fi
             sleep 30
           done
-          echo "Preview gate did not pass in time for $SHA:" >&2
+          echo "Preview gate ($gate_mode) did not pass in time for $SHA:" >&2
           echo "$runs" >&2
           exit 1
 
@@ -151,7 +187,8 @@ jobs:
       - name: Deploy production
         env:
           SHA: ${{ steps.candidate.outputs.sha }}
-          DEPLOY_HOOK: ${{ secrets.VERCEL_PRODUCTION_DEPLOY_HOOK }}
+          # A self-hosted instance's hook, or Vercel's production deploy hook when only that is set.
+          DEPLOY_HOOK: ${{ secrets.PRODUCTION_DEPLOY_HOOK || secrets.VERCEL_PRODUCTION_DEPLOY_HOOK }}
         run: |
           # The hook builds the main tip; if main moved meanwhile, the version check below fails.
           curl -fsS -X POST "$DEPLOY_HOOK" > /dev/null
