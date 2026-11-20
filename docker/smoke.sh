@@ -33,9 +33,11 @@ api() {
 
 step "health"
 i=0
-until [ "$(curl -s "$app/api/health" | jq -r .status 2>/dev/null)" = ok ]; do
+# A healthy answer may be cached by a proxy; a unique query always reaches the app.
+health() { curl -s "$app/api/health?t=$(date +%s)-$i"; }
+until [ "$(health | jq -r .status 2>/dev/null)" = ok ]; do
 	i=$((i + 1))
-	[ "$i" -lt 60 ] || fail "/api/health is not ok: $(curl -s "$app/api/health")"
+	[ "$i" -lt 60 ] || fail "/api/health is not ok: $(health)"
 	sleep 2
 done
 
@@ -97,7 +99,7 @@ archive=$(tail -n 1 "$work/backup.log")
 [ -f "$archive" ] || fail "no backup archive: $(cat "$work/backup.log")"
 ./docker/restore.sh "$archive" >"$work/restore.log" 2>&1 || fail "restore: $(tail -n 5 "$work/restore.log")"
 i=0
-until [ "$(curl -s "$app/api/health" | jq -r .status 2>/dev/null)" = ok ]; do
+until [ "$(health | jq -r .status 2>/dev/null)" = ok ]; do
 	i=$((i + 1))
 	[ "$i" -lt 60 ] || fail "instance not healthy after restore"
 	sleep 2

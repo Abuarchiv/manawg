@@ -155,8 +155,9 @@ jobs:
         run: |
           # The hook builds the main tip; if main moved meanwhile, the version check below fails.
           curl -fsS -X POST "$DEPLOY_HOOK" > /dev/null
-          for _ in $(seq 120); do
-            health="$(curl -sS "$PRODUCTION_APP_URL/api/health" || true)"
+          for attempt in $(seq 120); do
+            # A unique query bypasses the CDN copy of a healthy answer (it may still name the old commit).
+            health="$(curl -sS "$PRODUCTION_APP_URL/api/health?t=$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT-$attempt" || true)"
             if jq -e --arg sha "$SHA" '.version == $sha and .status == "ok" and .database == "ok"' <<<"$health" > /dev/null 2>&1; then
               echo "Production serves $SHA: $health" >> "$GITHUB_STEP_SUMMARY"
               exit 0
