@@ -50,6 +50,11 @@ settled.
 
 ### Changed
 
+- The **Release production** workflow no longer needs Vercel. Without a Vercel Preview of the
+  release commit, its Preview gate is the Preview database migration check, and the new
+  `PRODUCTION_DEPLOY_HOOK` secret can point at a self-hosted deploy endpoint
+  (`VERCEL_PRODUCTION_DEPLOY_HOOK` still works). The release is still tagged only after
+  `/api/health` reports the new version. See the Releases section of `docs/development.md`.
 - A page nobody has used for five minutes stops refreshing its lists, the chat and the unread
   count, even while it stays in front. The first click, key press or scroll refreshes it at once.
   A tab left open all day no longer sends thousands of requests to the server.

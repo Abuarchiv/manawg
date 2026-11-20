@@ -282,6 +282,48 @@ gate, the production migration and the deployment, it creates the tag `vX.Y.Z` a
 release from the `CHANGELOG.md` section, and starts `docker.yml`, which pushes the image as
 `X.Y.Z`, `X.Y`, `X` and `latest`.
 
+### How the release workflow deploys
+
+`release-production.yml` runs these stages for the `main` tip and stops at the first failure:
+
+1. **Main CI**: the push run of `ci.yml` for the commit is green.
+2. **Preview gate**: `selectPreviewGate` in `apps/web/scripts/release-workflow-gates.mjs` picks
+   one of two gates from the commit's GitHub deployments and `Vercel` commit status.
+   - *Vercel gate*, when `VERCEL_PROJECT_NAME` and `VERCEL_TEAM_SLUG` are set and Vercel deploys
+     a Preview of the commit: the workflow pushes the commit to `preview-main`, and the
+     `deployment_status` run of `preview.yml` must pass `db-supabase-preview` and `e2e-preview`.
+   - *Database gate*, when those variables are unset or Vercel rejects the commit without
+     deploying it (for example a blocked account): the `workflow_run` run of `preview.yml` that
+     follows main CI must pass `db-supabase-preview`, the migration check against the Preview
+     Supabase project. No end-to-end tests run against a Preview deployment in this case.
+   `migrate-production.yml` picks the gate again on its own before it touches production.
+3. **Production migration**: `migrate-production.yml` applies the migrations with
+   `DATABASE_MIGRATION_URL`.
+4. **Deploy**: the workflow sends an empty `POST` to the deploy hook and waits up to 30 minutes
+   until `PRODUCTION_APP_URL/api/health` reports `status` and `database` `ok` and `version` equal
+   to the commit SHA. The release is tagged and published only after that.
+
+Settings (repository variables unless noted):
+
+| Name | Kind | Purpose |
+| --- | --- | --- |
+| `PRODUCTION_APP_URL` | variable | Base URL of the production app. Without it the workflow skips. |
+| `PREVIEW_GATE` | variable | Must be `on`; `preview.yml` only runs its jobs then. |
+| `SUPABASE_PRODUCTION_PROJECT_HOST`, `SUPABASE_PREVIEW_PROJECT_HOST` | variables | Supabase projects for the migration and the Preview check. |
+| `VERCEL_PROJECT_NAME`, `VERCEL_TEAM_SLUG` | variables | Optional. Turn on the Vercel gate. |
+| `PRODUCTION_DEPLOY_HOOK` | secret, environment `Production` | URL that deploys the `main` tip, for example a self-hosted endpoint. Wins over `VERCEL_PRODUCTION_DEPLOY_HOOK`. |
+| `VERCEL_PRODUCTION_DEPLOY_HOOK` | secret, environment `Production` | Vercel's production deploy hook, used when `PRODUCTION_DEPLOY_HOOK` is unset. |
+| `DATABASE_MIGRATION_URL` | secret, environment `Production` | Production migration connection. |
+| `SUPABASE_PREVIEW_DATABASE_MIGRATION_URL` | secret, environment `Preview` | Preview migration check connection. |
+
+**Self-hosted production.** The deploy hook only has to accept a `POST` and then build and run
+the current `main` tip; the workflow sends no body and keeps no state about the host. The new
+container must report the commit SHA as `version` in `/api/health`, which reads
+`VERCEL_GIT_COMMIT_SHA`, so the deploy sets that variable to the full SHA it built. Keep the hook
+URL secret, because anyone who has it can start a deployment. When the deploy fails or the new
+version never turns healthy, the workflow fails before it tags, so roll back on the host and fix
+the cause before the next dispatch.
+
 ## Cron jobs
 
 Defined in `apps/web/vercel.json` (UTC schedules), which Vercel reads and the `cron` container of
