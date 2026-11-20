@@ -208,7 +208,7 @@ export function SettlementReviewDialog({
 					</AlertDialogCancel>
 					{!preview && (
 						<Button className="h-auto min-h-11 whitespace-normal py-2 leading-snug" disabled>
-							<Spinner data-icon="inline-start" />
+							<Spinner data-icon="inline-start" aria-hidden />
 							{tSettle('checking')}
 						</Button>
 					)}
@@ -219,7 +219,7 @@ export function SettlementReviewDialog({
 							disabled={settling}
 							onClick={() => void settleCash()}
 						>
-							{settling && <Spinner data-icon="inline-start" />}
+							{settling && <Spinner data-icon="inline-start" aria-hidden />}
 							{settling ? t('saving') : t('recordCash', { amount: money(preview.netCents) })}
 						</Button>
 					)}
@@ -229,7 +229,7 @@ export function SettlementReviewDialog({
 							disabled={settling}
 							onClick={() => void settle()}
 						>
-							{settling && <Spinner data-icon="inline-start" />}
+							{settling && <Spinner data-icon="inline-start" aria-hidden />}
 							{settling ? t('saving') : t('recordPaid', { amount: money(preview.settleableCents) })}
 						</Button>
 					)}

@@ -365,7 +365,7 @@ export function RecurringForm({
 					</Alert>
 				)}
 				<Button type="submit" className="w-full whitespace-normal" disabled={submitting}>
-					{submitting && <Spinner data-icon="inline-start" />}
+					{submitting && <Spinner data-icon="inline-start" aria-hidden />}
 					{mode === 'create' ? t('form.create') : t('form.save')}
 				</Button>
 				<Button

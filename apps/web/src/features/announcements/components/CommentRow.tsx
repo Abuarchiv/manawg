@@ -226,7 +226,7 @@ export function CommentRow({
 								onClick={() => void save()}
 								aria-label={t('comment.saveAria', { subject: actionSubject })}
 							>
-								{pending && <Spinner data-icon="inline-start" />}{' '}
+								{pending && <Spinner data-icon="inline-start" aria-hidden />}{' '}
 								{pending ? t('comment.saving') : t('comment.save')}
 							</Button>
 						</div>
@@ -276,7 +276,7 @@ export function CommentRow({
 							aria-label={t('comment.removeConfirmAria', { subject: actionSubject })}
 							onClick={() => void remove()}
 						>
-							{pending && <Spinner data-icon="inline-start" />}
+							{pending && <Spinner data-icon="inline-start" aria-hidden />}
 							{pending ? t('comment.removing') : t('comment.remove')}
 						</AlertDialogAction>
 					</AlertDialogFooter>

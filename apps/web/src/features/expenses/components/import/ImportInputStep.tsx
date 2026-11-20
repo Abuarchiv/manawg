@@ -221,7 +221,7 @@ export function ImportInputStep({
 					}
 					onClick={onPreview}
 				>
-					{busy && <Spinner data-icon="inline-start" />}
+					{busy && <Spinner data-icon="inline-start" aria-hidden />}
 					{t('actions.createPreview')}
 				</Button>
 				<Button variant="outline" disabled={busy || ocrRunning} onClick={onBack}>
