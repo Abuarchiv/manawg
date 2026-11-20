@@ -1,6 +1,8 @@
 # Applies the database migrations of an approved main commit to production. Dispatched by
 # release-production.yml; it checks that CI and the Preview gate passed for exactly that commit
-# before it connects to the production database.
+# before it connects to the production database. It picks the required Preview gate itself
+# (selectPreviewGate): Vercel's when Vercel deployed a Preview of the commit, otherwise the
+# Preview database migration check.
 name: Migrate production database
 
 on:
@@ -11,7 +13,7 @@ on:
         required: true
         type: string
       preview_run_id:
-        description: Preview workflow run ID whose protected Preview gate passed for the exact candidate SHA.
+        description: Preview workflow run ID whose Preview gate passed for the exact candidate SHA.
         required: true
         type: string
       confirmation:
@@ -22,6 +24,8 @@ on:
 permissions:
   actions: read
   contents: read
+  deployments: read
+  statuses: read
 
 concurrency:
   group: production-database-migration
@@ -144,6 +148,11 @@ jobs:
             echo 'candidate_sha must be a full 40-character commit SHA.' >&2
             exit 1
           fi
+          # Vercel's commit statuses and deployments decide which Preview gate is required.
+          gh api --header 'Accept: application/vnd.github+json' \
+            "/repos/$REPOSITORY/commits/$CANDIDATE_SHA/statuses?per_page=100" > "$RUNNER_TEMP/statuses.json"
+          gh api --header 'Accept: application/vnd.github+json' \
+            "/repos/$REPOSITORY/deployments?sha=$CANDIDATE_SHA&per_page=100" > "$RUNNER_TEMP/deployments.json"
           RUN_HEAD_SHA="$(node --input-type=module <<'NODE'
           import { readFileSync } from 'node:fs';
 
@@ -159,11 +168,18 @@ jobs:
           RUN_TREE="$(git rev-parse "$RUN_HEAD_SHA^{tree}")"
           export CANDIDATE_TREE RUN_TREE
           node --input-type=module <<'NODE'
-          import { readFileSync } from 'node:fs';
-          import { assertPreviewEvidence } from './apps/web/scripts/release-workflow-gates.mjs';
+          import { appendFileSync, readFileSync } from 'node:fs';
+          import { assertPreviewEvidence, selectPreviewGate } from './apps/web/scripts/release-workflow-gates.mjs';
 
+          const read = (name) => JSON.parse(readFileSync(`${process.env.RUNNER_TEMP}/${name}.json`, 'utf8'));
+          const gate = selectPreviewGate({
+            env: process.env,
+            statuses: read('statuses'),
+            deployments: read('deployments'),
+          });
           const previewRunId = Number(process.env.PREVIEW_RUN_ID);
           assertPreviewEvidence({
+            gate,
             candidateSha: process.env.CANDIDATE_SHA,
             candidateTree: process.env.CANDIDATE_TREE,
             expectedRunId: previewRunId,
@@ -171,6 +187,7 @@ jobs:
             runTree: process.env.RUN_TREE,
             jobs: JSON.parse(readFileSync(process.env.PREVIEW_JOBS_JSON, 'utf8')).jobs,
           });
+          appendFileSync(process.env.GITHUB_STEP_SUMMARY, `Preview gate: ${gate}, run ${previewRunId}\n`);
           NODE
       - name: Recheck current main before production connection
         env:
@@ -236,7 +253,7 @@ jobs:
           {
             printf '%s\n' '### Production migration evidence'
             printf '%s\n' "candidate main SHA: $CANDIDATE_SHA"
-            printf '%s\n' "exact-SHA Preview CI run: $PREVIEW_RUN_ID"
+            printf '%s\n' "exact-SHA Preview gate run: $PREVIEW_RUN_ID"
             printf '%s\n' '- execution mode: protected-production-migration'
             printf '%s\n' '- result: ${{ job.status }}'
           } >> "$GITHUB_STEP_SUMMARY"

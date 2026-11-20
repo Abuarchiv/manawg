@@ -9,6 +9,7 @@ import {
 	assertPreviewOrigin,
 	assertProductionDispatch,
 	assertRequiredEnv,
+	selectPreviewGate,
 } from '../scripts/release-workflow-gates.mjs';
 
 const SHA = 'a'.repeat(40);
@@ -156,4 +157,86 @@ test('preview evidence needs the matching revision, tree, run id and both previe
 	assert.throws(() =>
 		assertPreviewEvidence({ ...base, jobs: passedJobs(['db-supabase-preview']) }),
 	);
+});
+
+test('preview evidence from the database gate is a green workflow_run migration check only', () => {
+	const run = {
+		...goodRun,
+		name: 'Preview',
+		path: '.github/workflows/preview.yml',
+		event: 'workflow_run',
+	};
+	const base = {
+		candidateSha: SHA,
+		candidateTree: SHA,
+		run,
+		runTree: SHA,
+		jobs: passedJobs(['db-supabase-preview']),
+		expectedRunId: 42,
+	};
+	assert.deepEqual(assertPreviewEvidence({ ...base, gate: 'database' }), {
+		deploymentRunId: 42,
+		sourceRevision: SHA,
+	});
+	// The Vercel gate (the default) never accepts a run without a Preview deployment.
+	assert.throws(() => assertPreviewEvidence(base));
+	assert.throws(() => assertPreviewEvidence({ ...base, gate: 'vercel' }));
+	assert.throws(() =>
+		assertPreviewEvidence({ ...base, gate: 'database', run: { ...run, event: 'push' } }),
+	);
+	assert.throws(() => assertPreviewEvidence({ ...base, gate: 'database', jobs: [] }));
+	assert.throws(() =>
+		assertPreviewEvidence({ ...base, gate: 'database', candidateSha: OTHER_SHA }),
+	);
+	assert.throws(() => assertPreviewEvidence({ ...base, gate: 'pending' }));
+});
+
+test('preview gate uses Vercel only when it is configured and builds the commit', () => {
+	const env = { VERCEL_PROJECT_NAME: 'manawg', VERCEL_TEAM_SLUG: 'example-team' };
+	const status = (state: string, created_at: string, login = 'vercel[bot]') => ({
+		context: 'Vercel',
+		state,
+		created_at,
+		creator: { login },
+	});
+	const deployment = (environment = 'Preview', login = 'vercel[bot]') => ({
+		environment,
+		creator: { login },
+	});
+	const gate = (input: object) =>
+		selectPreviewGate({ env, statuses: [], deployments: [], ...input });
+
+	// Without the Vercel variables a self-hosted instance gates on the Preview database check.
+	assert.equal(selectPreviewGate({ env: {}, statuses: [], deployments: [] }), 'database');
+	assert.equal(
+		selectPreviewGate({ env: { VERCEL_PROJECT_NAME: 'manawg' }, statuses: [], deployments: [] }),
+		'database',
+	);
+	// Vercel deployed a Preview of the commit: its end-to-end gate applies.
+	assert.equal(gate({ deployments: [deployment()] }), 'vercel');
+	assert.equal(
+		gate({ deployments: [deployment()], statuses: [status('failure', '2026-11-20T10:00:00Z')] }),
+		'vercel',
+	);
+	// Vercel rejected the commit without deploying it (e.g. a blocked account).
+	assert.equal(gate({ statuses: [status('failure', '2026-11-20T10:00:00Z')] }), 'database');
+	assert.equal(gate({ statuses: [status('error', '2026-11-20T10:00:00Z')] }), 'database');
+	// A newer pending status means Vercel is building again: wait for it.
+	assert.equal(
+		gate({
+			statuses: [
+				status('failure', '2026-11-20T10:00:00Z'),
+				status('pending', '2026-11-20T10:05:00Z'),
+			],
+		}),
+		'pending',
+	);
+	assert.equal(gate({}), 'pending');
+	// Statuses and deployments of anyone but Vercel prove nothing.
+	assert.equal(
+		gate({ statuses: [status('failure', '2026-11-20T10:00:00Z', 'someone')] }),
+		'pending',
+	);
+	assert.equal(gate({ deployments: [deployment('Preview', 'someone')] }), 'pending');
+	assert.equal(gate({ deployments: [deployment('Production')] }), 'pending');
 });

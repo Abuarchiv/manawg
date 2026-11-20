@@ -2,6 +2,7 @@ const SLUG = /^[a-z0-9-]+$/;
 const FULL_SHA = /^[0-9a-f]{40}$/i;
 const CI_WORKFLOW_PATH = /^\.github\/workflows\/ci\.yml(?:@main)?$/;
 const PREVIEW_WORKFLOW_PATH = /^\.github\/workflows\/preview\.yml(?:@main)?$/;
+const VERCEL_BOT = 'vercel[bot]';
 
 export const PREVIEW_AUTH_ENV_NAMES = Object.freeze([
 	'SUPABASE_AUTH_TEST_EMAIL',
@@ -155,6 +156,39 @@ export function assertMainCiEvidence({ candidateSha, run, jobs }) {
 	return { ciRunId: run.id, sourceRevision: run.head_sha };
 }
 
+/**
+ * Which Preview gate a release candidate must pass:
+ * - `vercel`: Vercel deployed a Preview of the commit, so its migration check and end-to-end
+ *   tests (the `deployment_status` run of preview.yml) are the gate.
+ * - `database`: Vercel is not configured, or it rejected the commit without deploying it
+ *   (for example a blocked account). The gate is the Preview database migration check that
+ *   preview.yml runs after main CI (`workflow_run`). Self-hosted production uses this.
+ * - `pending`: Vercel is configured but has not reported on the commit yet; ask again later.
+ *
+ * @param {{
+ *   env?: Record<string, string | undefined>,
+ *   statuses?: Array<{ context?: string, state?: string, created_at?: string, creator?: { login?: string } }>,
+ *   deployments?: Array<{ environment?: string, creator?: { login?: string } }>,
+ * }} input commit statuses and GitHub deployments of the candidate SHA
+ * @returns {'vercel' | 'database' | 'pending'}
+ */
+export function selectPreviewGate({ env = {}, statuses = [], deployments = [] }) {
+	if (!env.VERCEL_PROJECT_NAME || !env.VERCEL_TEAM_SLUG) return 'database';
+	if (deployments.some((d) => d?.environment === 'Preview' && d.creator?.login === VERCEL_BOT)) {
+		return 'vercel';
+	}
+	const latest = statuses
+		.filter((s) => s?.context === 'Vercel' && s.creator?.login === VERCEL_BOT)
+		.sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)))[0];
+	return latest?.state === 'failure' || latest?.state === 'error' ? 'database' : 'pending';
+}
+
+/** Required Preview workflow event and jobs per gate. */
+const PREVIEW_GATES = {
+	vercel: { event: 'deployment_status', jobs: ['db-supabase-preview', 'e2e-preview'] },
+	database: { event: 'workflow_run', jobs: ['db-supabase-preview'] },
+};
+
 export function assertPreviewEvidence({
 	candidateSha,
 	candidateTree,
@@ -162,18 +196,25 @@ export function assertPreviewEvidence({
 	runTree,
 	jobs,
 	expectedRunId,
+	gate = 'vercel',
 }) {
+	const required = Object.hasOwn(PREVIEW_GATES, gate) ? PREVIEW_GATES[gate] : undefined;
+	if (!required) {
+		throw new Error(
+			`No Preview gate applies yet (${gate}); Vercel has not reported on the candidate.`,
+		);
+	}
 	if (
 		run?.name !== 'Preview' ||
 		!PREVIEW_WORKFLOW_PATH.test(run.path ?? '') ||
-		run.event !== 'deployment_status' ||
+		run.event !== required.event ||
 		run.status !== 'completed' ||
 		run.conclusion !== 'success' ||
 		!Number.isInteger(run.id) ||
 		run.id <= 0
 	) {
 		throw new Error(
-			'Preview evidence must be a completed successful deployment-status run of the Preview workflow.',
+			`Preview evidence must be a completed successful ${required.event} run of the Preview workflow.`,
 		);
 	}
 	if (expectedRunId !== undefined && run.id !== expectedRunId) {
@@ -182,7 +223,7 @@ export function assertPreviewEvidence({
 	assertExactRevision(candidateSha, run.head_sha);
 	assertMatchingTree(candidateTree, runTree);
 
-	for (const requiredJob of ['db-supabase-preview', 'e2e-preview']) {
+	for (const requiredJob of required.jobs) {
 		const job = jobs?.find((candidate) => candidate?.name === requiredJob);
 		if (job?.status !== 'completed' || job.conclusion !== 'success') {
 			throw new Error(`Preview evidence is missing a successful ${requiredJob} job.`);
