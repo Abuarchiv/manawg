@@ -297,7 +297,9 @@ Mutation error copy goes through `mutationError` (`core/http/error-codes.ts`); f
   `scripts/check-analytics-privacy.mjs` enforces this in CI.
 - **Boot report**: `instrumentation.ts` runs `checkEnv` and logs `[env] MISSING REQUIRED` /
   `[env] DEGRADED`; it reports to Sentry but does not crash the server. `/api/health` returns only
-  counts and feature names.
+  counts and feature names. A healthy answer carries `Cache-Control: public, s-maxage=240`, so a
+  CDN answers repeated uptime checks for four minutes; any other answer is `no-store`. Deploy
+  polling adds a unique query parameter to get a live answer.
 
 ## Database
 

@@ -17,11 +17,17 @@ import { checkRateLimit, clientIpKey, healthLimiter } from '@/core/rate-limit';
  * It carries its own rate limit because `/api/health` is not in the proxy
  * matcher — without one, an unauthenticated caller could drive a database query
  * per request.
+ *
+ * A healthy answer may sit in a shared cache for four minutes, so an uptime monitor polling every
+ * minute runs the function a few times an hour instead of every time; an outage still shows within
+ * five minutes. Anything else is never cached. Callers that need a live answer (deploy polling)
+ * add a unique query parameter, which the CDN keys on.
  */
 
 export const dynamic = 'force-dynamic';
 
 const DB_PROBE_TIMEOUT_MS = 2_000;
+const HEALTHY_CACHE_CONTROL = 'public, s-maxage=240';
 
 type ProbeStatus = 'ok' | 'unreachable';
 
@@ -68,7 +74,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 		},
 		{
 			status: healthy ? 200 : 503,
-			headers: { 'Cache-Control': 'no-store' },
+			headers: { 'Cache-Control': healthy ? HEALTHY_CACHE_CONTROL : 'no-store' },
 		},
 	);
 }
