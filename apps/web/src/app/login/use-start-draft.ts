@@ -4,6 +4,7 @@ import { useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { readDraft, removeDraft, writeDraft } from '@/core/offline/drafts';
 import {
+	CREATED_PARAM,
 	getLoginIntentFromSearch,
 	START_DRAFT_KEY,
 	type StartDraft,
@@ -34,6 +35,8 @@ export function useStartDraft() {
 		// The create form is not reopened from a draft: the typed values stay, but a bare /login
 		// opens the choose step (the create link carries its own step in the URL).
 		if (intent.create || initialParams.get('action') === 'create') setStep('create');
+		// A reload on the invite step keeps it; LoginClient restores the WG from the account's list.
+		else if (initialParams.get(CREATED_PARAM)) setStep('invite');
 		setInteractive(true);
 	}, []);
 
