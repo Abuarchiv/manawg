@@ -26,7 +26,7 @@ export function ChatTopBarLink({ href, className }: ChatTopBarLinkProps) {
 	const message = useMessage();
 	const pathname = usePathname() ?? '';
 	const unread = useChatUnreadCount();
-	useWgChange('chat', unread.refresh);
+	useWgChange('chat', unread.refresh, { isStale: () => unread.error });
 
 	const isActive = pathname.endsWith('/chat');
 	const count = unread.data?.count;

@@ -63,7 +63,9 @@ export function useHomeData(shareCode: string, identity: HomeDataIdentity) {
 		void dashboardRead.refresh();
 	}, [berlinTodayKey, dashboardRead.refresh, eventRead.refresh]);
 
-	useWgChange('data', load);
+	useWgChange('data', load, {
+		isStale: () => dashboardRead.error !== undefined || eventRead.error !== undefined,
+	});
 	useEffect(() => {
 		const onShow = () => {
 			if (document.visibilityState === 'visible') load();

@@ -207,7 +207,12 @@ export function useSyncedCollection<TData, TItem>(config: SyncedCollectionConfig
 		reloadRef.current('mount');
 	}, []);
 
-	useWgChange('data', () => reloadRef.current('poll'), config.refreshOnChange !== false);
+	const readErrorRef = useRef(readError);
+	readErrorRef.current = readError;
+	useWgChange('data', () => reloadRef.current('poll'), {
+		enabled: config.refreshOnChange !== false,
+		isStale: () => readErrorRef.current !== undefined,
+	});
 
 	/**
 	 * Applies a local change to the rows on screen and to the cached response, so the next render

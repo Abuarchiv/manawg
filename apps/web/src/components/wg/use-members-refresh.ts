@@ -122,5 +122,6 @@ export function useMembersPolling(
 	refreshMembers: () => Promise<void>,
 ): void {
 	useWgChangesPoll(encodedShareCode, memberId, baseline);
-	useWgChange('members', () => void refreshMembers(), memberId !== null);
+	// A failed roster read retries with its own backoff (useMembersRefresh).
+	useWgChange('members', () => void refreshMembers(), { enabled: memberId !== null });
 }

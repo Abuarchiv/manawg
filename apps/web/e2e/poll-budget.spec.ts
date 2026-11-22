@@ -107,4 +107,26 @@ test.describe('poll budget of a tab in use', () => {
 		expect(versionChecks).toBeGreaterThanOrEqual(2);
 		expect(boardReads).toBeGreaterThan(readsAfterOpen);
 	});
+
+	test('a reload that failed after a change is retried on the next poll', async ({ page }) => {
+		skipUnlessFixtures();
+		const base = `/api/wg/${FIXTURE_WG.shareCode}`;
+		// Another member posted: every check reports data version 1 against the page's 0.
+		await page.route(`**${base}/changes`, (route) =>
+			route.fulfill({ json: { data: '1', members: '0', chat: '0' } }),
+		);
+		let boardReads = 0;
+		await page.route(`**${base}/announcements`, (route) => {
+			if (route.request().method() !== 'GET') return route.fallback();
+			boardReads += 1;
+			// The reload the change triggers fails once.
+			return boardReads === 2
+				? route.fulfill({ status: 503, json: { error: 'service_unavailable' } })
+				: route.fallback();
+		});
+		await openSettled(page, `/wg/${FIXTURE_WG.shareCode}/pinboard`);
+
+		await runClock(page, 95_000);
+		expect(boardReads).toBeGreaterThanOrEqual(3);
+	});
 });

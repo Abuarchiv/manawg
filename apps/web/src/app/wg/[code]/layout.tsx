@@ -16,7 +16,7 @@ import { SessionExpiredBanner } from '@/components/wg/SessionExpiredBanner';
 import { WgContextProvider } from '@/components/wg/WgContextProvider';
 import type { SessionMember } from '@/core/auth/local-account';
 import { REQUEST_PATH_HEADER, wgReturnPath } from '@/core/auth/next-path';
-import { readWgChangeVersions, type WgChangeVersions } from '@/core/db/change-versions';
+import { readWgChangeVersionsByShareCode, type WgChangeVersions } from '@/core/db/change-versions';
 import { loadWgShell, loadWgViewer } from '@/core/guards/load-wg-viewer';
 import { isValidShareCode, normalizeShareCode } from '@/core/utils/share-code';
 import { loadFixtureWgView } from '@/fixtures/pages';
@@ -96,6 +96,10 @@ export default async function WgLayout({ children, params }: Props) {
 		);
 	}
 
+	// Read before the roster and before any client read of the page, so a change after any of
+	// them moves a version the first poll sees. Without it the first answered poll reloads
+	// everything once.
+	const changeVersions = await readWgChangeVersionsByShareCode(code).catch(() => null);
 	const shell = await loadWgShell(code);
 	if (!shell) redirect(await signInPath(code));
 	const { user, access, movedOut, members, initialIsAdmin } = shell;
@@ -106,9 +110,6 @@ export default async function WgLayout({ children, params }: Props) {
 	}
 	const { memberId, memberName, ...wg } = access;
 	const initialIdentity: SessionMember = { memberId, name: memberName, authUserId: user.id };
-	// Read before any client read of the page, so a change after it is never mistaken for the
-	// baseline. Without it the first answered change poll reloads everything once.
-	const changeVersions = await readWgChangeVersions(wg.id).catch(() => null);
 
 	return (
 		<WgShell

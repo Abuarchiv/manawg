@@ -10,7 +10,13 @@ import {
 
 export type WgChangeScope = keyof WgChangeVersions;
 
-const listeners: Record<WgChangeScope, Set<() => void>> = {
+interface ChangeListener {
+	reload: () => void;
+	/** The last reload failed: the next poll reloads again even if nothing moved since. */
+	stale: () => boolean;
+}
+
+const listeners: Record<WgChangeScope, Set<ChangeListener>> = {
 	data: new Set(),
 	members: new Set(),
 	chat: new Set(),
@@ -19,14 +25,23 @@ const listeners: Record<WgChangeScope, Set<() => void>> = {
 /**
  * Runs `onChange` whenever the WG shell's change poll sees `scope` move: the list pages reload
  * on `data`, the shell on `members`, the unread badge on `chat`. Replaces one interval per
- * reader with a single cheap request per tab. `enabled: false` subscribes to nothing.
+ * reader with a single cheap request per tab. While `isStale()` says the read's last load
+ * failed, every poll runs `onChange` again until one succeeds. `enabled: false` subscribes to
+ * nothing.
  */
-export function useWgChange(scope: WgChangeScope, onChange: () => void, enabled = true): void {
-	const saved = useRef(onChange);
-	saved.current = onChange;
+export function useWgChange(
+	scope: WgChangeScope,
+	onChange: () => void,
+	{ enabled = true, isStale }: { enabled?: boolean; isStale?: () => boolean } = {},
+): void {
+	const saved = useRef({ onChange, isStale });
+	saved.current = { onChange, isStale };
 	useEffect(() => {
 		if (!enabled) return;
-		const listener = (): void => saved.current();
+		const listener: ChangeListener = {
+			reload: () => saved.current.onChange(),
+			stale: () => saved.current.isStale?.() ?? false,
+		};
 		listeners[scope].add(listener);
 		return () => {
 			listeners[scope].delete(listener);
@@ -65,8 +80,10 @@ export function useWgChangesPoll(
 			const previous = lastRef.current;
 			lastRef.current = res.data;
 			for (const scope of ['members', 'data', 'chat'] as const) {
-				if (!previous || res.data[scope] !== previous[scope])
-					for (const listener of listeners[scope]) listener();
+				const moved = !previous || res.data[scope] !== previous[scope];
+				for (const listener of listeners[scope]) {
+					if (moved || listener.stale()) listener.reload();
+				}
 			}
 		} catch {
 			// Network blip: the next tick, the tab becoming visible or the online event retries.
