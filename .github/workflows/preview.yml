@@ -1,8 +1,10 @@
 # Migrates and tests the Vercel Preview deployment of the current main tip against the Preview
 # Supabase project. Runs after CI succeeded on a push to main (migration check only) and when
 # Vercel reports a successful Preview deployment (migration check and Preview end-to-end tests).
-# release-production.yml waits for a successful deployment_status run of this workflow.
-# The jobs only run while the repository variable PREVIEW_GATE is `on`, and only for the current
+# release-production.yml waits for a successful deployment_status run of this workflow, or, with
+# PREVIEW_GATE=database (no Vercel Preview), for a successful db-supabase-preview job of the
+# workflow_run run.
+# The jobs only run while the repository variable PREVIEW_GATE is `on` or `database`, and only for the current
 # main tip; forks without the repository variables skip them.
 name: Preview
 
@@ -35,11 +37,15 @@ jobs:
   # here, outside the environment, so PR-branch deployments skip instead of
   # being rejected by the environment protection rules as a failed job.
   # Pushes to main that were already superseded skip the same way.
-  # Preview gates only run while repo variable PREVIEW_GATE is `on` (release time).
+  # Preview gates only run while repo variable PREVIEW_GATE is `on`, or `database` for the
+  # migration check after main CI (release time).
   preview-source:
     if: >-
       always() &&
-      vars.PREVIEW_GATE == 'on' &&
+      (
+        vars.PREVIEW_GATE == 'on' ||
+        (vars.PREVIEW_GATE == 'database' && github.event_name == 'workflow_run')
+      ) &&
       (
         github.event_name == 'deployment_status' ||
         (

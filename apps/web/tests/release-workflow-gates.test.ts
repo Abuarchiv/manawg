@@ -9,6 +9,8 @@ import {
 	assertPreviewOrigin,
 	assertProductionDispatch,
 	assertRequiredEnv,
+	selectDeployHook,
+	selectPreviewGate,
 } from '../scripts/release-workflow-gates.mjs';
 
 const SHA = 'a'.repeat(40);
@@ -156,4 +158,67 @@ test('preview evidence needs the matching revision, tree, run id and both previe
 	assert.throws(() =>
 		assertPreviewEvidence({ ...base, jobs: passedJobs(['db-supabase-preview']) }),
 	);
+});
+
+test('preview evidence from the database gate is a green workflow_run migration check only', () => {
+	const run = {
+		...goodRun,
+		name: 'Preview',
+		path: '.github/workflows/preview.yml',
+		event: 'workflow_run',
+	};
+	const base = {
+		candidateSha: SHA,
+		candidateTree: SHA,
+		run,
+		runTree: SHA,
+		jobs: passedJobs(['db-supabase-preview']),
+		expectedRunId: 42,
+	};
+	assert.deepEqual(assertPreviewEvidence({ ...base, gate: 'database' }), {
+		deploymentRunId: 42,
+		sourceRevision: SHA,
+	});
+	// The Vercel gate (the default) never accepts a run without a Preview deployment.
+	assert.throws(() => assertPreviewEvidence(base));
+	assert.throws(() => assertPreviewEvidence({ ...base, gate: 'vercel' }));
+	assert.throws(() =>
+		assertPreviewEvidence({ ...base, gate: 'database', run: { ...run, event: 'push' } }),
+	);
+	assert.throws(() => assertPreviewEvidence({ ...base, gate: 'database', jobs: [] }));
+	assert.throws(() =>
+		assertPreviewEvidence({ ...base, gate: 'database', candidateSha: OTHER_SHA }),
+	);
+	assert.throws(() => assertPreviewEvidence({ ...base, gate: 'pending' }));
+});
+
+test('preview gate is chosen explicitly by PREVIEW_GATE and fails closed', () => {
+	const vercel = { VERCEL_PROJECT_NAME: 'manawg', VERCEL_TEAM_SLUG: 'example-team' };
+	assert.equal(selectPreviewGate({ PREVIEW_GATE: 'on', ...vercel }), 'vercel');
+	// A self-hosted instance opts in; set Vercel variables do not switch it back.
+	assert.equal(selectPreviewGate({ PREVIEW_GATE: 'database' }), 'database');
+	assert.equal(selectPreviewGate({ PREVIEW_GATE: 'database', ...vercel }), 'database');
+	// `on` without the Vercel variables, or any other value, has no gate.
+	assert.throws(() => selectPreviewGate({ PREVIEW_GATE: 'on' }), /PREVIEW_GATE/);
+	assert.throws(() => selectPreviewGate({ PREVIEW_GATE: 'on', VERCEL_PROJECT_NAME: 'manawg' }));
+	assert.throws(() => selectPreviewGate({ PREVIEW_GATE: 'off', ...vercel }));
+	assert.throws(() => selectPreviewGate({}));
+});
+
+test('deploy hook: the database gate needs PRODUCTION_DEPLOY_HOOK, Vercel may fall back', () => {
+	const both = { PRODUCTION_DEPLOY_HOOK: 'https://a', VERCEL_PRODUCTION_DEPLOY_HOOK: 'https://b' };
+	assert.equal(selectDeployHook('database', both), 'PRODUCTION_DEPLOY_HOOK');
+	assert.equal(selectDeployHook('vercel', both), 'PRODUCTION_DEPLOY_HOOK');
+	assert.equal(
+		selectDeployHook('vercel', { VERCEL_PRODUCTION_DEPLOY_HOOK: 'https://b' }),
+		'VERCEL_PRODUCTION_DEPLOY_HOOK',
+	);
+	// Without Vercel Previews the Vercel hook is never used, so the release stops before migrating.
+	assert.throws(
+		() => selectDeployHook('database', { VERCEL_PRODUCTION_DEPLOY_HOOK: 'https://b' }),
+		/PRODUCTION_DEPLOY_HOOK/,
+	);
+	assert.throws(() => selectDeployHook('database', { PRODUCTION_DEPLOY_HOOK: '  ' }));
+	assert.throws(() => selectDeployHook('vercel', {}));
+	assert.throws(() => selectDeployHook('pending', both));
 });

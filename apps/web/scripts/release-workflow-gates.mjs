@@ -155,6 +155,59 @@ export function assertMainCiEvidence({ candidateSha, run, jobs }) {
 	return { ciRunId: run.id, sourceRevision: run.head_sha };
 }
 
+/**
+ * Which Preview gate a release candidate must pass, set by the repository variable PREVIEW_GATE:
+ * - `on` → `vercel`: Vercel deploys a Preview of the commit, and the `deployment_status` run of
+ *   preview.yml (migration check and end-to-end tests) is the gate. Needs VERCEL_PROJECT_NAME and
+ *   VERCEL_TEAM_SLUG.
+ * - `database` → `database`: no Vercel Preview (self-hosted production). The gate is the Preview
+ *   database migration check that preview.yml runs after main CI (`workflow_run`).
+ * Anything else has no gate and throws, so a misconfiguration stops the release.
+ *
+ * @param {Record<string, string | undefined>} env
+ * @returns {'vercel' | 'database'}
+ */
+export function selectPreviewGate(env) {
+	if (env?.PREVIEW_GATE === 'database') return 'database';
+	if (env?.PREVIEW_GATE === 'on' && env.VERCEL_PROJECT_NAME && env.VERCEL_TEAM_SLUG) {
+		return 'vercel';
+	}
+	throw new Error(
+		'Set the repository variable PREVIEW_GATE to on (Vercel Preview, with VERCEL_PROJECT_NAME and VERCEL_TEAM_SLUG) or database (no Vercel Preview).',
+	);
+}
+
+/**
+ * Name of the secret whose URL deploys production. PRODUCTION_DEPLOY_HOOK always wins. The
+ * Vercel hook is only a fallback for the Vercel gate: without Vercel Previews, Vercel does not
+ * serve production either, so a release must not migrate and then call it.
+ *
+ * @param {string} gate result of selectPreviewGate
+ * @param {Record<string, string | undefined>} secrets
+ * @returns {'PRODUCTION_DEPLOY_HOOK' | 'VERCEL_PRODUCTION_DEPLOY_HOOK'}
+ */
+export function selectDeployHook(gate, secrets) {
+	const set = (name) => typeof secrets?.[name] === 'string' && secrets[name].trim() !== '';
+	if (gate !== 'vercel' && gate !== 'database') {
+		throw new Error(`Unknown Preview gate: ${gate}.`);
+	}
+	if (set('PRODUCTION_DEPLOY_HOOK')) return 'PRODUCTION_DEPLOY_HOOK';
+	if (gate === 'vercel' && set('VERCEL_PRODUCTION_DEPLOY_HOOK')) {
+		return 'VERCEL_PRODUCTION_DEPLOY_HOOK';
+	}
+	throw new Error(
+		gate === 'database'
+			? 'PREVIEW_GATE=database needs the Production secret PRODUCTION_DEPLOY_HOOK.'
+			: 'Production secret PRODUCTION_DEPLOY_HOOK or VERCEL_PRODUCTION_DEPLOY_HOOK is missing.',
+	);
+}
+
+/** Required Preview workflow event and jobs per gate. */
+const PREVIEW_GATES = {
+	vercel: { event: 'deployment_status', jobs: ['db-supabase-preview', 'e2e-preview'] },
+	database: { event: 'workflow_run', jobs: ['db-supabase-preview'] },
+};
+
 export function assertPreviewEvidence({
 	candidateSha,
 	candidateTree,
@@ -162,18 +215,23 @@ export function assertPreviewEvidence({
 	runTree,
 	jobs,
 	expectedRunId,
+	gate = 'vercel',
 }) {
+	const required = Object.hasOwn(PREVIEW_GATES, gate) ? PREVIEW_GATES[gate] : undefined;
+	if (!required) {
+		throw new Error(`Unknown Preview gate: ${gate}.`);
+	}
 	if (
 		run?.name !== 'Preview' ||
 		!PREVIEW_WORKFLOW_PATH.test(run.path ?? '') ||
-		run.event !== 'deployment_status' ||
+		run.event !== required.event ||
 		run.status !== 'completed' ||
 		run.conclusion !== 'success' ||
 		!Number.isInteger(run.id) ||
 		run.id <= 0
 	) {
 		throw new Error(
-			'Preview evidence must be a completed successful deployment-status run of the Preview workflow.',
+			`Preview evidence must be a completed successful ${required.event} run of the Preview workflow.`,
 		);
 	}
 	if (expectedRunId !== undefined && run.id !== expectedRunId) {
@@ -182,7 +240,7 @@ export function assertPreviewEvidence({
 	assertExactRevision(candidateSha, run.head_sha);
 	assertMatchingTree(candidateTree, runTree);
 
-	for (const requiredJob of ['db-supabase-preview', 'e2e-preview']) {
+	for (const requiredJob of required.jobs) {
 		const job = jobs?.find((candidate) => candidate?.name === requiredJob);
 		if (job?.status !== 'completed' || job.conclusion !== 'success') {
 			throw new Error(`Preview evidence is missing a successful ${requiredJob} job.`);

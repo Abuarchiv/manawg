@@ -54,6 +54,12 @@ settled.
   (`Cache-Control: public, s-maxage=240`), so an uptime monitor checking every minute no longer
   runs the health check each time. An unhealthy or rate-limited answer is still never cached, and
   an outage shows within five minutes. To always get a live answer, add a unique query parameter.
+- The **Release production** workflow no longer needs Vercel. With the repository variable
+  `PREVIEW_GATE` set to `database`, its Preview gate is the Preview database migration check and
+  the new `PRODUCTION_DEPLOY_HOOK` secret deploys a self-hosted instance; `PREVIEW_GATE=on` keeps
+  the Vercel Preview gate. The workflow checks gate and hook before it migrates anything, and
+  still tags only after `/api/health` reports the new version. See the Releases section of
+  `docs/development.md`.
 - A page nobody has used for five minutes stops refreshing its lists, the chat and the unread
   count, even while it stays in front. The first click, key press or scroll refreshes it at once.
   A tab left open all day no longer sends thousands of requests to the server.
