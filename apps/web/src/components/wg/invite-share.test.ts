@@ -1,14 +1,18 @@
 import assert from 'node:assert/strict';
 import { afterEach, mock, test } from 'node:test';
-import { inviteShareMessage, shareInvite } from './invite-share';
+import { copyWhenReady, inviteShareMessage, shareInvite } from './invite-share';
 
 const url = 'https://x.test/invite/abc';
 const text = `Join our WG on ManaWG: ${url}\n(valid for 7 days)`;
 const originalNavigator = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
+const originalClipboardItem = Object.getOwnPropertyDescriptor(globalThis, 'ClipboardItem');
 
 afterEach(() => {
 	if (originalNavigator) Object.defineProperty(globalThis, 'navigator', originalNavigator);
 	else Reflect.deleteProperty(globalThis, 'navigator');
+	if (originalClipboardItem)
+		Object.defineProperty(globalThis, 'ClipboardItem', originalClipboardItem);
+	else Reflect.deleteProperty(globalThis, 'ClipboardItem');
 });
 
 test('the native share sheet receives the invite link exactly once', async () => {
@@ -63,4 +67,42 @@ test('a refused or missing share sheet copies the text instead', async () => {
 test('without share sheet or working clipboard the share fails', async () => {
 	setNavigator({ clipboard: { writeText: async () => Promise.reject(new Error('denied')) } });
 	assert.equal(await shareInvite(text), 'failed');
+});
+
+/** A clipboard whose `write` resolves the item's text like a browser does. */
+function fakeClipboard(): string[] {
+	const copied: string[] = [];
+	class FakeItem {
+		readonly data: Record<string, Promise<Blob>>;
+		constructor(data: Record<string, Promise<Blob>>) {
+			this.data = data;
+		}
+	}
+	Object.defineProperty(globalThis, 'ClipboardItem', { value: FakeItem, configurable: true });
+	setNavigator({
+		clipboard: {
+			write: async (items: FakeItem[]) => {
+				const blob = await items[0]?.data['text/plain'];
+				copied.push((await blob?.text()) ?? '');
+			},
+			writeText: async (value: string) => void copied.push(value),
+		},
+	});
+	return copied;
+}
+
+test('a pending copy writes only the text the check confirms', async () => {
+	const copied = fakeClipboard();
+	assert.equal(await copyWhenReady(Promise.resolve(text)), 'copied');
+	assert.equal(await copyWhenReady(Promise.resolve(null)), 'cancelled', 'a dead link');
+	assert.equal(await copyWhenReady(Promise.reject(new Error('offline'))), 'cancelled');
+	assert.deepEqual(copied, [text]);
+});
+
+test('without ClipboardItem the copy waits for the check', async () => {
+	const copied = fakeClipboard();
+	Reflect.deleteProperty(globalThis, 'ClipboardItem');
+	assert.equal(await copyWhenReady(Promise.resolve(text)), 'copied');
+	assert.equal(await copyWhenReady(Promise.resolve(null)), 'cancelled');
+	assert.deepEqual(copied, [text]);
 });

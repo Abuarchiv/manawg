@@ -31,12 +31,16 @@ test('a chat-only move keeps waiting; the timeout answers with the latest versio
 test('a revoke elsewhere (data) ends the wait too', async () => {
 	let calls = 0;
 	const read = async () => (calls++ ? v('1', '2') : v('1'));
+	const started = Date.now();
 	const got = await waitForChange(
 		read,
 		{ members: '1', data: '1' },
 		{ timeoutMs: 5000, stepMs: 1 },
 	);
 	assert.equal(got.data, '2');
+	// Answered on the read that saw the move, not at the timeout.
+	assert.equal(calls, 2);
+	assert.ok(Date.now() - started < 1000);
 });
 
 test('an aborted request stops reading', async () => {

@@ -102,9 +102,10 @@ Rules:
   first, so a revoked or used-up link never goes out. While the card is shown in a tab in front,
   it holds a long poll on the WG's versions (`GET /api/wg/<code>/changes?members=…&data=…`, read
   every second for up to 10 s), so a join or a revoke elsewhere (its audit event moves `data`)
-  updates the card within about a second. A browser that only opens the share sheet inside the
-  tap itself spends the tap on the check; the next tap then shares the confirmed link directly,
-  as long as the long poll has been up since and reported no change.
+  updates the card within about a second. No server answer is reused for a later tap. A browser
+  that only opens the share sheet inside the tap itself spends the tap on the check; the next tap
+  checks again and copies the link through a `ClipboardItem` started inside that tap, which only
+  receives text once its check confirms the link.
 - **Member**: one `wg_members` row per WG and auth user (`auth_user_id`, unique per WG). A user
   can be a member of several WGs. `deactivated_at` is the move-out soft delete; deactivated
   members lose API access and push, history stays.
