@@ -343,3 +343,31 @@ test.describe('invitation link', () => {
 		});
 	});
 });
+
+// Messenger crawlers run no JavaScript: the server-rendered card has to name the invitation.
+test.describe('invitation link preview card', () => {
+	skipUnlessFixtures();
+
+	const WHATSAPP = { 'User-Agent': 'WhatsApp/2.23.20.0 A' };
+	const ogTitle = (html: string) =>
+		html.match(/<meta property="og:title" content="([^"]*)"/)?.[1] ?? null;
+
+	test('a valid link names the inviter and the flat in og:title', async ({ request }) => {
+		const res = await request.get('/invite/fixture-invite-token01', { headers: WHATSAPP });
+		expect(res.status()).toBe(200);
+		const html = await res.text();
+		expect(ogTitle(html)).toBe('Mika lädt dich in die WG „Kastanienallee 12“ ein — ManaWG');
+		expect(html).toContain('<title>Mika lädt dich in die WG „Kastanienallee 12“ ein');
+		expect(html).toContain(
+			'<meta property="og:description" content="Mika lädt dich in die WG „Kastanienallee 12“ ein. 2 Mitbewohner sind schon dabei.',
+		);
+	});
+
+	test('an unknown link keeps the generic card and the same status', async ({ request }) => {
+		const res = await request.get('/invite/AAAAAAAAAAAAAAAAAAAAAA', { headers: WHATSAPP });
+		expect(res.status()).toBe(200);
+		const html = await res.text();
+		expect(ogTitle(html)).toBe('Du bist in eine WG eingeladen — ManaWG');
+		expect(html).not.toContain('Kastanienallee');
+	});
+});
