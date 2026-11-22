@@ -98,7 +98,11 @@ Rules:
   token (`POST /api/wg/<code>/members` with `inviteToken`); the share code is only an address.
   While a WG has one active member, the Start card shows its newest link
   (`POST /api/wg/<code>/invites/current`); once that link has expired, been used up or revoked,
-  opening the card creates a fresh one with the same defaults.
+  opening the card creates a fresh one with the same defaults. Every share asks that endpoint
+  first, so a revoked or used-up link never goes out; a browser that only opens the share sheet
+  on the tap itself copies the confirmed link on a second tap instead. While the card is open and
+  in use, it runs the tab's change poll every 3 s (every 30 s when hidden or idle), so a join or a
+  revoke elsewhere shows within seconds.
 - **Member**: one `wg_members` row per WG and auth user (`auth_user_id`, unique per WG). A user
   can be a member of several WGs. `deactivated_at` is the move-out soft delete; deactivated
   members lose API access and push, history stays.

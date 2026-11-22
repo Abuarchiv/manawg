@@ -92,3 +92,28 @@ export async function shareInvite(text: string): Promise<ShareOutcome> {
 	}
 	return (await copyText(text)) ? 'copied' : 'failed';
 }
+
+/**
+ * Copies `text` once it resolves, `null` meaning "do not share". The clipboard write starts at
+ * once, inside the tap, so a browser that only lets the tap itself write still takes text that
+ * arrives after a request. Without `ClipboardItem`, or when that write fails, it copies as usual.
+ */
+export async function copyWhenReady(text: Promise<string | null>): Promise<ShareOutcome> {
+	const safe = text.catch(() => null);
+	const clipboard = typeof navigator !== 'undefined' ? navigator.clipboard : undefined;
+	if (typeof ClipboardItem !== 'undefined' && clipboard?.write) {
+		const blob = safe.then((ready) => {
+			if (ready === null) throw new Error('not shared');
+			return new Blob([ready], { type: 'text/plain' });
+		});
+		try {
+			await clipboard.write([new ClipboardItem({ 'text/plain': blob })]);
+			return 'copied';
+		} catch {
+			// Not shared, or refused: the plain copy below decides.
+		}
+	}
+	const ready = await safe;
+	if (ready === null) return 'cancelled';
+	return (await copyText(ready)) ? 'copied' : 'failed';
+}

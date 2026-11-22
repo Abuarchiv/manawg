@@ -36,6 +36,89 @@ async function open(page: Page, shareCode: string, path = ''): Promise<void> {
 	await dismissOnboarding(page);
 }
 
+interface StrictCall {
+	via: 'share' | 'copy';
+	inClick: boolean;
+	text: string;
+}
+
+/**
+ * A strict browser: the share sheet and the clipboard only work inside the tap itself, and an
+ * awaited request ends the tap. `ClipboardItem` takes a promise, so a write started inside the tap
+ * may resolve later. Every call lands in `window.__strict`.
+ */
+async function strictBrowser(page: Page): Promise<() => Promise<StrictCall[]>> {
+	await page.addInitScript(() => {
+		let inClick = false;
+		const calls: StrictCall[] = [];
+		(window as unknown as { __strict: StrictCall[] }).__strict = calls;
+		window.addEventListener('click', () => (inClick = true), true);
+		window.addEventListener('click', () => setTimeout(() => (inClick = false)));
+		Object.defineProperty(navigator, 'userActivation', {
+			value: {
+				get isActive() {
+					return inClick;
+				},
+			},
+			configurable: true,
+		});
+		Object.defineProperty(navigator, 'share', {
+			value: async (data: { text: string }) =>
+				void calls.push({ via: 'share', inClick, text: data.text }),
+			configurable: true,
+		});
+		Object.defineProperty(navigator, 'canShare', { value: () => true, configurable: true });
+		class FakeClipboardItem {
+			constructor(readonly items: Record<string, Promise<Blob> | Blob>) {}
+		}
+		Object.defineProperty(window, 'ClipboardItem', {
+			value: FakeClipboardItem,
+			configurable: true,
+		});
+		Object.defineProperty(navigator, 'clipboard', {
+			value: {
+				writeText: async (text: string) => {
+					if (!inClick) throw new DOMException('no gesture', 'NotAllowedError');
+					calls.push({ via: 'copy', inClick, text });
+				},
+				write: async (items: FakeClipboardItem[]) => {
+					if (!inClick) throw new DOMException('no gesture', 'NotAllowedError');
+					const blob = await items[0]?.items['text/plain'];
+					calls.push({ via: 'copy', inClick: true, text: (await blob?.text()) ?? '' });
+				},
+			},
+			configurable: true,
+		});
+	});
+	return () => page.evaluate(() => (window as unknown as { __strict: StrictCall[] }).__strict);
+}
+
+const OLD_INVITE_ID = '1f0c4b5e-2a3d-4e6f-8a9b-0c1d2e3f4a5b';
+
+/** Members route of the solo WG; Mina is in once `joined()` says so. */
+async function mockRoster(page: Page, joined: () => boolean): Promise<void> {
+	await page.route(`**${SOLO_BASE}/members`, (route) =>
+		route.fulfill({
+			json: {
+				members: [
+					{ id: SOLO_WG.memberId, name: 'Smoke Tester', color: null, active: true },
+					...(joined()
+						? [
+								{
+									id: '0ab8c8f2-5d03-4a84-aadc-4c5d7e8abf55',
+									name: 'Mina',
+									color: null,
+									active: true,
+								},
+							]
+						: []),
+				],
+				viewerIsAdmin: true,
+			},
+		}),
+	);
+}
+
 test.describe('solo invite row', () => {
 	skipUnlessFixtures();
 
@@ -215,65 +298,59 @@ test.describe('Start card', () => {
 		});
 	}
 
-	test('a share sheet that lost the tap asks for a second tap and shares a checked link', async ({
+	test('a share sheet that lost the tap asks for a second tap and copies a checked link', async ({
 		page,
 	}) => {
-		await page.addInitScript(() => {
-			// A strict browser: the share sheet only opens inside the tap itself.
-			let inClick = false;
-			const calls: boolean[] = [];
-			(window as unknown as { __shareInClick: boolean[] }).__shareInClick = calls;
-			window.addEventListener('click', () => (inClick = true), true);
-			window.addEventListener('click', () => setTimeout(() => (inClick = false)));
-			Object.defineProperty(navigator, 'userActivation', {
-				value: {
-					get isActive() {
-						return inClick;
-					},
-				},
-				configurable: true,
-			});
-			Object.defineProperty(navigator, 'share', {
-				value: async () => void calls.push(inClick),
-				configurable: true,
-			});
-			Object.defineProperty(navigator, 'canShare', { value: () => true, configurable: true });
-		});
+		const readCalls = await strictBrowser(page);
 		await mockEmptyLists(page, SOLO_BASE);
 		await open(page, SOLO_WG.shareCode);
 		await expect(page.locator('[data-invite-card-link]')).toHaveText(/fixture-invite-token01$/);
 		const share = page.getByRole('button', { name: /^Link teilen: Einladung in / });
 		await share.click();
-		await expect(page.getByText('Link geprüft. Tippe nochmal zum Teilen.')).toBeVisible();
+		await expect(page.getByText('Link geprüft. Tippe nochmal zum Kopieren.')).toBeVisible();
+		expect(await readCalls()).toEqual([]);
 		await share.click();
-		await expect(page.getByText('Einladung geteilt')).toBeAttached();
-		const calls = await page.evaluate(
-			() => (window as unknown as { __shareInClick: boolean[] }).__shareInClick,
-		);
-		expect(calls).toEqual([true]);
+		await expect(page.getByText('Einladungslink kopiert')).toBeAttached();
+		const calls = await readCalls();
+		expect(calls).toHaveLength(1);
+		expect(calls[0]).toMatchObject({ via: 'copy', inClick: true });
+		expect(calls[0]?.text).toContain('/invite/fixture-invite-token01');
+	});
+
+	test('a confirmed link revoked before the second tap is not shared', async ({ page }) => {
+		const readCalls = await strictBrowser(page);
+		await mockEmptyLists(page, SOLO_BASE);
+		// The load and the first tap's check see the old link; then it is revoked on the server.
+		let revoked = false;
+		await page.route(`**${SOLO_BASE}/invites/current`, (route) => {
+			if (revoked) return route.fallback();
+			return route.fulfill({
+				json: {
+					invite: {
+						id: OLD_INVITE_ID,
+						url: `${new URL(route.request().url()).origin}/invite/old-invite-token-00001`,
+						expiresAt: new Date(Date.now() + 14 * DAY_MS).toISOString(),
+					},
+				},
+			});
+		});
+		await open(page, SOLO_WG.shareCode);
+		const link = page.locator('[data-invite-card-link]');
+		await expect(link).toHaveText(/old-invite-token-00001$/);
+		const share = page.getByRole('button', { name: /^Link teilen: Einladung in / });
+		await share.click();
+		await expect(page.getByText('Link geprüft. Tippe nochmal zum Kopieren.')).toBeVisible();
+		revoked = true;
+		// Right away, before any live signal could arrive.
+		await share.click();
+		await expect(link).toHaveText(/fixture-invite-token01$/);
+		await page.waitForTimeout(500);
+		const calls = await readCalls();
+		expect(calls.filter((call) => call.text.includes('old-invite-token'))).toEqual([]);
 	});
 
 	test('a confirmed link that expires before the second tap is not shared', async ({ page }) => {
-		await page.addInitScript(() => {
-			let inClick = false;
-			const calls: boolean[] = [];
-			(window as unknown as { __shareInClick: boolean[] }).__shareInClick = calls;
-			window.addEventListener('click', () => (inClick = true), true);
-			window.addEventListener('click', () => setTimeout(() => (inClick = false)));
-			Object.defineProperty(navigator, 'userActivation', {
-				value: {
-					get isActive() {
-						return inClick;
-					},
-				},
-				configurable: true,
-			});
-			Object.defineProperty(navigator, 'share', {
-				value: async () => void calls.push(inClick),
-				configurable: true,
-			});
-			Object.defineProperty(navigator, 'canShare', { value: () => true, configurable: true });
-		});
+		const readCalls = await strictBrowser(page);
 		await mockEmptyLists(page, SOLO_BASE);
 		// The load and the first tap's check see the old link; the replacement is slow to arrive.
 		let calls = 0;
@@ -300,14 +377,11 @@ test.describe('Start card', () => {
 		await expect(link).toHaveText(/old-invite-token-00001$/);
 		const share = page.getByRole('button', { name: /^Link teilen: Einladung in / });
 		await share.click();
-		await expect(page.getByText('Link geprüft. Tippe nochmal zum Teilen.')).toBeVisible();
+		await expect(page.getByText('Link geprüft. Tippe nochmal zum Kopieren.')).toBeVisible();
 		await page.waitForFunction((at) => Date.now() > at, expiresAt);
 		await share.click({ force: true });
 		await page.waitForTimeout(500);
-		const shared = await page.evaluate(
-			() => (window as unknown as { __shareInClick: boolean[] }).__shareInClick,
-		);
-		expect(shared).toEqual([]);
+		expect(await readCalls()).toEqual([]);
 		await expect(link).toHaveText(/fixture-invite-token01$/, { timeout: 10_000 });
 	});
 
@@ -412,6 +486,26 @@ test.describe('Start card', () => {
 		});
 	}
 
+	test('a join without a push removes the open card within seconds', async ({ page }) => {
+		await mockEmptyLists(page, SOLO_BASE);
+		let joined = false;
+		await page.route(`**${SOLO_BASE}/invites/current`, (route) =>
+			joined ? route.fulfill({ json: { invite: null } }) : route.fallback(),
+		);
+		await mockRoster(page, () => joined);
+		await page.route(`**${SOLO_BASE}/changes`, (route) =>
+			route.fulfill({ json: { data: '0', members: joined ? '1' : '0', chat: '0' } }),
+		);
+		await open(page, SOLO_WG.shareCode);
+		await expect(page.locator('[data-invite-card-link]')).toBeVisible();
+		// Mina joins on her phone; this tab neither reloads nor changes visibility or focus.
+		joined = true;
+		await expect(page.locator('[data-invite-card-link]')).toHaveCount(0, { timeout: 6000 });
+		await expect(
+			page.getByText('Mina ist dabei. Startet mit der ersten Ausgabe oder dem Einkauf.'),
+		).toBeVisible();
+	});
+
 	test('a join without a push removes the card in an idle tab', async ({ page }) => {
 		await page.clock.install();
 		await mockEmptyLists(page, SOLO_BASE);
@@ -438,6 +532,10 @@ test.describe('Start card', () => {
 					viewerIsAdmin: true,
 				},
 			}),
+		);
+		// The roster version moves with the join, as the database trigger does.
+		await page.route(`**${SOLO_BASE}/changes`, (route) =>
+			route.fulfill({ json: { data: '0', members: joined ? '1' : '0', chat: '0' } }),
 		);
 		await open(page, SOLO_WG.shareCode);
 		await expect(page.locator('[data-invite-card-link]')).toBeVisible();

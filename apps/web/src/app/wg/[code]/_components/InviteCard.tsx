@@ -8,12 +8,15 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
 import {
 	type CreatedInvite,
+	copyWhenReady,
 	currentInvite,
 	inviteShareMessage,
+	type ShareOutcome,
 	shareInvite,
 } from '@/components/wg/invite-share';
 import { useWg } from '@/components/wg/WgContextProvider';
-import { LIST_REFRESH_INTERVAL_MS } from '@/core/utils/use-visibility-paused-interval';
+import { pollWgChangesNow, useWgChange } from '@/core/sync/wg-changes';
+import { isIdle, LIST_REFRESH_INTERVAL_MS } from '@/core/utils/use-visibility-paused-interval';
 import { dateTimeFormat } from '@/shared/i18n/intl';
 import { type Message, useMessage } from '@/shared/i18n/message';
 import posthog from '@/shared/lib/analytics';
@@ -23,12 +26,11 @@ const MAX_TIMEOUT_MS = 2_147_483_647;
 const REFRESH_GAP_MS = 5000;
 
 /**
- * A second tap may share a link the server confirmed this recently without asking again.
- * Strict browsers spend the tap on any request, so a check right before the share is impossible
- * there; a link revoked inside this window still goes out, and its recipient sees the "link
- * invalid" page. The window can only shrink, never close: a revoke may follow any check.
+ * While the card is in front and in use, the WG's change poll runs this often, so a join or a
+ * revoke elsewhere shows within seconds; hidden or idle tabs fall back to every 30 s. Solo tabs
+ * only: the card leaves with the second member.
  */
-const CHECKED_FOR_MS = 10_000;
+const LIVE_POLL_MS = 3000;
 
 type Notice = 'shared' | 'copied' | 'failed' | 'checked' | 'fresh';
 
@@ -56,8 +58,8 @@ export function InviteCard() {
 	const [state, setState] = useState<CardState>({ status: 'loading' });
 	const [attempt, setAttempt] = useState(0);
 	const [shared, setShared] = useState<Notice | null>(null);
-	// The link the server confirmed on the last tap, for a second tap that shares without waiting.
-	const checkedRef = useRef<{ id: string; at: number } | null>(null);
+	// This browser lost a tap to the check before: later taps copy, which can wait for the check.
+	const strictRef = useRef(false);
 	const [sharing, setSharing] = useState(false);
 	const shownRef = useRef(false);
 
@@ -108,59 +110,72 @@ export function InviteCard() {
 		};
 		document.addEventListener('visibilitychange', refresh);
 		window.addEventListener('focus', refresh);
-		// The WG's change poll rests in an idle tab, so a join without a push would leave the card.
-		// One request per 30 s per open solo tab, which ends as soon as a second member joins.
+		// A join moves the roster version, which swaps the card out; a revoke moves `data` (below).
+		let polled = Date.now();
 		const poll = window.setInterval(() => {
-			if (document.visibilityState === 'visible') setAttempt((n) => n + 1);
-		}, LIST_REFRESH_INTERVAL_MS);
+			const live = document.visibilityState === 'visible' && !isIdle();
+			if (!live && Date.now() - polled < LIST_REFRESH_INTERVAL_MS) return;
+			polled = Date.now();
+			pollWgChangesNow();
+		}, LIVE_POLL_MS);
 		return () => {
 			window.clearInterval(poll);
 			document.removeEventListener('visibilitychange', refresh);
 			window.removeEventListener('focus', refresh);
 		};
 	}, []);
+	// Any other write, an invitation revoked elsewhere among them: show the link the server has now.
+	useWgChange('data', () => setAttempt((n) => n + 1));
+
+	/** The server's answer for the shown link: it, or null once it is dead (the card updates). */
+	async function confirmShown(shown: CreatedInvite): Promise<CreatedInvite | null> {
+		const current = await currentInvite(wg.shareCode, identity.memberId);
+		if (!current.ok) {
+			setState({ status: 'failed', message: current.message });
+			return null;
+		}
+		if (!current.invite) {
+			void refreshMembers();
+			return null;
+		}
+		if (current.invite.id !== shown.id) {
+			setState({ status: 'ready', invite: current.invite });
+			setShared('fresh');
+			return null;
+		}
+		return current.invite;
+	}
 
 	async function share(): Promise<void> {
 		if (sharing || state.status !== 'ready') return;
+		const shown = state.invite;
+		// Expiry needs no server: a dead link reloads and is never shared.
+		if (new Date(shown.expiresAt).getTime() <= Date.now()) {
+			setShared(null);
+			setAttempt((n) => n + 1);
+			return;
+		}
 		setSharing(true);
 		try {
-			let invite = state.invite;
-			const checked = checkedRef.current;
-			checkedRef.current = null;
-			// Expiry needs no server: a dead link reloads and is never shared.
-			if (new Date(invite.expiresAt).getTime() <= Date.now()) {
-				setShared(null);
-				setAttempt((n) => n + 1);
-				return;
-			}
-			// A revoked or used-up link must never go out, so the server confirms it first. A
-			// confirmation from a tap moments ago lets this tap share inside its own gesture.
-			if (!(checked?.id === invite.id && Date.now() - checked.at < CHECKED_FOR_MS)) {
-				const current = await currentInvite(wg.shareCode, identity.memberId);
-				if (!current.ok) {
-					setState({ status: 'failed', message: current.message });
-					return;
-				}
-				if (!current.invite) {
-					void refreshMembers();
-					return;
-				}
-				if (current.invite.id !== invite.id) {
-					setState({ status: 'ready', invite: current.invite });
-					setShared('fresh');
-					return;
-				}
-				invite = current.invite;
+			// Every tap asks the server first, so a revoked or used-up link never goes out.
+			const confirmed = confirmShown(shown);
+			const message = (invite: CreatedInvite) =>
+				render(inviteShareMessage(wg.name, invite.url, invite.expiresAt));
+			let outcome: ShareOutcome;
+			if (strictRef.current) {
+				// Started inside the tap; it copies only what the check confirms.
+				outcome = await copyWhenReady(confirmed.then((invite) => invite && message(invite)));
+			} else {
+				const invite = await confirmed;
+				if (!invite) return;
 				// A browser that ties the share sheet to the tap has spent it on the request.
 				if (!tapStillActive()) {
-					checkedRef.current = { id: invite.id, at: Date.now() };
+					strictRef.current = true;
 					setShared('checked');
 					return;
 				}
+				outcome = await shareInvite(message(invite));
 			}
-			const outcome = await shareInvite(
-				render(inviteShareMessage(wg.name, invite.url, invite.expiresAt)),
-			);
 			if (outcome === 'cancelled') return;
 			setShared(outcome);
 			if (outcome !== 'failed') {
