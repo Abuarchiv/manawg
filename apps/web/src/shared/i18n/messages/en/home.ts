@@ -55,6 +55,15 @@ export default {
 		dismissSolo: 'Remind me later',
 		addExpense: 'Add expense',
 	},
+	inviteCard: {
+		share: 'Share link',
+		shareLabel: 'Share link: invitation to {wgName}',
+		validUntil: 'Valid until {date}',
+		shared: 'Invitation shared',
+		copied: 'Invitation link copied',
+		failed: 'Sharing failed',
+		retry: 'Try again',
+	},
 	soloInvite: {
 		text: 'You are still alone in this flat.',
 	},

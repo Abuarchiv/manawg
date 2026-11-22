@@ -15,7 +15,9 @@ import {
 } from '@/components/ui/card';
 import { InviteButton } from '@/components/wg/InviteButton';
 import { useWg } from '@/components/wg/WgContextProvider';
+import posthog from '@/shared/lib/analytics';
 import { cn } from '@/shared/lib/cn';
+import { InviteCard } from './InviteCard';
 import { isWelcomeHidden, welcomeDismissalValue } from './welcome-dismissal';
 
 export function StartWelcome({ dismissedFallback }: { dismissedFallback?: React.ReactNode }) {
@@ -38,6 +40,7 @@ export function StartWelcome({ dismissedFallback }: { dismissedFallback?: React.
 	function dismiss() {
 		// The button disappears shortly: move focus to the next heading first.
 		document.getElementById('week-heading')?.focus({ preventScroll: true });
+		if (!hasRoommates) posthog.capture('invite_card_dismissed');
 		const stored = welcomeDismissalValue(Date.now(), !hasRoommates);
 		setStatus({ key: storageKey, stored });
 		try {
@@ -96,13 +99,7 @@ export function StartWelcome({ dismissedFallback }: { dismissedFallback?: React.
 							<InviteButton code={wg.shareCode} memberId={identity.memberId} wgName={wg.name} />
 						</>
 					) : (
-						<InviteButton
-							code={wg.shareCode}
-							memberId={identity.memberId}
-							wgName={wg.name}
-							className="w-full"
-							variant="default"
-						/>
+						<InviteCard />
 					)}
 				</CardContent>
 			</Card>

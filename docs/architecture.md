@@ -96,6 +96,9 @@ Rules:
   entered at registration is `user_metadata.full_name` and prefills the member name.
 - **Invitations**: `wg_invites` (token, 14 days, max 10 uses, revocable). Joining needs a valid
   token (`POST /api/wg/<code>/members` with `inviteToken`); the share code is only an address.
+  While a WG has one active member, the Start card shows its newest link
+  (`POST /api/wg/<code>/invites/current`); once that link has expired, been used up or revoked,
+  opening the card creates a fresh one with the same defaults.
 - **Member**: one `wg_members` row per WG and auth user (`auth_user_id`, unique per WG). A user
   can be a member of several WGs. `deactivated_at` is the move-out soft delete; deactivated
   members lose API access and push, history stays.
@@ -287,10 +290,11 @@ Mutation error copy goes through `mutationError` (`core/http/error-codes.ts`); f
   `https://eu.i.posthog.com`; cookieless, memory persistence, no person profiles, no autocapture
   or session recording. `before_send` allows only `$pageview` and the activation and funnel steps
   (`signup_submitted`, `signup_confirmed`, `login_completed`, `invite_opened`, `invite_join_failed`,
-  `wg_created`, `wg_joined`, `first_expense_created`) and rebuilds the event without URL or caller
+  `wg_created`, `wg_joined`, `first_expense_created`, `invite_card_shown`, `invite_card_shared`,
+  `invite_card_dismissed`) and rebuilds the event without URL or caller
   properties; only the page path goes along, with WG codes and invite tokens replaced by `[code]` /
-  `[token]`. The one extra property is the API error code of `invite_join_failed` (lowercase snake
-  case, otherwise `other`). The server-side `/auth/callback` leaves a two-minute `manawg_funnel`
+  `[token]`. The extra properties are the API error code of `invite_join_failed` (lowercase snake
+  case, otherwise `other`) and the `method` of `invite_card_shared` (`share` or `copy`). The server-side `/auth/callback` leaves a two-minute `manawg_funnel`
   cookie that holds only the step name; `FunnelBeacon` reads it once, deletes it and sends the
   event. Events wait for the SDK's idle-time init instead of being dropped, so the path of an event sent early can be the page the visitor has moved on to (fine for step counts, not for per-path breakdowns). `first_expense_created` means the first expense this device sees (empty list); it can repeat per device and misses expenses queued offline. Preview deployments,
   loopback hosts and automated browsers (`navigator.webdriver`) send nothing.

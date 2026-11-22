@@ -57,6 +57,15 @@ export default {
 		dismissSolo: 'Avísame más tarde',
 		addExpense: 'Añadir gasto',
 	},
+	inviteCard: {
+		share: 'Compartir enlace',
+		shareLabel: 'Compartir enlace: invitación a {wgName}',
+		validUntil: 'Válido hasta el {date}',
+		shared: 'Invitación compartida',
+		copied: 'Enlace de invitación copiado',
+		failed: 'No se pudo compartir',
+		retry: 'Reintentar',
+	},
 	soloInvite: {
 		text: 'Todavía no vive nadie más en el piso.',
 	},

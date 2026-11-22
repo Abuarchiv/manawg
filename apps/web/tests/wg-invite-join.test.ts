@@ -59,6 +59,7 @@ interface Fixture {
 	invite: (id: string) => Promise<typeof wgInvites.$inferSelect>;
 	list: (userId: string, code: string) => Promise<Response>;
 	create: (userId: string, code: string) => Promise<Response>;
+	current: (userId: string, code: string) => Promise<Response>;
 }
 
 async function withFixture(run: (fixture: Fixture) => Promise<void>) {
@@ -70,6 +71,7 @@ async function withFixture(run: (fixture: Fixture) => Promise<void>) {
 	const revokeRoute = await import('../src/app/api/wg/[code]/invites/[id]/route.ts');
 	const { createWgInvite } = await import('../src/core/db/wg-invites.ts');
 	const listRoute = await import('../src/app/api/wg/[code]/invites/route.ts');
+	const currentRoute = await import('../src/app/api/wg/[code]/invites/current/route.ts');
 
 	const pool = new pg.Pool({ connectionString: url, max: 2 });
 	const database = drizzle(pool, { schema });
@@ -139,6 +141,10 @@ async function withFixture(run: (fixture: Fixture) => Promise<void>) {
 				}),
 			create: (userId, code) =>
 				listRoute.POST(request(userId, `/api/wg/${code}/invites`, 'POST'), {
+					params: Promise.resolve({ code }),
+				}),
+			current: (userId, code) =>
+				currentRoute.POST(request(userId, `/api/wg/${code}/invites/current`, 'POST'), {
 					params: Promise.resolve({ code }),
 				}),
 			memberCount: async (wgId) =>
@@ -445,5 +451,33 @@ test('two active members cannot share a name, even in another case', { skip }, a
 		const clash = await f.join(randomUUID(), f.a.code, token, 'FOUNDER');
 		assert.equal(clash.status, 409);
 		assert.equal(await codeOf(clash), 'name_taken');
+	});
+});
+
+test('the invite card keeps a live link, replaces a dead one and ends with a flatmate', {
+	skip,
+}, async () => {
+	await withFixture(async (f) => {
+		type Current = { invite: { id: string; url: string } | null };
+		const open = async () => {
+			const response = await f.current(f.a.memberUserId, f.a.code);
+			assert.equal(response.status, 200);
+			return ((await response.json()) as Current).invite;
+		};
+		const first = await open();
+		assert.ok(first, 'a WG without any invite gets one');
+		assert.equal((await open())?.id, first.id, 'a live link is shown again, not replaced');
+
+		await f.database
+			.update(wgInvites)
+			.set({ expiresAt: new Date(Date.now() - 1000) })
+			.where(eq(wgInvites.id, first.id));
+		const fresh = await open();
+		assert.ok(fresh && fresh.id !== first.id, 'an expired link is replaced');
+		const token = fresh.url.split('/invite/')[1] ?? '';
+		assert.equal((await f.preview(randomUUID(), token)).status, 200, 'the fresh link works');
+
+		assert.equal((await f.join(randomUUID(), f.a.code, token)).status, 200);
+		assert.equal(await open(), null, 'a WG with two members gets no card link');
 	});
 });

@@ -65,7 +65,8 @@ async function initialize(
 }
 
 const secret = 'private-household-content';
-// Activation and funnel steps beyond $pageview. Only invite_join_failed carries a property (a code).
+// Activation and funnel steps beyond $pageview. Only invite_join_failed (a code) and
+// invite_card_shared (a share method) carry a property.
 const PRODUCT_EVENTS = [
 	'wg_created',
 	'wg_joined',
@@ -75,6 +76,9 @@ const PRODUCT_EVENTS = [
 	'invite_opened',
 	'invite_join_failed',
 	'first_expense_created',
+	'invite_card_shown',
+	'invite_card_shared',
+	'invite_card_dismissed',
 ];
 const env = {
 	NODE_ENV: 'production',
@@ -148,6 +152,7 @@ for (const event of ['$pageview', ...PRODUCT_EVENTS]) {
 			$pathname: '/wg/[code]/expenses',
 			$raw_user_agent: 'ManaWG-privacy-check',
 			...(event === 'invite_join_failed' ? { code: 'other' } : {}),
+			...(event === 'invite_card_shared' ? { method: 'copy' } : {}),
 		},
 	});
 }
@@ -181,6 +186,32 @@ for (const [code, expected] of [
 		'token',
 	]);
 }
+// The share method is one of two words; anything else counts as a copy.
+for (const [method, expected] of [
+	['share', 'share'],
+	['copy', 'copy'],
+	[secret, 'copy'],
+	[undefined, 'copy'],
+]) {
+	const cleaned = config.before_send({
+		uuid,
+		event: 'invite_card_shared',
+		timestamp,
+		properties: { method, url: secret },
+	});
+	assert.deepEqual(cleaned.properties.method, expected, String(method));
+	assert.equal('url' in cleaned.properties, false);
+}
+assert.equal(
+	'method' in
+		config.before_send({
+			uuid,
+			event: 'invite_card_shown',
+			timestamp,
+			properties: { method: 'share' },
+		}).properties,
+	false,
+);
 // No other event takes the code along.
 assert.equal(
 	'code' in

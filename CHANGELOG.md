@@ -10,6 +10,11 @@ settled.
 
 ### Added
 
+- While a flat has only one member, the Start card shows the current invitation link with a
+  share button (the share sheet, or copying the link where there is none). When the newest link
+  has expired, been used up or revoked, opening the card creates a fresh one, so a flat that is
+  still alone never shows a dead link. "Remind me later" now hides the card for three days instead
+  of seven. The card is gone as soon as a second member joins.
 - Self-hosted instances refuse passwords from known data breaches in Supabase Auth as well
   (`GOTRUE_PASSWORD_HIBP_ENABLED`), so direct calls to `/auth/v1` get the same check as the app's
   registration and password change. Pull the new `compose.yaml` and restart.

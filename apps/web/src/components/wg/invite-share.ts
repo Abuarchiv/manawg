@@ -21,6 +21,18 @@ const CREATE_ERRORS: Record<string, Message> = {
 	rate_limited: { key: 'shell.inviteShare.rateLimited' },
 };
 
+function createError(code: string): Message {
+	return (
+		CREATE_ERRORS[code] ??
+		mutationError(
+			{ key: 'shell.inviteShare.createFailed' },
+			code,
+			{},
+			{ key: 'shell.inviteShare.createFailedRetry' },
+		)
+	);
+}
+
 /** Asks the server for a fresh 14-day invitation link of the WG. */
 export async function createInvite(
 	code: string,
@@ -31,17 +43,23 @@ export async function createInvite(
 		memberId,
 	});
 	if (res.ok) return { ok: true, invite: res.data };
-	return {
-		ok: false,
-		message:
-			CREATE_ERRORS[res.error] ??
-			mutationError(
-				{ key: 'shell.inviteShare.createFailed' },
-				res.error,
-				{},
-				{ key: 'shell.inviteShare.createFailedRetry' },
-			),
-	};
+	return { ok: false, message: createError(res.error) };
+}
+
+/**
+ * The invite card's link: the WG's newest invitation, or a fresh one once that is dead.
+ * `invite: null` means the WG has a second active member.
+ */
+export async function currentInvite(
+	code: string,
+	memberId: string,
+): Promise<{ ok: true; invite: CreatedInvite | null } | { ok: false; message: Message }> {
+	const res = await apiFetch<{ invite: CreatedInvite | null }>(
+		`/api/wg/${encodeURIComponent(code)}/invites/current`,
+		{ method: 'POST', memberId },
+	);
+	if (res.ok) return { ok: true, invite: res.data.invite };
+	return { ok: false, message: createError(res.error) };
 }
 
 export function inviteShareMessage(wgName: string, url: string): Message {
