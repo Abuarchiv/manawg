@@ -8,6 +8,7 @@ import {
 	FIXTURE_WG,
 	mockUnreadCount,
 	navigateToFeature,
+	reportDataChangedOnEveryPoll,
 	setupMember,
 	skipUnlessFixtures,
 } from './support/helpers';
@@ -502,6 +503,7 @@ test.describe('English noticeboard extras', () => {
 	}) => {
 		test.setTimeout(90_000);
 		await prepare(page, context, baseURL, 390, 'light');
+		await reportDataChangedOnEveryPoll(page, BASE);
 		const first = post('first', 'Internet bill €1,234.50 this month');
 		const second = post('second', 'Freshly added post');
 		let calls = 0;

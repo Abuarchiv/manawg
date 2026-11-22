@@ -16,9 +16,11 @@ import { useConfirmLogoutDiscard } from '@/components/entry/use-confirm-logout-d
 import { Button } from '@/components/ui/button';
 import { FieldGroup, FieldSeparator } from '@/components/ui/field';
 import { Skeleton } from '@/components/ui/skeleton';
+import { AccountDeleteSection } from '@/components/wg/settings/AccountDeleteSection';
 import { isAuthPagePath } from '@/core/auth/auth-intent';
 import { safeNextPath, withHash } from '@/core/auth/next-path';
 import { invitePath } from '@/core/utils/invite-token';
+import { normalizeShareCode } from '@/core/utils/share-code';
 import { useMessage } from '@/shared/i18n/message';
 import { ChooseStep } from './ChooseStep';
 import { CreateStep } from './CreateStep';
@@ -26,6 +28,7 @@ import { InviteStep } from './InviteStep';
 import { JoinInviteStep } from './JoinInviteStep';
 import { StartNotices } from './StartNotices';
 import {
+	CREATED_PARAM,
 	getLoginIntentFromSearch,
 	getWgCodeFromPath,
 	resolveInviteInput,
@@ -35,6 +38,7 @@ import { useAccountWgs } from './use-account-wgs';
 import { useBusyLock } from './use-busy-lock';
 import { useClearCallbackError } from './use-clear-callback-error';
 import { useCreateWg } from './use-create-wg';
+import { useDocumentTitle } from './use-document-title';
 import { useSaveStartDraft, useStartDraft } from './use-start-draft';
 import { useStartError } from './use-start-error';
 import { useStepHistory } from './use-step-history';
@@ -176,6 +180,25 @@ export function LoginClient({ appOrigin }: { appOrigin: string }) {
 		}
 	}
 
+	// The invite step gets its own URL so a reload shows the invitation again.
+	useEffect(() => {
+		if (step !== 'invite' || !createdWg) return;
+		const url = `/login?${CREATED_PARAM}=${encodeURIComponent(createdWg.code)}`;
+		window.history.replaceState(window.history.state, '', url);
+	}, [step, createdWg]);
+	// After a reload the created WG comes back from the account's list; without it, the picker.
+	useEffect(() => {
+		if (authState !== 'authenticated' || step !== 'invite' || createdWg) return;
+		const code = normalizeShareCode(searchParams.get(CREATED_PARAM) ?? '');
+		const wg = accountWgs.find((accountWg) => accountWg.code === code);
+		if (wg?.memberId) {
+			setCreatedWg({ code: wg.code, name: wg.name, memberId: wg.memberId });
+			return;
+		}
+		window.history.replaceState(window.history.state, '', '/login');
+		setStep('choose');
+	}, [accountWgs, authState, createdWg, searchParams, setCreatedWg, setStep, step]);
+
 	// Back to the choose step drops the focused button; land on the heading instead.
 	const previousStepRef = useRef(step);
 	useEffect(() => {
@@ -184,6 +207,21 @@ export function LoginClient({ appOrigin }: { appOrigin: string }) {
 		}
 		previousStepRef.current = step;
 	}, [step]);
+
+	const title =
+		authState !== 'authenticated'
+			? checkingSession
+				? t('titleChoose')
+				: t('titleSignIn')
+			: step === 'choose'
+				? t('titleChoose')
+				: step === 'create'
+					? t('titleCreate')
+					: step === 'join'
+						? t('titleJoin')
+						: t('titleCreated');
+	// The steps share one URL, so the server title cannot follow them.
+	const stepAnnouncement = useDocumentTitle(`${title} — ManaWG`);
 
 	useClearCallbackError(signedInHere);
 
@@ -196,7 +234,7 @@ export function LoginClient({ appOrigin }: { appOrigin: string }) {
 	if (authState !== 'authenticated') {
 		return (
 			<EntryFrame
-				title={checkingSession ? t('titleChoose') : t('titleSignIn')}
+				title={title}
 				headingId="auth-heading"
 				description={
 					checkingSession
@@ -209,6 +247,9 @@ export function LoginClient({ appOrigin }: { appOrigin: string }) {
 				}
 				backHref={explorationHref()}
 			>
+				<p role="status" className="sr-only">
+					{stepAnnouncement}
+				</p>
 				{accountSwitchError && <ErrorBox>{accountSwitchError}</ErrorBox>}
 				<StartNotices search={searchParams.toString()} signedIn={false} />
 				{(authState === 'error' || (retried && authState === 'loading')) && (
@@ -270,15 +311,7 @@ export function LoginClient({ appOrigin }: { appOrigin: string }) {
 	return (
 		<EntryFrame
 			headingId="start-heading"
-			title={
-				step === 'choose'
-					? t('titleChoose')
-					: step === 'create'
-						? t('titleCreate')
-						: step === 'join'
-							? t('titleJoin')
-							: t('titleCreated')
-			}
+			title={title}
 			description={
 				step === 'invite'
 					? t('descCreated')
@@ -292,6 +325,9 @@ export function LoginClient({ appOrigin }: { appOrigin: string }) {
 			}
 			backHref={explorationHref()}
 		>
+			<p role="status" className="sr-only">
+				{stepAnnouncement}
+			</p>
 			<StartNotices search={searchParams.toString()} signedIn />
 			{accountSwitchError && <ErrorBox>{accountSwitchError}</ErrorBox>}
 			{deniedWgCode && step === 'choose' && (
@@ -356,6 +392,8 @@ export function LoginClient({ appOrigin }: { appOrigin: string }) {
 					{switching ? t('wait') : te('signOut.switch')}
 				</Button>
 			)}
+			{/* Without a WG there are no WG settings, so deletion is offered here (GDPR Art. 17). */}
+			{step === 'choose' && accountWgs.length === 0 && <AccountDeleteSection />}
 			{logoutDiscardDialog}
 		</EntryFrame>
 	);

@@ -10,6 +10,9 @@ settled.
 
 ### Added
 
+- Accounts without a flat can be deleted from the "Your flat" screen after sign-in, with the same
+  confirmation as in the flat settings. After a completed deletion the start page confirms
+  "Account deleted".
 - Self-hosted instances refuse passwords from known data breaches in Supabase Auth as well
   (`GOTRUE_PASSWORD_HIBP_ENABLED`), so direct calls to `/auth/v1` get the same check as the app's
   registration and password change. Pull the new `compose.yaml` and restart.
@@ -56,6 +59,12 @@ settled.
 
 ### Changed
 
+- An open flat tab sends one small "what changed" request every 30 seconds instead of one
+  request per list, member roster and unread badge, and reloads only what changed. A list page
+  that nobody else changes now costs at most two requests a minute. The chat checks every 8
+  seconds while messages come in and slows to every 30 seconds after two quiet minutes; a new
+  message, sending or typing speeds it up again. Self-hosted instances apply the new table and
+  triggers with the usual migrations on start.
 - The **Database** workflow runs the unit and database suites together with coverage and uploads
   the report as the `coverage` artifact. It fails when settle-up, ledger, payment or invite code
   drops below its measured coverage floor, and when any test skips itself although a database is
@@ -98,6 +107,10 @@ settled.
 
 ### Fixed
 
+- After signing up, each step of creating or joining a flat ("Your flat", "Create a new flat",
+  "Flat created") shows its own tab title and is announced to screen readers, instead of
+  "Sign in". Reloading the "Flat created" step shows the invite link again instead of opening
+  the flat.
 - Creating a flat answers sooner: the response no longer waits for the activity-log entry, and
   the share code is checked by the database's unique index instead of a lookup before the write.
 - Screen readers read a busy button by its label alone ("Saving…") instead of "Loading Saving…".

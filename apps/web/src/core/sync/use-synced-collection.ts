@@ -6,13 +6,8 @@ import { useCachedFetch } from '@/core/hooks/use-cached-fetch';
 import { captureException } from '@/core/infra/capture-client';
 import { syncOfflineActions } from '@/core/offline/offline-client';
 import { useOfflineQueueSync } from '@/core/offline/use-offline-queue-sync';
-import {
-	LIST_REFRESH_INTERVAL_MS,
-	useVisibilityPausedInterval,
-} from '@/core/utils/use-visibility-paused-interval';
 import { applyPendingOverlay, type HideLoadError, loadErrorMessage } from './collection-overlay';
-
-const DEFAULT_POLL_INTERVAL_MS = LIST_REFRESH_INTERVAL_MS;
+import { useWgChange } from './wg-changes';
 
 /** Why the hook asks the feature to reload: first mount, a visible-tab poll, or a queue flush. */
 export type SyncedReloadReason = 'mount' | 'poll' | 'synced';
@@ -42,8 +37,8 @@ export interface SyncedCollectionConfig<TData, TItem> {
 	describeError: (error: CachedFetchError) => string;
 	/** Keeps the shown data without a banner for some failures; default shows every failure. */
 	hideError?: HideLoadError;
-	/** Visible-tab refresh interval; `null` disables polling. */
-	pollIntervalMs?: number | null;
+	/** Reload when the WG's change poll sees its list data move; `false` for reads a sibling owns. */
+	refreshOnChange?: boolean;
 	/**
 	 * How the feature reloads for each reason. The default is `load()` on mount and a silent
 	 * `load()` otherwise; features with extra work per load (merging, side reads) pass their own.
@@ -212,10 +207,12 @@ export function useSyncedCollection<TData, TItem>(config: SyncedCollectionConfig
 		reloadRef.current('mount');
 	}, []);
 
-	useVisibilityPausedInterval(
-		() => reloadRef.current('poll'),
-		config.pollIntervalMs === undefined ? DEFAULT_POLL_INTERVAL_MS : config.pollIntervalMs,
-	);
+	const readErrorRef = useRef(readError);
+	readErrorRef.current = readError;
+	useWgChange('data', () => reloadRef.current('poll'), {
+		enabled: config.refreshOnChange !== false,
+		isStale: () => readErrorRef.current !== undefined,
+	});
 
 	/**
 	 * Applies a local change to the rows on screen and to the cached response, so the next render
