@@ -199,18 +199,106 @@ test.describe('Start card', () => {
 			await open(page, SOLO_WG.shareCode);
 			const link = page.locator('[data-invite-card-link]');
 			await expect(link).toHaveText(/old-invite-token-00001$/);
-			if (expiresInMs < DAY_MS) {
-				// At its expiry the card fetches the replacement on its own.
-				await expect(link).toHaveText(/fixture-invite-token01$/, { timeout: 5000 });
+			if (expiresInMs >= DAY_MS) {
+				// Revoked elsewhere: the card asks again once the tab is back in front.
+				await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
 			}
+			// At its expiry the card fetches the replacement on its own.
+			await expect(link).toHaveText(/fixture-invite-token01$/, { timeout: 5000 });
 			await page.getByRole('button', { name: /^Link teilen: Einladung in / }).click();
-			await expect(link).toHaveText(/fixture-invite-token01$/);
 			const readCopied = () =>
 				page.evaluate(() => (window as unknown as { __copied: string[] }).__copied);
 			await expect.poll(async () => (await readCopied()).length).toBe(1);
 			const copied = await readCopied();
 			expect(copied[0]).toContain('/invite/fixture-invite-token01');
 			expect(copied[0]).not.toContain('old-invite-token');
+		});
+	}
+
+	test('sharing opens the share sheet inside the tap, without waiting for the network', async ({
+		page,
+	}) => {
+		await page.addInitScript(() => {
+			// The share sheet needs the tap's user activation, which an awaited request spends.
+			let inClick = false;
+			const calls: boolean[] = [];
+			(window as unknown as { __shareInClick: boolean[] }).__shareInClick = calls;
+			window.addEventListener('click', () => (inClick = true), true);
+			window.addEventListener('click', () => (inClick = false));
+			Object.defineProperty(navigator, 'share', {
+				value: async () => void calls.push(inClick),
+				configurable: true,
+			});
+			Object.defineProperty(navigator, 'canShare', { value: () => true, configurable: true });
+		});
+		await mockEmptyLists(page, SOLO_BASE);
+		await open(page, SOLO_WG.shareCode);
+		await expect(page.locator('[data-invite-card-link]')).toHaveText(/fixture-invite-token01$/);
+		await page.getByRole('button', { name: /^Link teilen: Einladung in / }).click();
+		await expect(page.getByText('Einladung geteilt')).toBeAttached();
+		const calls = await page.evaluate(
+			() => (window as unknown as { __shareInClick: boolean[] }).__shareInClick,
+		);
+		expect(calls).toEqual([true]);
+	});
+
+	test('a failed share says so on screen', async ({ page }) => {
+		await page.addInitScript(() => {
+			Object.defineProperty(navigator, 'share', { value: undefined, configurable: true });
+			Object.defineProperty(navigator, 'clipboard', {
+				value: { writeText: async () => Promise.reject(new Error('denied')) },
+				configurable: true,
+			});
+			document.execCommand = () => false;
+		});
+		await mockEmptyLists(page, SOLO_BASE);
+		await open(page, SOLO_WG.shareCode);
+		await expect(page.locator('[data-invite-card-link]')).toBeVisible();
+		await page.getByRole('button', { name: /^Link teilen: Einladung in / }).click();
+		const notice = page.getByText('Teilen fehlgeschlagen');
+		await expect(notice).toBeVisible();
+		// Not just the screen-reader announcement: a real line of text on the card.
+		expect((await notice.boundingBox())?.width ?? 0).toBeGreaterThan(20);
+	});
+
+	for (const event of ['visibilitychange', 'focus'] as const) {
+		test(`a join noticed on ${event} swaps the card for the welcome`, async ({ page }) => {
+			await mockEmptyLists(page, SOLO_BASE);
+			let joined = false;
+			await page.route(`**${SOLO_BASE}/invites/current`, (route) =>
+				joined ? route.fulfill({ json: { invite: null } }) : route.fallback(),
+			);
+			await page.route(`**${SOLO_BASE}/members`, (route) =>
+				route.fulfill({
+					json: {
+						members: [
+							{ id: SOLO_WG.memberId, name: 'Smoke Tester', color: null, active: true },
+							...(joined
+								? [
+										{
+											id: '0ab8c8f2-5d03-4a84-aadc-4c5d7e8abf55',
+											name: 'Mina',
+											color: null,
+											active: true,
+										},
+									]
+								: []),
+						],
+						viewerIsAdmin: true,
+					},
+				}),
+			);
+			await open(page, SOLO_WG.shareCode);
+			await expect(page.locator('[data-invite-card-link]')).toBeVisible();
+			joined = true;
+			await page.evaluate(
+				(name) => (name === 'focus' ? window : document).dispatchEvent(new Event(name)),
+				event,
+			);
+			await expect(
+				page.getByText('Mina ist dabei. Startet mit der ersten Ausgabe oder dem Einkauf.'),
+			).toBeVisible();
+			await expect(page.locator('[data-invite-card-link]')).toHaveCount(0);
 		});
 	}
 

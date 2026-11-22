@@ -19,6 +19,7 @@ import posthog from '@/shared/lib/analytics';
 
 /** setTimeout fires at once beyond 2^31 - 1 ms. */
 const MAX_TIMEOUT_MS = 2_147_483_647;
+const REFRESH_GAP_MS = 5000;
 
 type CardState =
 	| { status: 'loading' }
@@ -43,7 +44,8 @@ export function InviteCard() {
 	// biome-ignore lint/correctness/useExhaustiveDependencies: `attempt` re-runs the request after a failure.
 	useEffect(() => {
 		let cancelled = false;
-		setState({ status: 'loading' });
+		// A refresh keeps the shown link until the answer is in.
+		setState((s) => (s.status === 'ready' ? s : { status: 'loading' }));
 		void currentInvite(wg.shareCode, identity.memberId).then((result) => {
 			if (cancelled) return;
 			if (!result.ok) {
@@ -75,22 +77,43 @@ export function InviteCard() {
 		return () => window.clearTimeout(timer);
 	}, [expiresAt]);
 
+	// Back in front: a flatmate may have joined or the link been revoked meanwhile.
+	// Switching tabs fires both events; one request per return is enough.
+	useEffect(() => {
+		let last = 0;
+		const refresh = () => {
+			if (document.visibilityState !== 'visible' || Date.now() - last < REFRESH_GAP_MS) return;
+			last = Date.now();
+			setAttempt((n) => n + 1);
+		};
+		document.addEventListener('visibilitychange', refresh);
+		window.addEventListener('focus', refresh);
+		return () => {
+			document.removeEventListener('visibilitychange', refresh);
+			window.removeEventListener('focus', refresh);
+		};
+	}, []);
+
 	async function share(): Promise<void> {
-		if (sharing) return;
+		if (sharing || state.status !== 'ready') return;
 		setSharing(true);
 		try {
-			// Revoked or expired since the card loaded: the server answers with the replacement.
-			const current = await currentInvite(wg.shareCode, identity.memberId);
-			if (!current.ok) {
-				setState({ status: 'failed', message: current.message });
-				return;
+			let invite = state.invite;
+			// The share sheet needs the tap's user activation, so a live link is shared at once.
+			// Only a link that died before a refresh caught it waits for the server.
+			if (new Date(invite.expiresAt).getTime() <= Date.now()) {
+				const current = await currentInvite(wg.shareCode, identity.memberId);
+				if (!current.ok) {
+					setState({ status: 'failed', message: current.message });
+					return;
+				}
+				if (!current.invite) {
+					void refreshMembers();
+					return;
+				}
+				invite = current.invite;
+				setState({ status: 'ready', invite });
 			}
-			if (!current.invite) {
-				void refreshMembers();
-				return;
-			}
-			const invite = current.invite;
-			setState({ status: 'ready', invite });
 			const outcome = await shareInvite(
 				render(inviteShareMessage(wg.name, invite.url, invite.expiresAt)),
 			);
@@ -140,7 +163,11 @@ export function InviteCard() {
 					<Skeleton className="h-4 w-1/2" />
 				</>
 			)}
-			<output aria-live="polite" className="sr-only">
+			<output
+				aria-live="polite"
+				// The check icon shows success; a failure needs words on screen too.
+				className={shared === 'failed' ? 'text-destructive text-xs' : 'sr-only'}
+			>
 				{shared ? t(shared) : ''}
 			</output>
 			<Button
