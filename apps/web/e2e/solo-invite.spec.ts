@@ -204,6 +204,59 @@ test.describe('Start card', () => {
 		await expect(page.getByRole('button', { name: /^Link teilen: Einladung in / })).toHaveCount(0);
 	});
 
+	test('a join pushed to the solo member removes the card without a reload', async ({ page }) => {
+		await page.context().grantPermissions(['notifications']);
+		await mockEmptyLists(page, SOLO_BASE);
+		let joined = false;
+		await page.route(`**${SOLO_BASE}/members`, (route) =>
+			route.fulfill({
+				json: {
+					members: [
+						{ id: SOLO_WG.memberId, name: 'Smoke Tester', color: null, active: true },
+						...(joined
+							? [
+									{
+										id: '0ab8c8f2-5d03-4a84-aadc-4c5d7e8abf55',
+										name: 'Mina',
+										color: null,
+										active: true,
+									},
+								]
+							: []),
+					],
+					viewerIsAdmin: true,
+				},
+			}),
+		);
+		const cdp = await page.context().newCDPSession(page);
+		const registrations: string[] = [];
+		cdp.on('ServiceWorker.workerRegistrationUpdated', (event) => {
+			for (const registration of event.registrations)
+				registrations.push(registration.registrationId);
+		});
+		await cdp.send('ServiceWorker.enable');
+		await open(page, SOLO_WG.shareCode);
+		await expect(page.locator('[data-invite-card-link]')).toBeVisible();
+		await expect
+			.poll(() => page.evaluate(() => Boolean(navigator.serviceWorker?.controller)), {
+				timeout: 20_000,
+			})
+			.toBe(true);
+
+		// Mina joins elsewhere; the server pushes "member.joined" to the solo member.
+		joined = true;
+		await cdp.send('ServiceWorker.deliverPushMessage', {
+			origin: new URL(page.url()).origin,
+			registrationId: registrations.at(-1) ?? '',
+			data: JSON.stringify({ title: 'Mina ist dabei', body: 'Smoke Test WG', url: '/' }),
+		});
+		// Well before the 30-second members poll.
+		await expect(page.locator('[data-invite-card-link]')).toHaveCount(0, { timeout: 5000 });
+		await expect(
+			page.getByText('Mina ist dabei. Startet mit der ersten Ausgabe oder dem Einkauf.'),
+		).toBeVisible();
+	});
+
 	test('with a flatmate the card names them and leads to the first entry', async ({ page }) => {
 		await mockEmptyLists(page, DUO_BASE);
 		await open(page, FIXTURE_WG.shareCode);

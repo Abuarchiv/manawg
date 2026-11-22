@@ -115,11 +115,21 @@ export function useMembersRefresh({
 
 /**
  * Joins, move-outs and admin hand-overs by other members show up without a
- * reload; a 401 here is also how a removed member finds out.
+ * reload; a 401 here is also how a removed member finds out. A push (such as
+ * "Mina joined") refreshes at once instead of waiting for the next poll.
  */
 export function useMembersPolling(refreshMembers: () => Promise<void>, active: boolean): void {
 	useVisibilityPausedInterval(
 		() => void refreshMembers(),
 		active ? LIST_REFRESH_INTERVAL_MS : null,
 	);
+	useEffect(() => {
+		const container = typeof navigator !== 'undefined' ? navigator.serviceWorker : undefined;
+		if (!active || !container) return;
+		const onMessage = (event: MessageEvent) => {
+			if ((event.data as { type?: unknown } | null)?.type === 'push') void refreshMembers();
+		};
+		container.addEventListener('message', onMessage);
+		return () => container.removeEventListener('message', onMessage);
+	}, [active, refreshMembers]);
 }

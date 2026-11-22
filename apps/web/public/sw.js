@@ -224,7 +224,18 @@ self.addEventListener('push', (event) => {
 		// every other tagged notification (chores, money) alerts anew.
 		notificationOptions.renotify = !/^(shopping|chat):/.test(data.tag);
 	}
-	event.waitUntil(self.registration.showNotification(data.title || 'ManaWG', notificationOptions));
+	event.waitUntil(
+		Promise.all([
+			self.registration.showNotification(data.title || 'ManaWG', notificationOptions),
+			// Open windows re-read the roster at once (a flatmate joined). No payload content is passed on.
+			clients
+				.matchAll({ type: 'window' })
+				.then((wins) => {
+					for (const win of wins) win.postMessage({ type: 'push' });
+				})
+				.catch(() => undefined),
+		]),
+	);
 });
 
 self.addEventListener('notificationclick', (event) => {
