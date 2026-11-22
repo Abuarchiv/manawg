@@ -5,7 +5,6 @@ import { useCachedFetch } from '@/core/hooks/use-cached-fetch';
 import { isNetworkError } from '@/core/http/error-codes';
 import { hideStaleNetworkError } from '@/core/sync/collection-overlay';
 import { useSyncedCollection } from '@/core/sync/use-synced-collection';
-import { LIST_REFRESH_INTERVAL_MS } from '@/core/utils/use-visibility-paused-interval';
 import {
 	computeBalances,
 	computeOldestDebtAges,
@@ -94,7 +93,6 @@ export function useRemindersPage() {
 				...context,
 				hasData: context.hasData || hasExpensesRef.current,
 			}),
-		pollIntervalMs: LIST_REFRESH_INTERVAL_MS,
 		reload: (reason) => void loadAllRef.current(reason !== 'mount'),
 	});
 	const { items: reminders, commit: updateReminders } = history;

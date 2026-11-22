@@ -134,7 +134,11 @@ export function WgContextProvider({
 		accountReady,
 		auth,
 	});
-	useMembersPolling(refreshMembers, Boolean(identity && accountReady));
+	useMembersPolling(
+		encodedShareCode,
+		identity && accountReady ? identity.memberId : null,
+		refreshMembers,
+	);
 	useSyncOnFocusAndOnline(sync, identity, accountReady);
 
 	// Retry in place: the alert stays mounted while the request runs (keepCurrentContext keeps the

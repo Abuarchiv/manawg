@@ -13,10 +13,7 @@ import type { SessionMember } from '@/core/auth/local-account';
 import { subscribeOnline } from '@/core/hooks/use-online-status';
 import { apiFetch } from '@/core/infra/api-client';
 import { captureException } from '@/core/infra/capture-client';
-import {
-	LIST_REFRESH_INTERVAL_MS,
-	useVisibilityPausedInterval,
-} from '@/core/utils/use-visibility-paused-interval';
+import { useWgChange, useWgChangesPoll } from '@/core/sync/wg-changes';
 import type { Member } from './WgContextProvider';
 import type { WgAuthRef, WgSessionAction } from './wg-session-state';
 
@@ -114,12 +111,14 @@ export function useMembersRefresh({
 }
 
 /**
- * Joins, move-outs and admin hand-overs by other members show up without a
- * reload; a 401 here is also how a removed member finds out.
+ * The WG tab's one change poll. Joins, move-outs and admin hand-overs by other members show up
+ * without a reload; the poll's 401 is also how a removed member finds out.
  */
-export function useMembersPolling(refreshMembers: () => Promise<void>, active: boolean): void {
-	useVisibilityPausedInterval(
-		() => void refreshMembers(),
-		active ? LIST_REFRESH_INTERVAL_MS : null,
-	);
+export function useMembersPolling(
+	encodedShareCode: string,
+	memberId: string | null,
+	refreshMembers: () => Promise<void>,
+): void {
+	useWgChangesPoll(encodedShareCode, memberId);
+	useWgChange('members', () => void refreshMembers(), memberId !== null);
 }

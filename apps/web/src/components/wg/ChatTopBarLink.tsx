@@ -9,10 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { buttonVariants } from '@/components/ui/button';
 import { segmentCountStatus } from '@/components/wg/segment-count-status';
 import { countState, useChatUnreadCount } from '@/components/wg/use-wg-counts';
-import {
-	LIST_REFRESH_INTERVAL_MS,
-	useVisibilityPausedInterval,
-} from '@/core/utils/use-visibility-paused-interval';
+import { useWgChange } from '@/core/sync/wg-changes';
 import { useMessage } from '@/shared/i18n/message';
 import { cn } from '@/shared/lib/cn';
 import { haptic } from '@/shared/lib/haptics';
@@ -29,7 +26,7 @@ export function ChatTopBarLink({ href, className }: ChatTopBarLinkProps) {
 	const message = useMessage();
 	const pathname = usePathname() ?? '';
 	const unread = useChatUnreadCount();
-	useVisibilityPausedInterval(() => void unread.refresh(), LIST_REFRESH_INTERVAL_MS);
+	useWgChange('chat', unread.refresh);
 
 	const isActive = pathname.endsWith('/chat');
 	const count = unread.data?.count;

@@ -7,6 +7,7 @@ import {
 	FIXTURE_WG,
 	mockUnreadCount,
 	navigateToFeature,
+	reportDataChangedOnEveryPoll,
 	setupMember,
 	skipUnlessFixtures,
 } from './support/helpers';
@@ -169,6 +170,7 @@ test.describe('chore edit', () => {
 		let patchBody: Record<string, unknown> | null = null;
 		await page.clock.install();
 		await setupMember(page);
+		await reportDataChangedOnEveryPoll(page, `/api/wg/${shareCode}`);
 		await page.route(`**/api/wg/${shareCode}/members`, (route) =>
 			route.fulfill({ json: { members: [viewer, other], viewerIsAdmin: false } }),
 		);

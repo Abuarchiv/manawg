@@ -63,7 +63,7 @@ export function useChoresData({
 			render(wgLoadError({ key: 'chores.load.absences' }, error.status, error.error)),
 		hideError: hideOfflineError,
 		// The plan's mount load, poll and replay reload both lists.
-		pollIntervalMs: null,
+		refreshOnChange: false,
 		reload: (reason) => {
 			if (reason !== 'mount') reload(reason);
 		},
