@@ -103,6 +103,10 @@ settled.
 
 ### Fixed
 
+- After signing up, each step of creating or joining a flat ("Your flat", "Create a new flat",
+  "Flat created") shows its own tab title and is announced to screen readers, instead of
+  "Sign in". Reloading the "Flat created" step shows the invite link again instead of opening
+  the flat.
 - Creating a flat answers sooner: the response no longer waits for the activity-log entry, and
   the share code is checked by the database's unique index instead of a lookup before the write.
 - Screen readers read a busy button by its label alone ("Saving…") instead of "Loading Saving…".
