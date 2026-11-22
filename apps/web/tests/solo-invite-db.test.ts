@@ -34,6 +34,23 @@ mock.module('@/core/auth/auth-user-emails', {
 	},
 });
 
+// The provider answers through a stand-in: `sendsBeforeQuota` mails go out, then it reports the
+// daily quota as reached (Resend 429), which the run must stop at.
+let sendsBeforeQuota = Number.POSITIVE_INFINITY;
+const transport = await import('../src/core/mail/transport.ts');
+mock.module('../src/core/mail/transport.ts', {
+	namedExports: {
+		...transport,
+		createMailTransport: () => ({
+			name: 'dry-run',
+			sendBatch: async (mails: readonly unknown[]) =>
+				mails.map(() =>
+					sendsBeforeQuota-- > 0 ? { kind: 'sent', providerId: 'test' } : { kind: 'deferred' },
+				),
+		}),
+	},
+});
+
 type Core = typeof import('../src/core/db/index.ts');
 let core: Core;
 let soloInvite: typeof import('../src/core/mail/solo-invite.ts');
@@ -126,4 +143,35 @@ test('only WGs still alone 24 to 72 hours after creation get the reminder, once'
 		[],
 		'a WG whose reminder went out is not picked again',
 	);
+});
+
+test('a quota stop leaves the remaining WGs unsent and eligible for the next run', {
+	skip,
+}, async () => {
+	const first = await seed('quota first', 50);
+	const deferred = await seed('quota deferred', 49);
+	const untouched = await seed('quota untouched', 48);
+	const ours = [first.wgId, deferred.wgId, untouched.wgId];
+	const eligible = async () =>
+		(await soloInvite.findSoloInviteCandidates(1000))
+			.map((row) => row.wgId)
+			.filter((id) => ours.includes(id));
+
+	sendsBeforeQuota = 1;
+	try {
+		const run = await soloInvite.sendSoloInviteMails();
+		assert.equal(run.sent, 1);
+		assert.equal(run.deferred, run.candidates - 1, 'every mail after the quota stop is deferred');
+	} finally {
+		sendsBeforeQuota = Number.POSITIVE_INFINITY;
+	}
+	const mailedOfOurs = async () =>
+		[...(await mailedWgs())].filter((id) => ours.includes(id)).sort();
+	assert.deepEqual(await mailedOfOurs(), [first.wgId]);
+	assert.deepEqual(await eligible(), [deferred.wgId, untouched.wgId]);
+
+	const next = await soloInvite.sendSoloInviteMails();
+	assert.equal(next.deferred, 0);
+	assert.deepEqual(await mailedOfOurs(), [...ours].sort());
+	assert.deepEqual(await eligible(), []);
 });
