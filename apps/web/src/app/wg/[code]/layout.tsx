@@ -18,6 +18,7 @@ import type { SessionMember } from '@/core/auth/local-account';
 import { REQUEST_PATH_HEADER, wgReturnPath } from '@/core/auth/next-path';
 import { readWgChangeVersionsByShareCode, type WgChangeVersions } from '@/core/db/change-versions';
 import { loadWgShell, loadWgViewer } from '@/core/guards/load-wg-viewer';
+import { loadShellWithBaseline } from '@/core/sync/wg-shell-baseline';
 import { isValidShareCode, normalizeShareCode } from '@/core/utils/share-code';
 import { loadFixtureWgView } from '@/fixtures/pages';
 import { TabWarmup } from './_components/TabWarmup';
@@ -96,11 +97,11 @@ export default async function WgLayout({ children, params }: Props) {
 		);
 	}
 
-	// Read before the roster and before any client read of the page, so a change after any of
-	// them moves a version the first poll sees. Without it the first answered poll reloads
-	// everything once.
-	const changeVersions = await readWgChangeVersionsByShareCode(code).catch(() => null);
-	const shell = await loadWgShell(code);
+	// The baseline comes first, before the roster and any client read of the page.
+	const { baseline: changeVersions, shell } = await loadShellWithBaseline(
+		() => readWgChangeVersionsByShareCode(code),
+		() => loadWgShell(code),
+	);
 	if (!shell) redirect(await signInPath(code));
 	const { user, access, movedOut, members, initialIsAdmin } = shell;
 	if (!access) {
