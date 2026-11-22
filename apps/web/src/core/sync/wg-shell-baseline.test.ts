@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { loadShellWithBaseline } from './wg-shell-baseline.ts';
+import { loadShellWithBaseline } from './wg-shell-baseline';
 
 test('a member who joins between the shell and baseline reads is seen by the first poll', async () => {
 	// A tiny WG store: each member write moves the members version.
