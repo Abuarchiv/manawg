@@ -1,7 +1,7 @@
 'use client';
 
 import { Monitor, Moon, Sun } from 'lucide-react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { InstallButton } from '@/components/app/InstallButton';
 import { LanguageSwitch } from '@/components/app/LanguageSwitch';
 import { useTheme } from '@/components/app/ThemeProvider';
@@ -12,7 +12,9 @@ import { MemberNameForm } from '@/components/wg/settings/MemberNameForm';
 import { Section } from '@/components/wg/settings/Section';
 import { WgNameSection } from '@/components/wg/settings/WgNameSection';
 import { useWg } from '@/components/wg/WgContextProvider';
+import type { Locale } from '@/shared/i18n/locale';
 import { haptic } from '@/shared/lib/haptics';
+import { faqUrl } from '@/shared/lib/landing-url';
 import { SUPPORT_MAILTO } from '@/shared/lib/support-mailto';
 
 const THEMES = [
@@ -32,6 +34,7 @@ export function ProfileTab({ memberName, wgName, shareCode, memberId }: ProfileT
 	const t = useTranslations('settings.profile');
 	const { theme, setTheme } = useTheme();
 	const { isAdmin } = useWg();
+	const locale = useLocale() as Locale;
 
 	return (
 		<>
@@ -75,11 +78,10 @@ export function ProfileTab({ memberName, wgName, shareCode, memberId }: ProfileT
 			{isAdmin && <WgNameSection wgName={wgName} shareCode={shareCode} memberId={memberId} />}
 
 			<Section title={t('help')}>
-				{SUPPORT_MAILTO && (
-					<ul>
-						<LinkRow href={SUPPORT_MAILTO} label={t('reportProblem')} />
-					</ul>
-				)}
+				<ul>
+					<LinkRow href={faqUrl(locale)} label={t('faq')} external />
+					{SUPPORT_MAILTO && <LinkRow href={SUPPORT_MAILTO} label={t('reportProblem')} />}
+				</ul>
 				<p className="text-muted-foreground px-3 py-2 text-xs">
 					{t('version', { version: process.env.NEXT_PUBLIC_APP_VERSION ?? '' })}
 				</p>

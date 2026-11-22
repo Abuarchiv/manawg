@@ -10,6 +10,9 @@ settled.
 
 ### Added
 
+- Settings → Profile → Help links the frequently asked questions on manawg.com first, in German
+  or English (Spanish readers get the English page), opening in a new tab. The report-by-email
+  link follows it.
 - Accounts without a flat can be deleted from the "Your flat" screen after sign-in, with the same
   confirmation as in the flat settings. After a completed deletion the start page confirms
   "Account deleted".
