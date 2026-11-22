@@ -15,13 +15,13 @@ import { RetryNotice } from '@/components/entry/RetryNotice';
 import { useConfirmLogoutDiscard } from '@/components/entry/use-confirm-logout-discard';
 import { Button } from '@/components/ui/button';
 import { FieldGroup, FieldSeparator } from '@/components/ui/field';
-import { Skeleton } from '@/components/ui/skeleton';
 import { AccountDeleteSection } from '@/components/wg/settings/AccountDeleteSection';
 import { isAuthPagePath } from '@/core/auth/auth-intent';
 import { safeNextPath, withHash } from '@/core/auth/next-path';
 import { invitePath } from '@/core/utils/invite-token';
 import { normalizeShareCode } from '@/core/utils/share-code';
 import { useMessage } from '@/shared/i18n/message';
+import { AuthCheckingSkeleton } from './AuthCheckingSkeleton';
 import { ChooseStep } from './ChooseStep';
 import { CreateStep } from './CreateStep';
 import { InviteStep } from './InviteStep';
@@ -263,26 +263,7 @@ export function LoginClient({ appOrigin }: { appOrigin: string }) {
 					/>
 				)}
 				{authState === 'loading' ? (
-					<output aria-live="polite" aria-label={t('authChecking')} className="flex flex-col gap-4">
-						{checkingSession ? (
-							// Shaped like the two choose buttons that replace it.
-							<div className="flex flex-col gap-2">
-								<Skeleton className="h-9 w-full" />
-								<Skeleton className="h-9 w-full" />
-							</div>
-						) : (
-							// Shaped like the sign-in form (Google, separator, two fields, link, two buttons).
-							<>
-								<Skeleton className="h-8 w-full" />
-								<Skeleton className="h-5 w-full" />
-								<Skeleton className="h-[4.5rem] w-full" />
-								<Skeleton className="h-24 w-full" />
-								<Skeleton className="h-8 w-full" />
-								<Skeleton className="h-[4.5rem] w-full" />
-							</>
-						)}
-						<span className="sr-only">{t('authChecking')}</span>
-					</output>
+					<AuthCheckingSkeleton checkingSession={checkingSession} />
 				) : (
 					<FieldGroup>
 						{googleSignIn && (
