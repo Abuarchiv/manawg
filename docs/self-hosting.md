@@ -107,6 +107,11 @@ limit abuse; registration cannot be switched off, because invited members create
 accounts. For a household-only instance, restrict access at the proxy (VPN, IP allowlist, basic
 auth).
 
+Passwords from known breaches are refused at registration and password change, both by the app
+and by Supabase Auth (`GOTRUE_PASSWORD_HIBP_ENABLED`). The check sends only the first five
+characters of the password's SHA-1 to the Have I Been Pwned range API and lets the password
+through when that service cannot be reached.
+
 Behind your own reverse proxy instead, keep `SITE_ADDRESS=:80`, set `HTTP_PORT` to a local port
 and `TRUSTED_PROXIES` to the proxy's address (`private_ranges` covers proxies on the same host or
 network), and let the proxy pass on `Host`, `X-Forwarded-Proto` and `X-Forwarded-For`. `APP_URL`
@@ -547,6 +552,15 @@ required; `--legal-url` is the site with your legal pages (see
 
 The mail bodies and subjects pick German, English or Spanish from the account's `locale` in the
 user metadata. Accounts without one get German.
+
+**Leaked passwords:** the app rejects passwords from known breaches on registration and password
+change (`/api/auth/sign-up`, `/api/auth/password`) through the Have I Been Pwned range API; only
+the first five characters of the password's SHA-1 leave the server. On a Pro plan or higher, also
+turn on **Authentication → Attack Protection → Prevent use of leaked passwords**, so Supabase
+applies the same check to clients that call `/auth/v1` directly. On the Free plan Supabase refuses
+that setting, and the security advisor keeps showing the `auth_leaked_password_protection`
+warning; the app-side check is the protection there. The Docker stack enables the Supabase Auth
+check itself (`GOTRUE_PASSWORD_HIBP_ENABLED`).
 
 **Google sign-in (optional):** enable the Google provider under **Authentication → Providers**
 with your own OAuth client. The redirect URI to register at Google is shown there. Without it, set

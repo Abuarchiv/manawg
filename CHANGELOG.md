@@ -10,6 +10,9 @@ settled.
 
 ### Added
 
+- Self-hosted instances refuse passwords from known data breaches in Supabase Auth as well
+  (`GOTRUE_PASSWORD_HIBP_ENABLED`), so direct calls to `/auth/v1` get the same check as the app's
+  registration and password change. Pull the new `compose.yaml` and restart.
 - The Docker image takes `SENTRY_RELEASE`, `SENTRY_ORG` and `SENTRY_PROJECT` build arguments and
   a `sentry_auth_token` build secret. With them, error reports carry the release and point at the
   original source lines; the token is not stored in the image.
