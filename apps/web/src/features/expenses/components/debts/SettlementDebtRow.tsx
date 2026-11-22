@@ -115,7 +115,7 @@ export function SettlementDebtRow({
 						}
 						onClick={() => void review()}
 					>
-						{reviewing && <Spinner data-icon="inline-start" />}
+						{reviewing && <Spinner data-icon="inline-start" aria-hidden />}
 						{reviewing ? t('settle.checking') : t('settle.button')}
 					</Button>
 					{owedToMe && backedByDirectDebt && (

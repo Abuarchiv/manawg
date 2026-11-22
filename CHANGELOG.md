@@ -82,6 +82,9 @@ settled.
 
 ### Fixed
 
+- Screen readers read a busy button by its label alone ("Saving…") instead of "Loading Saving…".
+  Twenty buttons in chat, expenses, debts, import and the noticeboard showed a spinner that
+  added its own name.
 - The import instructions in the README no longer tell you to export from Tricount, which removed
   its export in version 8 (2024). Files exported from an earlier Tricount version still import.
 - A taken name on the join page now moves focus to the name field even when the field was hidden.

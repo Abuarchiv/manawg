@@ -115,7 +115,7 @@ export function AnnouncementFooter({
 							aria-label={t('footer.reactionAria', { label, subject: actionSubject })}
 						>
 							{reactionPending(key) ? (
-								<Spinner data-icon="inline-start" />
+								<Spinner data-icon="inline-start" aria-hidden />
 							) : (
 								<Icon data-icon="inline-start" />
 							)}
@@ -146,7 +146,7 @@ export function AnnouncementFooter({
 						aria-label={t('footer.resolveAria', { subject: actionSubject })}
 					>
 						{statusPending ? (
-							<Spinner data-icon="inline-start" />
+							<Spinner data-icon="inline-start" aria-hidden />
 						) : (
 							<CheckCircle2 data-icon="inline-start" />
 						)}

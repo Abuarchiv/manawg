@@ -199,7 +199,7 @@ export function RemindButton({
 				disabled={disabled}
 			>
 				{status === 'sending' ? (
-					<Spinner data-icon="inline-start" />
+					<Spinner data-icon="inline-start" aria-hidden />
 				) : status === 'sent' ? (
 					<Check data-icon="inline-start" />
 				) : (

@@ -86,7 +86,7 @@ export function MessageEditForm({
 					{t('cancel')}
 				</Button>
 				<Button disabled={pending || !draft.trim()} onClick={onSave}>
-					{pending && <Spinner data-icon="inline-start" />}
+					{pending && <Spinner data-icon="inline-start" aria-hidden />}
 					{pending ? t('saving') : t('save')}
 				</Button>
 			</div>
@@ -215,7 +215,7 @@ export function MessageDeleteDialog({
 						className="min-h-11"
 						onClick={onConfirm}
 					>
-						{pending && <Spinner data-icon="inline-start" />}
+						{pending && <Spinner data-icon="inline-start" aria-hidden />}
 						{pending ? t('deleting') : t('deleteConfirm')}
 					</AlertDialogAction>
 				</AlertDialogFooter>
