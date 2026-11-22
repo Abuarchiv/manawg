@@ -1,9 +1,9 @@
 # One dispatch for the documented release: main tip -> Preview gate -> production migration ->
 # production deployment -> tag, GitHub release and Docker image for the version in package.json.
 # Each stage waits for the previous one and stops the release on failure.
-# Vercel is optional: without a Vercel Preview of the commit the Preview gate is the Preview
-# database migration check, and the deploy hook can point at a self-hosted instance
-# (docs/development.md, Releases).
+# Vercel is optional: with PREVIEW_GATE=database the Preview gate is the Preview database
+# migration check and PRODUCTION_DEPLOY_HOOK deploys a self-hosted instance
+# (docs/development.md, Releases). Gate and hook are checked before anything runs.
 name: Release production
 
 on:
@@ -32,8 +32,6 @@ jobs:
     permissions:
       actions: write
       contents: write
-      deployments: read
-      statuses: read
     timeout-minutes: 150
     environment:
       name: Production
@@ -49,13 +47,24 @@ jobs:
         id: candidate
         env:
           CONFIRMATION: ${{ inputs.confirmation }}
-          DEPLOY_HOOK: ${{ secrets.PRODUCTION_DEPLOY_HOOK || secrets.VERCEL_PRODUCTION_DEPLOY_HOOK }}
+          PRODUCTION_DEPLOY_HOOK: ${{ secrets.PRODUCTION_DEPLOY_HOOK }}
+          VERCEL_PRODUCTION_DEPLOY_HOOK: ${{ secrets.VERCEL_PRODUCTION_DEPLOY_HOOK }}
           PREVIEW_GATE: ${{ vars.PREVIEW_GATE }}
+          VERCEL_PROJECT_NAME: ${{ vars.VERCEL_PROJECT_NAME }}
+          VERCEL_TEAM_SLUG: ${{ vars.VERCEL_TEAM_SLUG }}
         run: |
           [ "$GITHUB_REF" = refs/heads/main ] || { echo 'Release only from main.' >&2; exit 1; }
           [ "$CONFIRMATION" = RELEASE_PRODUCTION ] || { echo 'Confirmation must be RELEASE_PRODUCTION.' >&2; exit 1; }
-          [ "$PREVIEW_GATE" = on ] || { echo 'Repository variable PREVIEW_GATE must be on; without it no Preview run exists to pass the gate.' >&2; exit 1; }
-          [ -n "$DEPLOY_HOOK" ] || { echo 'Production secret PRODUCTION_DEPLOY_HOOK (or VERCEL_PRODUCTION_DEPLOY_HOOK) is missing.' >&2; exit 1; }
+          # Fails here, before any migration, when no gate or no usable deploy hook is configured.
+          node --input-type=module <<'NODE'
+          import { appendFileSync } from 'node:fs';
+          import { selectDeployHook, selectPreviewGate } from './apps/web/scripts/release-workflow-gates.mjs';
+
+          const gate = selectPreviewGate(process.env);
+          const hook = selectDeployHook(gate, process.env);
+          appendFileSync(process.env.GITHUB_OUTPUT, `gate=${gate}\nhook=${hook}\n`);
+          appendFileSync(process.env.GITHUB_STEP_SUMMARY, `Preview gate: ${gate}, deploy hook: ${hook}\n`);
+          NODE
           echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
           echo "Candidate: $(git rev-parse HEAD)" >> "$GITHUB_STEP_SUMMARY"
 
@@ -98,27 +107,12 @@ jobs:
         id: preview
         env:
           SHA: ${{ steps.candidate.outputs.sha }}
-          VERCEL_PROJECT_NAME: ${{ vars.VERCEL_PROJECT_NAME }}
-          VERCEL_TEAM_SLUG: ${{ vars.VERCEL_TEAM_SLUG }}
+          GATE: ${{ steps.candidate.outputs.gate }}
         run: |
-          # With Vercel, it builds preview-main and reports a deployment_status; that Preview run
-          # (migration check and end-to-end tests) is the gate. Without Vercel, or when Vercel
-          # rejects the commit without deploying it, the gate is the Preview migration check that
-          # preview.yml runs after main CI. selectPreviewGate decides; migrate-production.yml
-          # decides again on its own.
-          mode() {
-            gh api "repos/$GITHUB_REPOSITORY/commits/$SHA/statuses?per_page=100" > "$RUNNER_TEMP/statuses.json"
-            gh api "repos/$GITHUB_REPOSITORY/deployments?sha=$SHA&per_page=100" > "$RUNNER_TEMP/deployments.json"
-            node --input-type=module <<'NODE'
-          import { readFileSync } from 'node:fs';
-          import { selectPreviewGate } from './apps/web/scripts/release-workflow-gates.mjs';
-
-          const read = (name) => JSON.parse(readFileSync(`${process.env.RUNNER_TEMP}/${name}.json`, 'utf8'));
-          process.stdout.write(
-            selectPreviewGate({ env: process.env, statuses: read('statuses'), deployments: read('deployments') }),
-          );
-          NODE
-          }
+          # vercel: Vercel builds preview-main and reports a deployment_status; that Preview run
+          # (migration check and end-to-end tests) is the gate. database: the Preview migration
+          # check that preview.yml runs after main CI is the gate. migrate-production.yml
+          # checks the run against the same PREVIEW_GATE again.
           # gate <event> <jq job filter>: one line "<run id> <status/conclusion>..." per Preview run.
           gate() {
             for id in $(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/preview.yml/runs?head_sha=$SHA&event=$1&per_page=50" \
@@ -127,30 +121,24 @@ jobs:
                 --jq "[.jobs[] | select($2) | .status + \"/\" + (.conclusion // \"\")] | sort | \"$id \" + join(\" \")"
             done
           }
-          if [ -n "$VERCEL_PROJECT_NAME" ] && [ -n "$VERCEL_TEAM_SLUG" ] &&
-            [ "$(git ls-remote origin refs/heads/preview-main | cut -f1)" != "$SHA" ]; then
+          if [ "$GATE" = vercel ] && [ "$(git ls-remote origin refs/heads/preview-main | cut -f1)" != "$SHA" ]; then
             git push --force origin "$SHA:refs/heads/preview-main"
-            # Give Vercel time to report on the pushed commit before its status is read.
-            sleep 30
           fi
           for _ in $(seq 120); do
-            gate_mode="$(mode)"
-            case "$gate_mode" in
-              vercel)
-                runs="$(gate deployment_status '.name == "db-supabase-preview" or .name == "e2e-preview"')"
-                passed="$(grep -m1 ' completed/success completed/success$' <<<"$runs" | cut -d' ' -f1 || true)" ;;
-              database)
-                runs="$(gate workflow_run '.name == "db-supabase-preview"')"
-                passed="$(grep -m1 ' completed/success$' <<<"$runs" | cut -d' ' -f1 || true)" ;;
-              *) runs='Vercel has not reported on the commit yet.'; passed='' ;;
-            esac
+            if [ "$GATE" = vercel ]; then
+              runs="$(gate deployment_status '.name == "db-supabase-preview" or .name == "e2e-preview"')"
+              passed="$(grep -m1 ' completed/success completed/success$' <<<"$runs" | cut -d' ' -f1 || true)"
+            else
+              runs="$(gate workflow_run '.name == "db-supabase-preview"')"
+              passed="$(grep -m1 ' completed/success$' <<<"$runs" | cut -d' ' -f1 || true)"
+            fi
             if [ -n "$passed" ]; then
               echo "run_id=$passed" >> "$GITHUB_OUTPUT"
-              echo "Preview gate ($gate_mode) run: $passed" >> "$GITHUB_STEP_SUMMARY"
+              echo "Preview gate ($GATE) run: $passed" >> "$GITHUB_STEP_SUMMARY"
               exit 0
             fi
-            if grep -qE 'completed/(failure|timed_out)' <<<"$runs"; then
-              echo "Preview gate ($gate_mode) failed for $SHA:" >&2
+            if grep -qE 'completed/(failure|timed_out|cancelled)' <<<"$runs"; then
+              echo "Preview gate ($GATE) failed for $SHA:" >&2
               echo "$runs" >&2
               exit 1
             fi
@@ -161,7 +149,7 @@ jobs:
             fi
             sleep 30
           done
-          echo "Preview gate ($gate_mode) did not pass in time for $SHA:" >&2
+          echo "Preview gate ($GATE) did not pass in time for $SHA:" >&2
           echo "$runs" >&2
           exit 1
 
@@ -187,8 +175,8 @@ jobs:
       - name: Deploy production
         env:
           SHA: ${{ steps.candidate.outputs.sha }}
-          # A self-hosted instance's hook, or Vercel's production deploy hook when only that is set.
-          DEPLOY_HOOK: ${{ secrets.PRODUCTION_DEPLOY_HOOK || secrets.VERCEL_PRODUCTION_DEPLOY_HOOK }}
+          # The secret chosen in "Verify dispatch" (selectDeployHook).
+          DEPLOY_HOOK: ${{ secrets[steps.candidate.outputs.hook] }}
         run: |
           # The hook builds the main tip; if main moved meanwhile, the version check below fails.
           curl -fsS -X POST "$DEPLOY_HOOK" > /dev/null

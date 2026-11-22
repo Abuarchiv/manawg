@@ -54,11 +54,12 @@ settled.
   (`Cache-Control: public, s-maxage=240`), so an uptime monitor checking every minute no longer
   runs the health check each time. An unhealthy or rate-limited answer is still never cached, and
   an outage shows within five minutes. To always get a live answer, add a unique query parameter.
-- The **Release production** workflow no longer needs Vercel. Without a Vercel Preview of the
-  release commit, its Preview gate is the Preview database migration check, and the new
-  `PRODUCTION_DEPLOY_HOOK` secret can point at a self-hosted deploy endpoint
-  (`VERCEL_PRODUCTION_DEPLOY_HOOK` still works). The release is still tagged only after
-  `/api/health` reports the new version. See the Releases section of `docs/development.md`.
+- The **Release production** workflow no longer needs Vercel. With the repository variable
+  `PREVIEW_GATE` set to `database`, its Preview gate is the Preview database migration check and
+  the new `PRODUCTION_DEPLOY_HOOK` secret deploys a self-hosted instance; `PREVIEW_GATE=on` keeps
+  the Vercel Preview gate. The workflow checks gate and hook before it migrates anything, and
+  still tags only after `/api/health` reports the new version. See the Releases section of
+  `docs/development.md`.
 - A page nobody has used for five minutes stops refreshing its lists, the chat and the unread
   count, even while it stays in front. The first click, key press or scroll refreshes it at once.
   A tab left open all day no longer sends thousands of requests to the server.
@@ -87,9 +88,6 @@ settled.
 
 ### Fixed
 
-- Screen readers read a busy button by its label alone ("Saving…") instead of "Loading Saving…".
-  Twenty buttons in chat, expenses, debts, import and the noticeboard showed a spinner that
-  added its own name.
 - The import instructions in the README no longer tell you to export from Tricount, which removed
   its export in version 8 (2024). Files exported from an earlier Tricount version still import.
 - A taken name on the join page now moves focus to the name field even when the field was hidden.

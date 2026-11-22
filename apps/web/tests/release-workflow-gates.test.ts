@@ -9,6 +9,7 @@ import {
 	assertPreviewOrigin,
 	assertProductionDispatch,
 	assertRequiredEnv,
+	selectDeployHook,
 	selectPreviewGate,
 } from '../scripts/release-workflow-gates.mjs';
 
@@ -191,52 +192,33 @@ test('preview evidence from the database gate is a green workflow_run migration 
 	assert.throws(() => assertPreviewEvidence({ ...base, gate: 'pending' }));
 });
 
-test('preview gate uses Vercel only when it is configured and builds the commit', () => {
-	const env = { VERCEL_PROJECT_NAME: 'manawg', VERCEL_TEAM_SLUG: 'example-team' };
-	const status = (state: string, created_at: string, login = 'vercel[bot]') => ({
-		context: 'Vercel',
-		state,
-		created_at,
-		creator: { login },
-	});
-	const deployment = (environment = 'Preview', login = 'vercel[bot]') => ({
-		environment,
-		creator: { login },
-	});
-	const gate = (input: object) =>
-		selectPreviewGate({ env, statuses: [], deployments: [], ...input });
+test('preview gate is chosen explicitly by PREVIEW_GATE and fails closed', () => {
+	const vercel = { VERCEL_PROJECT_NAME: 'manawg', VERCEL_TEAM_SLUG: 'example-team' };
+	assert.equal(selectPreviewGate({ PREVIEW_GATE: 'on', ...vercel }), 'vercel');
+	// A self-hosted instance opts in; set Vercel variables do not switch it back.
+	assert.equal(selectPreviewGate({ PREVIEW_GATE: 'database' }), 'database');
+	assert.equal(selectPreviewGate({ PREVIEW_GATE: 'database', ...vercel }), 'database');
+	// `on` without the Vercel variables, or any other value, has no gate.
+	assert.throws(() => selectPreviewGate({ PREVIEW_GATE: 'on' }), /PREVIEW_GATE/);
+	assert.throws(() => selectPreviewGate({ PREVIEW_GATE: 'on', VERCEL_PROJECT_NAME: 'manawg' }));
+	assert.throws(() => selectPreviewGate({ PREVIEW_GATE: 'off', ...vercel }));
+	assert.throws(() => selectPreviewGate({}));
+});
 
-	// Without the Vercel variables a self-hosted instance gates on the Preview database check.
-	assert.equal(selectPreviewGate({ env: {}, statuses: [], deployments: [] }), 'database');
+test('deploy hook: the database gate needs PRODUCTION_DEPLOY_HOOK, Vercel may fall back', () => {
+	const both = { PRODUCTION_DEPLOY_HOOK: 'https://a', VERCEL_PRODUCTION_DEPLOY_HOOK: 'https://b' };
+	assert.equal(selectDeployHook('database', both), 'PRODUCTION_DEPLOY_HOOK');
+	assert.equal(selectDeployHook('vercel', both), 'PRODUCTION_DEPLOY_HOOK');
 	assert.equal(
-		selectPreviewGate({ env: { VERCEL_PROJECT_NAME: 'manawg' }, statuses: [], deployments: [] }),
-		'database',
+		selectDeployHook('vercel', { VERCEL_PRODUCTION_DEPLOY_HOOK: 'https://b' }),
+		'VERCEL_PRODUCTION_DEPLOY_HOOK',
 	);
-	// Vercel deployed a Preview of the commit: its end-to-end gate applies.
-	assert.equal(gate({ deployments: [deployment()] }), 'vercel');
-	assert.equal(
-		gate({ deployments: [deployment()], statuses: [status('failure', '2026-11-20T10:00:00Z')] }),
-		'vercel',
+	// Without Vercel Previews the Vercel hook is never used, so the release stops before migrating.
+	assert.throws(
+		() => selectDeployHook('database', { VERCEL_PRODUCTION_DEPLOY_HOOK: 'https://b' }),
+		/PRODUCTION_DEPLOY_HOOK/,
 	);
-	// Vercel rejected the commit without deploying it (e.g. a blocked account).
-	assert.equal(gate({ statuses: [status('failure', '2026-11-20T10:00:00Z')] }), 'database');
-	assert.equal(gate({ statuses: [status('error', '2026-11-20T10:00:00Z')] }), 'database');
-	// A newer pending status means Vercel is building again: wait for it.
-	assert.equal(
-		gate({
-			statuses: [
-				status('failure', '2026-11-20T10:00:00Z'),
-				status('pending', '2026-11-20T10:05:00Z'),
-			],
-		}),
-		'pending',
-	);
-	assert.equal(gate({}), 'pending');
-	// Statuses and deployments of anyone but Vercel prove nothing.
-	assert.equal(
-		gate({ statuses: [status('failure', '2026-11-20T10:00:00Z', 'someone')] }),
-		'pending',
-	);
-	assert.equal(gate({ deployments: [deployment('Preview', 'someone')] }), 'pending');
-	assert.equal(gate({ deployments: [deployment('Production')] }), 'pending');
+	assert.throws(() => selectDeployHook('database', { PRODUCTION_DEPLOY_HOOK: '  ' }));
+	assert.throws(() => selectDeployHook('vercel', {}));
+	assert.throws(() => selectDeployHook('pending', both));
 });

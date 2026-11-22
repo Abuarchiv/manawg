@@ -1,8 +1,8 @@
 # Applies the database migrations of an approved main commit to production. Dispatched by
 # release-production.yml; it checks that CI and the Preview gate passed for exactly that commit
-# before it connects to the production database. It picks the required Preview gate itself
-# (selectPreviewGate): Vercel's when Vercel deployed a Preview of the commit, otherwise the
-# Preview database migration check.
+# before it connects to the production database. The repository variable PREVIEW_GATE picks the
+# required Preview gate (selectPreviewGate): `on` for the Vercel Preview run, `database` for the
+# Preview database migration check after main CI.
 name: Migrate production database
 
 on:
@@ -24,8 +24,6 @@ on:
 permissions:
   actions: read
   contents: read
-  deployments: read
-  statuses: read
 
 concurrency:
   group: production-database-migration
@@ -38,6 +36,7 @@ env:
   SUPABASE_PREVIEW_PROJECT_HOST: ${{ vars.SUPABASE_PREVIEW_PROJECT_HOST }}
   VERCEL_PROJECT_NAME: ${{ vars.VERCEL_PROJECT_NAME }}
   VERCEL_TEAM_SLUG: ${{ vars.VERCEL_TEAM_SLUG }}
+  PREVIEW_GATE: ${{ vars.PREVIEW_GATE }}
 
 jobs:
   verify-candidate-ci:
@@ -148,11 +147,6 @@ jobs:
             echo 'candidate_sha must be a full 40-character commit SHA.' >&2
             exit 1
           fi
-          # Vercel's commit statuses and deployments decide which Preview gate is required.
-          gh api --header 'Accept: application/vnd.github+json' \
-            "/repos/$REPOSITORY/commits/$CANDIDATE_SHA/statuses?per_page=100" > "$RUNNER_TEMP/statuses.json"
-          gh api --header 'Accept: application/vnd.github+json' \
-            "/repos/$REPOSITORY/deployments?sha=$CANDIDATE_SHA&per_page=100" > "$RUNNER_TEMP/deployments.json"
           RUN_HEAD_SHA="$(node --input-type=module <<'NODE'
           import { readFileSync } from 'node:fs';
 
@@ -171,12 +165,7 @@ jobs:
           import { appendFileSync, readFileSync } from 'node:fs';
           import { assertPreviewEvidence, selectPreviewGate } from './apps/web/scripts/release-workflow-gates.mjs';
 
-          const read = (name) => JSON.parse(readFileSync(`${process.env.RUNNER_TEMP}/${name}.json`, 'utf8'));
-          const gate = selectPreviewGate({
-            env: process.env,
-            statuses: read('statuses'),
-            deployments: read('deployments'),
-          });
+          const gate = selectPreviewGate(process.env);
           const previewRunId = Number(process.env.PREVIEW_RUN_ID);
           assertPreviewEvidence({
             gate,
