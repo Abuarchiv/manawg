@@ -249,3 +249,42 @@ export function assertPreviewEvidence({
 
 	return { deploymentRunId: run.id, sourceRevision: run.head_sha };
 }
+
+/**
+ * Verdict of the release Preview gate from the Preview workflow runs for the candidate SHA. Only
+ * the newest run (highest run ID) whose required jobs did not all skip decides, and only its
+ * latest attempt: an older failed run never aborts the release while a newer run is pending, and
+ * an older success never passes it after a newer run failed. Runs for non-success Vercel
+ * deployment statuses skip every job and are ignored.
+ *
+ * @param {string} gate result of selectPreviewGate
+ * @param {{ id: number, jobs: { name: string, status: string, conclusion: string | null, run_attempt?: number }[] }[]} runs
+ * @returns {{ state: 'passed' | 'failed' | 'pending', runId?: number }}
+ */
+export function previewGateVerdict(gate, runs) {
+	const required = Object.hasOwn(PREVIEW_GATES, gate) ? PREVIEW_GATES[gate] : undefined;
+	if (!required) {
+		throw new Error(`Unknown Preview gate: ${gate}.`);
+	}
+	for (const run of [...runs].sort((a, b) => b.id - a.id)) {
+		const attempt = Math.max(0, ...run.jobs.map((job) => job.run_attempt ?? 0));
+		const jobs = run.jobs.filter(
+			(job) => required.jobs.includes(job.name) && (job.run_attempt ?? 0) === attempt,
+		);
+		if (jobs.length > 0 && jobs.every((job) => job.conclusion === 'skipped')) continue;
+		const done = (name) => jobs.find((job) => job.name === name && job.status === 'completed');
+		if (required.jobs.every((name) => done(name)?.conclusion === 'success')) {
+			return { state: 'passed', runId: run.id };
+		}
+		if (
+			required.jobs.every(done) ||
+			jobs.some(
+				(job) => job.status === 'completed' && !['success', 'skipped'].includes(job.conclusion),
+			)
+		) {
+			return { state: 'failed', runId: run.id };
+		}
+		return { state: 'pending', runId: run.id };
+	}
+	return { state: 'pending' };
+}

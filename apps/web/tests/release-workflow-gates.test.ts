@@ -9,6 +9,7 @@ import {
 	assertPreviewOrigin,
 	assertProductionDispatch,
 	assertRequiredEnv,
+	previewGateVerdict,
 	selectDeployHook,
 	selectPreviewGate,
 } from '../scripts/release-workflow-gates.mjs';
@@ -221,4 +222,79 @@ test('deploy hook: the database gate needs PRODUCTION_DEPLOY_HOOK, Vercel may fa
 	assert.throws(() => selectDeployHook('database', { PRODUCTION_DEPLOY_HOOK: '  ' }));
 	assert.throws(() => selectDeployHook('vercel', {}));
 	assert.throws(() => selectDeployHook('pending', both));
+});
+
+// Preview runs as release-production.yml reads them: newest first, jobs of the latest attempt.
+const dbJob = (status: string, conclusion: string | null, run_attempt = 1) => ({
+	name: 'db-supabase-preview',
+	status,
+	conclusion,
+	run_attempt,
+});
+
+test('preview gate decides on the newest Preview run only', () => {
+	const olderFailed = { id: 101, jobs: [dbJob('completed', 'failure')] };
+	assert.deepEqual(
+		previewGateVerdict('database', [{ id: 202, jobs: [dbJob('in_progress', null)] }, olderFailed]),
+		{ state: 'pending', runId: 202 },
+	);
+	assert.deepEqual(previewGateVerdict('database', [{ id: 202, jobs: [] }, olderFailed]), {
+		state: 'pending',
+		runId: 202,
+	});
+	assert.deepEqual(
+		previewGateVerdict('database', [
+			olderFailed,
+			{ id: 202, jobs: [dbJob('completed', 'success')] },
+		]),
+		{ state: 'passed', runId: 202 },
+	);
+	assert.deepEqual(
+		previewGateVerdict('database', [
+			{ id: 202, jobs: [dbJob('completed', 'failure')] },
+			{ id: 101, jobs: [dbJob('completed', 'success')] },
+		]),
+		{ state: 'failed', runId: 202 },
+	);
+	assert.deepEqual(previewGateVerdict('database', []), { state: 'pending' });
+	assert.throws(() => previewGateVerdict('none' as 'database', []));
+});
+
+test('preview gate counts the latest attempt of a re-run', () => {
+	const rerun = (status: string, conclusion: string | null) => [
+		{ id: 202, jobs: [dbJob('completed', 'failure', 1), dbJob(status, conclusion, 2)] },
+	];
+	assert.deepEqual(previewGateVerdict('database', rerun('queued', null)), {
+		state: 'pending',
+		runId: 202,
+	});
+	assert.deepEqual(previewGateVerdict('database', rerun('completed', 'success')), {
+		state: 'passed',
+		runId: 202,
+	});
+});
+
+test('vercel preview gate skips runs for non-success deployment statuses', () => {
+	const job = (name: string, conclusion: string) => ({ name, status: 'completed', conclusion });
+	const skipped = {
+		id: 303,
+		jobs: [job('db-supabase-preview', 'skipped'), job('e2e-preview', 'skipped')],
+	};
+	assert.deepEqual(
+		previewGateVerdict('vercel', [
+			skipped,
+			{ id: 202, jobs: [job('db-supabase-preview', 'success'), job('e2e-preview', 'success')] },
+		]),
+		{ state: 'passed', runId: 202 },
+	);
+	assert.deepEqual(
+		previewGateVerdict('vercel', [
+			{ id: 202, jobs: [job('db-supabase-preview', 'success'), job('e2e-preview', 'skipped')] },
+		]),
+		{ state: 'failed', runId: 202 },
+	);
+	assert.deepEqual(
+		previewGateVerdict('vercel', [{ id: 202, jobs: [job('db-supabase-preview', 'success')] }]),
+		{ state: 'pending', runId: 202 },
+	);
 });
