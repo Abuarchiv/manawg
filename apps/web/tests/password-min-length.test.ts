@@ -21,3 +21,7 @@ test('self-hosted GoTrue enforces the new-password minimum the forms show', () =
 		new RegExp(`^minimum_password_length = ${min}$`, 'm'),
 	);
 });
+
+test('self-hosted GoTrue rejects leaked passwords, also on direct /auth/v1 calls', () => {
+	assert.match(read('../../../compose.yaml'), /^\s+GOTRUE_PASSWORD_HIBP_ENABLED: "true"$/m);
+});

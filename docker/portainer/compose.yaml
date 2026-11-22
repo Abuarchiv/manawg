@@ -98,6 +98,9 @@ services:
       GOTRUE_MAILER_AUTOCONFIRM: "false"
       # Matches NEW_PASSWORD_MIN_LENGTH in the sign-up and reset forms.
       GOTRUE_PASSWORD_MIN_LENGTH: 8
+      # Rejects passwords from known breaches (Have I Been Pwned range API), also on direct
+      # /auth/v1 calls that skip the app. An unreachable service does not block sign-up.
+      GOTRUE_PASSWORD_HIBP_ENABLED: "true"
       GOTRUE_MAILER_SECURE_EMAIL_CHANGE_ENABLED: "true"
       # The sign-in form expects 8-digit codes.
       GOTRUE_MAILER_OTP_LENGTH: 8
