@@ -68,6 +68,8 @@ const withTransaction = async (operation: (tx: unknown) => Promise<unknown>) => 
 				returning: async () => {
 					if (table === wgs) {
 						state.events.push('wg_insert');
+						// Every generated code collides with the unique index on share_code.
+						if (state.shareCodeExhausted) throw Object.assign(new Error('dup'), { code: '23505' });
 						const row = { ...values, id: 'wg-1' };
 						draft.wgs.push(row);
 						return [row];
@@ -124,9 +126,6 @@ mock.module('@/core/auth/server', {
 mock.module('@/core/db', {
 	namedExports: {
 		db: {
-			query: {
-				wgs: { findFirst: async () => (state.shareCodeExhausted ? { id: 'existing' } : null) },
-			},
 			delete: (table: unknown) => ({
 				where: (where: Condition) => ({
 					returning: async () => {
@@ -330,12 +329,13 @@ test('share-code exhaustion leaves no claim, so retry can create immediately', a
 	state.shareCodeExhausted = true;
 	const failed = await post();
 	assert.equal(failed.status, 500);
-	assert.equal(state.claims, 0);
+	assert.deepEqual(await failed.json(), { error: 'share_code_exhausted' });
+	// Every attempt rolled back, so the claim was released with the lease it held.
 	assert.equal(state.slot, null);
 	assert.equal(state.wgs.length, 0);
 	state.shareCodeExhausted = false;
 	const retry = await post();
 	assert.equal(retry.status, 200);
-	assert.equal(state.claims, 1);
+	assert.equal(state.claims, 2);
 	assert.equal(state.wgs.length, 1);
 });
