@@ -222,6 +222,7 @@ export function LoginClient({ appOrigin }: { appOrigin: string }) {
 						: t('titleCreated');
 	// The steps share one URL, so the server title cannot follow them.
 	const stepAnnouncement = useDocumentTitle(`${title} — ManaWG`);
+
 	useClearCallbackError(signedInHere);
 
 	const movedOut = searchParams.get('reason') === 'moved_out';

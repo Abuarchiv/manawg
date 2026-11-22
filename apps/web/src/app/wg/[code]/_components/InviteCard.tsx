@@ -13,6 +13,7 @@ import {
 	shareInvite,
 } from '@/components/wg/invite-share';
 import { useWg } from '@/components/wg/WgContextProvider';
+import { LIST_REFRESH_INTERVAL_MS } from '@/core/utils/use-visibility-paused-interval';
 import { dateTimeFormat } from '@/shared/i18n/intl';
 import { type Message, useMessage } from '@/shared/i18n/message';
 import posthog from '@/shared/lib/analytics';
@@ -88,7 +89,13 @@ export function InviteCard() {
 		};
 		document.addEventListener('visibilitychange', refresh);
 		window.addEventListener('focus', refresh);
+		// The WG's change poll rests in an idle tab, so a join without a push would leave the card.
+		// One request per 30 s per open solo tab, which ends as soon as a second member joins.
+		const poll = window.setInterval(() => {
+			if (document.visibilityState === 'visible') setAttempt((n) => n + 1);
+		}, LIST_REFRESH_INTERVAL_MS);
 		return () => {
+			window.clearInterval(poll);
 			document.removeEventListener('visibilitychange', refresh);
 			window.removeEventListener('focus', refresh);
 		};
@@ -98,21 +105,12 @@ export function InviteCard() {
 		if (sharing || state.status !== 'ready') return;
 		setSharing(true);
 		try {
-			let invite = state.invite;
-			// The share sheet needs the tap's user activation, so a live link is shared at once.
-			// Only a link that died before a refresh caught it waits for the server.
+			const invite = state.invite;
+			// The share sheet needs the tap's user activation, which any awaited request spends.
+			// A link that died before the expiry timer caught it reloads; the next tap shares.
 			if (new Date(invite.expiresAt).getTime() <= Date.now()) {
-				const current = await currentInvite(wg.shareCode, identity.memberId);
-				if (!current.ok) {
-					setState({ status: 'failed', message: current.message });
-					return;
-				}
-				if (!current.invite) {
-					void refreshMembers();
-					return;
-				}
-				invite = current.invite;
-				setState({ status: 'ready', invite });
+				setAttempt((n) => n + 1);
+				return;
 			}
 			const outcome = await shareInvite(
 				render(inviteShareMessage(wg.name, invite.url, invite.expiresAt)),

@@ -302,6 +302,45 @@ test.describe('Start card', () => {
 		});
 	}
 
+	test('a join without a push removes the card in an idle tab', async ({ page }) => {
+		await page.clock.install();
+		await mockEmptyLists(page, SOLO_BASE);
+		let joined = false;
+		await page.route(`**${SOLO_BASE}/invites/current`, (route) =>
+			joined ? route.fulfill({ json: { invite: null } }) : route.fallback(),
+		);
+		await page.route(`**${SOLO_BASE}/members`, (route) =>
+			route.fulfill({
+				json: {
+					members: [
+						{ id: SOLO_WG.memberId, name: 'Smoke Tester', color: null, active: true },
+						...(joined
+							? [
+									{
+										id: '0ab8c8f2-5d03-4a84-aadc-4c5d7e8abf55',
+										name: 'Mina',
+										color: null,
+										active: true,
+									},
+								]
+							: []),
+					],
+					viewerIsAdmin: true,
+				},
+			}),
+		);
+		await open(page, SOLO_WG.shareCode);
+		await expect(page.locator('[data-invite-card-link]')).toBeVisible();
+		// Nobody touches the tab: the list polls have gone idle by the time Mina joins.
+		await page.clock.fastForward('06:00');
+		joined = true;
+		await page.clock.runFor(60_000);
+		await expect(
+			page.getByText('Mina ist dabei. Startet mit der ersten Ausgabe oder dem Einkauf.'),
+		).toBeVisible();
+		await expect(page.locator('[data-invite-card-link]')).toHaveCount(0);
+	});
+
 	test('a snoozed card asks for no link', async ({ page }) => {
 		let requested = 0;
 		await page.route(`**${SOLO_BASE}/invites/current`, (route) => {
