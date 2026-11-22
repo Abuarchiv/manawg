@@ -7,8 +7,13 @@ import { MAIL_DARK_STYLE } from './dark-mode';
 // The mail footer links the operator's legal pages when the instance has them, read at load time.
 process.env.NEXT_PUBLIC_LEGAL_URL = 'https://legal.example.test';
 const { APP_ORIGIN } = await import('./brand-mail');
-const { renderAccountDeletedMail, renderInvitationMail, renderReminderMail, renderWelcomeMail } =
-	await import('./templates');
+const {
+	renderAccountDeletedMail,
+	renderInvitationMail,
+	renderReminderMail,
+	renderSoloInviteMail,
+	renderWelcomeMail,
+} = await import('./templates');
 
 // Touchpoints rules: one thought per mail, no exclamation mark, amounts in the text, button present.
 
@@ -33,6 +38,11 @@ const ALL = [
 		unsubscribeUrl: `${APP_ORIGIN}/api/email/unsubscribe?t=y`,
 	}),
 	renderAccountDeletedMail(),
+	renderSoloInviteMail({
+		wgName: 'Kastanienallee',
+		shareCode: 'KST48210',
+		unsubscribeUrl: `${APP_ORIGIN}/api/email/unsubscribe?t=z`,
+	}),
 ];
 
 test('no mail shouts: subjects and texts carry no exclamation mark', () => {
@@ -348,4 +358,32 @@ test('compose.yaml carries the same auth mail subjects as subjects.json', () => 
 		]),
 	);
 	assert.deepEqual(fromCompose, subjects);
+});
+
+test('solo invite speaks the member language and carries the WG link and the unsubscribe link', () => {
+	const unsubscribeUrl = `${APP_ORIGIN}/api/email/unsubscribe?t=m1.onboarding.sig`;
+	const subjects = {
+		de: 'Noch allein in Kastanienallee',
+		en: 'Still on your own in Kastanienallee',
+		es: 'Aún no hay nadie más en Kastanienallee',
+	} as const;
+	for (const [locale, subject] of Object.entries(subjects) as [keyof typeof subjects, string][]) {
+		const mail = renderSoloInviteMail({
+			wgName: 'Kastanienallee',
+			shareCode: 'KST 48/210',
+			unsubscribeUrl,
+			locale,
+		});
+		assert.equal(mail.subject, subject);
+		const wgLink = `${APP_ORIGIN}/wg/KST%2048%2F210`;
+		for (const body of [mail.text, mail.html]) {
+			assert.ok(body.includes('Kastanienallee'), `${locale}: WG name`);
+			assert.ok(body.includes(wgLink), `${locale}: joining link`);
+			assert.ok(body.includes(unsubscribeUrl), `${locale}: unsubscribe link`);
+		}
+	}
+	assert.match(
+		renderSoloInviteMail({ wgName: 'A', shareCode: 'B', unsubscribeUrl, locale: 'es' }).html,
+		/lang="es-ES"/,
+	);
 });

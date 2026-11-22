@@ -190,6 +190,18 @@ export async function mockUnreadCount(page: Page, base: string, count = 0): Prom
 	);
 }
 
+/**
+ * Answers the WG tab's change poll with a new data version every time, so each poll period
+ * reloads the open list as the old per-list polls did. `base` is the WG API prefix.
+ */
+export async function reportDataChangedOnEveryPoll(page: Page, base: string): Promise<void> {
+	let version = 0;
+	await page.route(`**${base}/changes`, (route) => {
+		version += 1;
+		return route.fulfill({ json: { data: String(version), members: '0', chat: '0' } });
+	});
+}
+
 /** Mocks the signed-in user's WG list as empty (entry/onboarding pages). */
 export async function mockNoWgs(page: Page): Promise<void> {
 	// With Supabase configured (AUTH_UI lane) the client probes /api/wg/mine only behind the hint

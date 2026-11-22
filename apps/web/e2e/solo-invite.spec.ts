@@ -279,6 +279,10 @@ test.describe('Start card', () => {
 				},
 			}),
 		);
+		// The WG tab's change poll reports the moved roster version once Mina is in.
+		await page.route(`**${SOLO_BASE}/changes`, (route) =>
+			route.fulfill({ json: { data: '0', members: joined ? '1' : '0', chat: '0' } }),
+		);
 		const cdp = await page.context().newCDPSession(page);
 		const registrations: string[] = [];
 		cdp.on('ServiceWorker.workerRegistrationUpdated', (event) => {

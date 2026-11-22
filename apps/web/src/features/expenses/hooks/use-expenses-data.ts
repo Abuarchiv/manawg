@@ -5,7 +5,6 @@ import type { ActionNotice } from '@/components/wg/ActionNoticeBanner';
 import { wgLoadError } from '@/core/guards/load-errors';
 import { hideStaleNetworkError } from '@/core/sync/collection-overlay';
 import { type SyncedReloadReason, useSyncedCollection } from '@/core/sync/use-synced-collection';
-import { LIST_REFRESH_INTERVAL_MS } from '@/core/utils/use-visibility-paused-interval';
 import {
 	assembleExpensesResponse,
 	type ExpensesResponse,
@@ -42,7 +41,6 @@ export function useExpensesData({ shareCode, memberId, setActionNotice }: UseExp
 		describeError: (error) =>
 			t(wgLoadError({ key: 'common.loadError.lead.expenses' }, error.status, error.error)),
 		hideError: hideStaleNetworkError,
-		pollIntervalMs: LIST_REFRESH_INTERVAL_MS,
 		reload,
 		offline: {
 			shareCode,
@@ -70,7 +68,7 @@ export function useExpensesData({ shareCode, memberId, setActionNotice }: UseExp
 				hasData: context.hasData || (expenses.hasData() && navigator.onLine === false),
 			}),
 		// The expenses collection's mount load, poll and replay reload both lists.
-		pollIntervalMs: null,
+		refreshOnChange: false,
 		reload: () => undefined,
 	});
 

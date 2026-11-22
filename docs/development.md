@@ -296,6 +296,8 @@ release from the `CHANGELOG.md` section, and starts `docker.yml`, which pushes t
    - `database`, the *database gate*, for production without Vercel: the `workflow_run` run of
      `preview.yml` that follows main CI must pass `db-supabase-preview`, the migration check
      against the Preview Supabase project. No end-to-end tests run against a deployed Preview.
+   Only the newest Preview run for the commit decides, in its latest attempt
+   (`previewGateVerdict`): while it is pending the workflow waits, even if an older run failed.
    Any other value stops the release. `migrate-production.yml` checks the handed-over run
    against the same gate before it touches production.
 3. **Production migration**: `migrate-production.yml` applies the migrations with

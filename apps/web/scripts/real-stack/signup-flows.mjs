@@ -2,7 +2,8 @@
 // new address, wrong / reused / expired code, the same answer for an address that already has an
 // account, the send-frequency limit, a password pre-set by someone else before the owner registers,
 // choosing a password afterwards, and (with REAL_STACK_VERIFY_LIMIT=1 and the Auth service started
-// with GOTRUE_RATE_LIMIT_VERIFY=40) the limit on wrong codes. Returning to an invitation after
+// with GOTRUE_RATE_LIMIT_VERIFY=40) the limit on wrong codes, and a new account without a WG
+// deleting itself from the start screen. Returning to an invitation after
 // registration is covered by journey.mjs.
 import { chromium, devices, request } from '@playwright/test';
 import { MAIL, PUBLISHABLE } from './env.mjs';
@@ -324,6 +325,40 @@ if (process.env.REAL_STACK_VERIFY_LIMIT === '1') {
 		statuses.join(','),
 	);
 }
+
+// 8 A new account without a WG deletes itself from the start screen
+const leaving = address('ohne-wg');
+const leaveCtx = await browser.newContext({
+	...devices['iPhone 13'],
+	baseURL: BASE,
+	locale: 'de-DE',
+});
+const lp = await leaveCtx.newPage();
+lp.on('response', (r) => {
+	if (r.status() >= 500) serverErrors.push(`${r.status()} ${r.url()}`);
+});
+await lp.goto('/signup');
+await lp.getByLabel('Dein Name').fill('Ohne WG');
+await lp.getByLabel('E-Mail-Adresse').fill(leaving);
+await lp.getByRole('button', { name: 'Weiter', exact: true }).click();
+await lp.locator('#auth-code').fill(codeOf(await mailAt(leaving, CONFIRM)) ?? '');
+await lp.getByRole('button', { name: 'Konto erstellen', exact: true }).click();
+await lp.waitForURL((url) => url.pathname === '/login', { timeout: 15_000 });
+await lp.getByRole('button', { name: 'Konto dauerhaft löschen' }).click();
+await lp.getByLabel('Tippe LÖSCHEN').fill('LÖSCHEN');
+await lp.getByRole('button', { name: 'Konto löschen', exact: true }).click();
+await lp.waitForURL((url) => url.pathname === '/' && url.search === '?accountDeletion=done', {
+	timeout: 15_000,
+});
+expect(
+	(await lp.getByRole('status').filter({ hasText: 'Konto gelöscht' }).count()) === 1,
+	'the start page confirms the deletion',
+);
+expect(
+	sql(`select count(*) from auth.users where email='${leaving}'`) === '0',
+	'deleting an account without a WG removes the Auth user',
+);
+await leaveCtx.close();
 
 expect(serverErrors.length === 0, 'no 5xx during registration', serverErrors.join(' | '));
 await browser.close();

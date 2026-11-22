@@ -27,6 +27,10 @@ import { useChatReadReceipt } from './use-chat-read-receipt';
 export type { ChatMessageDto, ChatReactionRow } from '../chat-types';
 
 const CHAT_POLL_INTERVAL_MS = 8000;
+/** Poll period once nobody wrote, sent or typed for `CHAT_QUIET_AFTER_MS`. */
+const CHAT_QUIET_POLL_INTERVAL_MS = 30_000;
+const CHAT_QUIET_AFTER_MS = 2 * 60_000;
+const CHAT_INPUT_EVENTS = ['keydown', 'pointerdown', 'touchstart'] as const;
 
 /**
  * Messages, reactions and read state of a WG chat: bootstrap, polling refresh, cursor
@@ -105,7 +109,31 @@ export function useChatRoom({
 		return ok;
 	}, [refresher]);
 
-	useVisibilityPausedInterval(() => void refresh(), wgId ? CHAT_POLL_INTERVAL_MS : null);
+	// 8 s while the chat is lively, 30 s after two quiet minutes; a new message, a send or any
+	// input makes it lively again.
+	const [quiet, setQuiet] = useState(false);
+	const livelyAtRef = useRef(Date.now());
+	const markLively = useCallback(() => {
+		livelyAtRef.current = Date.now();
+		setQuiet(false);
+	}, []);
+	const poll = useCallback(async () => {
+		const latestBefore = messagesRef.current.at(-1)?.id;
+		await refresh();
+		if (messagesRef.current.at(-1)?.id !== latestBefore) markLively();
+		else if (Date.now() - livelyAtRef.current >= CHAT_QUIET_AFTER_MS) setQuiet(true);
+	}, [markLively, refresh]);
+	useEffect(() => {
+		for (const type of CHAT_INPUT_EVENTS)
+			window.addEventListener(type, markLively, { passive: true });
+		return () => {
+			for (const type of CHAT_INPUT_EVENTS) window.removeEventListener(type, markLively);
+		};
+	}, [markLively]);
+	useVisibilityPausedInterval(
+		() => void poll(),
+		wgId ? (quiet ? CHAT_QUIET_POLL_INTERVAL_MS : CHAT_POLL_INTERVAL_MS) : null,
+	);
 
 	// Bootstrap through the gated API when the RSC passed no messages (the server render
 	// intentionally loads none, see chat/page.tsx).
@@ -175,6 +203,7 @@ export function useChatRoom({
 			return false;
 		}
 		const sent = result.message;
+		markLively();
 		refresher.invalidate();
 		setMessages((prev) =>
 			prev.some((message) => message.id === sent.id)

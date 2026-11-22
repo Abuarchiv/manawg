@@ -17,6 +17,7 @@ import {
 	dismissOnboarding,
 	FIXTURE_WG,
 	navigateToFeature,
+	reportDataChangedOnEveryPoll,
 	setupMember,
 	skipUnlessFixtures,
 } from './support/helpers';
@@ -42,6 +43,7 @@ test('recurring template retries preserve key, due date, and splits after refres
 	page,
 }) => {
 	await setupMember(page);
+	await reportDataChangedOnEveryPoll(page, `/api/wg/${FIXTURE_WG.shareCode}`);
 	let serverCommitted = false;
 	let committedTemplate: ReturnType<typeof recurringExpense> | null = null;
 	await mockReads(
@@ -268,6 +270,7 @@ test('creating an expense from a recurring template reuses its key after a serve
 	page,
 }) => {
 	await setupMember(page);
+	await reportDataChangedOnEveryPoll(page, `/api/wg/${FIXTURE_WG.shareCode}`);
 	const expectedRecurringNextDueAt = '2026-09-01T00:00:00.000Z';
 	let currentTemplate = recurringExpense({ nextDueAt: expectedRecurringNextDueAt });
 	let serverCommitted = false;
@@ -427,6 +430,7 @@ test('a malformed recurring-expense success replays the queued request with its 
 
 test('recurring-source form retries keep the original due date and POST body', async ({ page }) => {
 	await setupMember(page);
+	await reportDataChangedOnEveryPoll(page, `/api/wg/${FIXTURE_WG.shareCode}`);
 	const expectedRecurringNextDueAt = '2026-09-01T00:00:00.000Z';
 	let currentTemplate = recurringExpense({ nextDueAt: expectedRecurringNextDueAt });
 	let serverCommitted = false;

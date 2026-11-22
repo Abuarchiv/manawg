@@ -34,12 +34,25 @@ function fulfillDeletion(page: import('@playwright/test').Page, status: number) 
 	);
 }
 
-test('HTTP 200 signs out and returns to the entry page', async ({ page }) => {
+test('HTTP 200 signs out and confirms the deletion on the entry page', async ({ page }) => {
 	await fulfillDeletion(page, 200);
 	await openConfirmation(page);
 	await page.getByRole('button', { name: 'Konto löschen', exact: true }).click();
-	await expect(page).toHaveURL('/');
+	await expect(page).toHaveURL('/?accountDeletion=done');
+	await expect(page.getByRole('status').filter({ hasText: 'Konto gelöscht' })).toBeVisible();
 	await expect(page.getByText(/ManaWG hat deine Zugänge zu allen WGs entfernt/)).toHaveCount(0);
+});
+
+test('the WG-less start screen offers account deletion', async ({ page }) => {
+	await mockNoWgs(page);
+	await fulfillDeletion(page, 200);
+	await page.goto('/login');
+	await expect(page.getByRole('heading', { name: 'Deine WG' })).toBeVisible();
+	await page.getByRole('button', { name: 'Konto dauerhaft löschen' }).click();
+	await page.getByLabel('Tippe LÖSCHEN').fill('LÖSCHEN');
+	await page.getByRole('button', { name: 'Konto löschen', exact: true }).click();
+	await expect(page).toHaveURL('/?accountDeletion=done');
+	await expect(page.getByRole('status').filter({ hasText: 'Konto gelöscht' })).toBeVisible();
 });
 
 test('HTTP 202 signs out and announces that Auth deletion is pending', async ({ page }) => {

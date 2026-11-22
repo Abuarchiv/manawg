@@ -67,6 +67,7 @@ const MEMBER_READS: Record<string, MemberRead> = {
 			{ subscription: null },
 			{ headers: { 'Cache-Control': 'private, no-store' } },
 		),
+	changes: () => NextResponse.json({ data: '0', members: '0', chat: '0' }),
 	'chat/messages': chatMessages,
 	'chat/unread-count': () => NextResponse.json(toChatUnreadCountResponse(0)),
 	chores: (_req, fixture) =>

@@ -323,6 +323,13 @@
       "when": 1795027503047,
       "tag": "0045_member_onboarding_email",
       "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "7",
+      "when": 1795344916377,
+      "tag": "0046_wg_change_versions",
+      "breakpoints": true
     }
   ]
 }

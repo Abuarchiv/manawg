@@ -16,6 +16,7 @@ import {
 	dismissOnboarding,
 	FIXTURE_WG,
 	navigateToFeature,
+	reportDataChangedOnEveryPoll,
 	setupMember,
 	skipUnlessFixtures,
 } from './support/helpers';
@@ -35,6 +36,7 @@ test('expense retries keep the key for the same payload and change it when the p
 	page,
 }) => {
 	await setupMember(page);
+	await reportDataChangedOnEveryPoll(page, `/api/wg/${FIXTURE_WG.shareCode}`);
 	let serverCommitted = false;
 	await mockReads(page, [], () =>
 		serverCommitted ? [expense('committed-expense', 'Wocheneinkauf')] : [],

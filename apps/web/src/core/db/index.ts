@@ -87,6 +87,7 @@ export function withTransaction<T>(fn: (tx: DbTransaction) => Promise<T>): Promi
 }
 
 export * from './schema';
+export * from './schema-change-versions';
 export * from './schema-inventory';
 export * from './schema-invites';
 export * from './schema-mail-log';

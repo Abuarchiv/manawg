@@ -222,8 +222,8 @@ Keeping the key on 429 is safe because no route stores a 429 as a replayable res
 
 `core/sync/use-synced-collection.ts` keeps one server collection in sync on the client. It owns
 the cached fetch (`core/hooks/use-cached-fetch.ts`, store in `cached-fetch-store.ts`), the overlay
-of unconfirmed rows (`pending`), offline replay after a successful load, polling paused while the
-tab is hidden, the refresh on reconnect, and the single place where server responses and local
+of unconfirmed rows (`pending`), offline replay after a successful load, the reload when the WG's list data changed, the refresh
+on reconnect, and the single place where server responses and local
 changes (`commit`) are reconciled into the rows on screen. Feature hooks for shopping, chores and
 absences, inventory, announcements, expenses, recurring expenses, reminders, calendar and activity only describe the
 resource (URL, `select`/`assemble`, id, an optional `reconcile` merge, error policy, offline page)
@@ -252,7 +252,8 @@ Small helpers that several features use, with the layer they live in:
 | `shared/lib/support-mailto.ts` `SUPPORT_MAILTO` | shared | The support `mailto:` link used by error screens |
 | `core/db/pg-errors.ts` | core | Pure Postgres error inspection (`isUniqueViolation`, `findUniqueViolation`); no server imports, so client-safe feature files may use it |
 | `core/infra/api-client.ts` `readApiErrorCode` | core | Reads the `error` code of a failed API response |
-| `core/utils/use-visibility-paused-interval.ts` `LIST_REFRESH_INTERVAL_MS` | core | The one list polling interval |
+| `core/utils/use-visibility-paused-interval.ts` `LIST_REFRESH_INTERVAL_MS` | core | The one polling interval of an open WG tab |
+| `core/sync/wg-changes.ts` `useWgChange` | core | Reload a read when the tab's one change poll (`GET /api/wg/[code]/changes`) sees list data, members or chat move; versions come from triggers in migration 0046 |
 
 Mutation error copy goes through `mutationError` (`core/http/error-codes.ts`); feature
 `*-errors.ts` files only add their own codes.

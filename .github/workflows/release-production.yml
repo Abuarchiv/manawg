@@ -113,32 +113,33 @@ jobs:
           # (migration check and end-to-end tests) is the gate. database: the Preview migration
           # check that preview.yml runs after main CI is the gate. migrate-production.yml
           # checks the run against the same PREVIEW_GATE again.
-          # gate <event> <jq job filter>: one line "<run id> <status/conclusion>..." per Preview run.
-          gate() {
-            for id in $(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/preview.yml/runs?head_sha=$SHA&event=$1&per_page=50" \
+          # Preview runs of $SHA as JSON for previewGateVerdict: [{id, jobs}], jobs of the latest attempt.
+          event="$([ "$GATE" = vercel ] && echo deployment_status || echo workflow_run)"
+          preview_runs() {
+            for id in $(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/preview.yml/runs?head_sha=$SHA&event=$event&per_page=50" \
               --jq '.workflow_runs[].id'); do
               gh api "repos/$GITHUB_REPOSITORY/actions/runs/$id/jobs?per_page=100" \
-                --jq "[.jobs[] | select($2) | .status + \"/\" + (.conclusion // \"\")] | sort | \"$id \" + join(\" \")"
-            done
+                --jq "{id: $id, jobs: [.jobs[] | {name, status, conclusion, run_attempt}]}"
+            done | jq -cs .
           }
           if [ "$GATE" = vercel ] && [ "$(git ls-remote origin refs/heads/preview-main | cut -f1)" != "$SHA" ]; then
             git push --force origin "$SHA:refs/heads/preview-main"
           fi
           for _ in $(seq 120); do
-            if [ "$GATE" = vercel ]; then
-              runs="$(gate deployment_status '.name == "db-supabase-preview" or .name == "e2e-preview"')"
-              passed="$(grep -m1 ' completed/success completed/success$' <<<"$runs" | cut -d' ' -f1 || true)"
-            else
-              runs="$(gate workflow_run '.name == "db-supabase-preview"')"
-              passed="$(grep -m1 ' completed/success$' <<<"$runs" | cut -d' ' -f1 || true)"
-            fi
-            if [ -n "$passed" ]; then
-              echo "run_id=$passed" >> "$GITHUB_OUTPUT"
-              echo "Preview gate ($GATE) run: $passed" >> "$GITHUB_STEP_SUMMARY"
+            runs="$(preview_runs)"
+            verdict="$(RUNS="$runs" node --input-type=module -e "
+              import { previewGateVerdict } from './apps/web/scripts/release-workflow-gates.mjs';
+              const { state, runId } = previewGateVerdict(process.env.GATE, JSON.parse(process.env.RUNS));
+              console.log(state, runId ?? '');
+            ")"
+            read -r state run_id <<<"$verdict"
+            if [ "$state" = passed ]; then
+              echo "run_id=$run_id" >> "$GITHUB_OUTPUT"
+              echo "Preview gate ($GATE) run: $run_id" >> "$GITHUB_STEP_SUMMARY"
               exit 0
             fi
-            if grep -qE 'completed/(failure|timed_out|cancelled)' <<<"$runs"; then
-              echo "Preview gate ($GATE) failed for $SHA:" >&2
+            if [ "$state" = failed ]; then
+              echo "Preview gate ($GATE) failed for $SHA in run $run_id:" >&2
               echo "$runs" >&2
               exit 1
             fi

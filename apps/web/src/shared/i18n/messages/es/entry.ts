@@ -49,6 +49,10 @@ export default {
 		loadFailed: 'No se han podido cargar tus pisos ahora mismo.',
 		recheck: 'Comprobar de nuevo',
 		rechecking: 'Comprobando…',
+		accountDeleted: {
+			title: 'Cuenta eliminada',
+			body: 'Tu cuenta y tus datos de acceso se han eliminado.',
+		},
 		accountDeletion: {
 			title: 'Se está eliminando la cuenta',
 			body: 'ManaWG ya ha quitado tu acceso a todos los pisos. La eliminación en el servicio de inicio de sesión sigue pendiente y se reintentará automáticamente.',
