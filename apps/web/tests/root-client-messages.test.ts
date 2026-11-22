@@ -45,6 +45,8 @@ function publicClientPaths(): Map<string, string> {
 		if (seen.has(file)) continue;
 		seen.add(file);
 		const text = readFileSync(file, 'utf8');
+		// A server-only module never reaches the client bundle, nor does anything it imports.
+		if (/^import 'server-only';/m.test(text)) continue;
 		const where = relative(SRC, file);
 		for (const match of text.matchAll(/(?:from|import)\s*\(?\s*['"]([^'"]+)['"]/g)) {
 			const target = resolveImport(file, match[1] as string);

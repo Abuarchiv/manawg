@@ -10,7 +10,7 @@ import {
 } from '@/core/http/idempotency-key';
 import { anySignal, REQUEST_TIMEOUT_MS, readApiErrorCode } from '@/core/infra/api-client';
 import { INVITE_EXPIRED_MESSAGE, joinErrorMessage } from '@/core/infra/join-flow';
-import { isInviteToken } from '@/core/utils/invite-token';
+import { type InvitePreview, isInviteToken } from '@/core/utils/invite-token';
 import { useMessage } from '@/shared/i18n/message';
 import posthog from '@/shared/lib/analytics';
 
@@ -20,9 +20,6 @@ export type InvitePhase =
 	| { kind: 'ready'; wgName: string; code: string }
 	| { kind: 'dead'; reason: 'invalid' | 'expired' | 'unavailable' }
 	| { kind: 'error' };
-
-/** What a visitor without an account may learn from the link: the WG, who invited and how many are in. */
-export type InvitePreview = { wgName: string; inviterName: string | null; memberCount: number };
 
 function parsePreview(body: unknown): InvitePreview | null {
 	if (typeof body !== 'object' || body === null) return null;
