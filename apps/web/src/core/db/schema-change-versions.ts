@@ -1,4 +1,3 @@
-import { sql } from 'drizzle-orm';
 import { bigint, pgTable, uuid } from 'drizzle-orm/pg-core';
 
 /**
@@ -11,7 +10,7 @@ import { bigint, pgTable, uuid } from 'drizzle-orm/pg-core';
  */
 export const wgChangeVersions = pgTable('wg_change_versions', {
 	wgId: uuid('wg_id').primaryKey(),
-	dataVersion: bigint('data_version', { mode: 'bigint' }).notNull().default(sql`0`),
-	membersVersion: bigint('members_version', { mode: 'bigint' }).notNull().default(sql`0`),
-	chatVersion: bigint('chat_version', { mode: 'bigint' }).notNull().default(sql`0`),
+	dataVersion: bigint('data_version', { mode: 'number' }).notNull().default(0),
+	membersVersion: bigint('members_version', { mode: 'number' }).notNull().default(0),
+	chatVersion: bigint('chat_version', { mode: 'number' }).notNull().default(0),
 });
