@@ -10,6 +10,7 @@ import {
 	useState,
 } from 'react';
 import type { SessionMember } from '@/core/auth/local-account';
+import type { WgChangeVersions } from '@/core/db/change-versions';
 import { subscribeOnline } from '@/core/hooks/use-online-status';
 import { apiFetch } from '@/core/infra/api-client';
 import { captureException } from '@/core/infra/capture-client';
@@ -117,8 +118,9 @@ export function useMembersRefresh({
 export function useMembersPolling(
 	encodedShareCode: string,
 	memberId: string | null,
+	baseline: WgChangeVersions | null,
 	refreshMembers: () => Promise<void>,
 ): void {
-	useWgChangesPoll(encodedShareCode, memberId);
+	useWgChangesPoll(encodedShareCode, memberId, baseline);
 	useWgChange('members', () => void refreshMembers(), memberId !== null);
 }

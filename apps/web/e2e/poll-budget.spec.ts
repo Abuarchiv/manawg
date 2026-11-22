@@ -81,4 +81,30 @@ test.describe('poll budget of a tab in use', () => {
 			counter.paths.join('\n'),
 		).toBeGreaterThanOrEqual(2);
 	});
+
+	test('a change made before the first answered version check still reloads the list', async ({
+		page,
+	}) => {
+		skipUnlessFixtures();
+		const base = `/api/wg/${FIXTURE_WG.shareCode}`;
+		let versionChecks = 0;
+		await page.route(`**${base}/changes`, (route) => {
+			versionChecks += 1;
+			// The first check fails; meanwhile another member posted, so every later one says 1.
+			return versionChecks === 1
+				? route.fulfill({ status: 503, json: { error: 'service_unavailable' } })
+				: route.fulfill({ json: { data: '1', members: '0', chat: '0' } });
+		});
+		let boardReads = 0;
+		await page.route(`**${base}/announcements`, (route) => {
+			if (route.request().method() === 'GET') boardReads += 1;
+			return route.fallback();
+		});
+		await openSettled(page, `/wg/${FIXTURE_WG.shareCode}/pinboard`);
+		const readsAfterOpen = boardReads;
+
+		await runClock(page, 75_000);
+		expect(versionChecks).toBeGreaterThanOrEqual(2);
+		expect(boardReads).toBeGreaterThan(readsAfterOpen);
+	});
 });

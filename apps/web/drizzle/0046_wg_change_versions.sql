@@ -17,7 +17,6 @@ REVOKE ALL ON TABLE "wg_change_versions" FROM anon, authenticated;--> statement-
 CREATE OR REPLACE FUNCTION public.manawg_bump_wg_change_version()
 RETURNS trigger
 LANGUAGE plpgsql
-SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
@@ -96,7 +95,6 @@ EXECUTE FUNCTION public.manawg_bump_wg_change_version('data');--> statement-brea
 CREATE OR REPLACE FUNCTION public.manawg_drop_wg_change_version()
 RETURNS trigger
 LANGUAGE plpgsql
-SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN

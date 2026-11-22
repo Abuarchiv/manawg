@@ -17,6 +17,7 @@ import { Button, buttonVariants } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
 import type { SessionMember } from '@/core/auth/local-account';
+import type { WgChangeVersions } from '@/core/db/change-versions';
 import {
 	subscribeOnline,
 	subscribeVisibility,
@@ -67,6 +68,8 @@ const WgContext = createContext<WgContextValue | null>(null);
 interface Props {
 	wg: WgSummary;
 	members: Member[];
+	/** The WG's change versions read with the server render; the change poll's baseline. */
+	changeVersions?: WgChangeVersions | null | undefined;
 	initialIdentity?: SessionMember | undefined;
 	/** Server-verified admin flag; only meaningful together with initialIdentity.authUserId. */
 	initialIsAdmin?: boolean | undefined;
@@ -76,6 +79,7 @@ interface Props {
 export function WgContextProvider({
 	wg,
 	members: initialMembers,
+	changeVersions = null,
 	initialIdentity,
 	initialIsAdmin,
 	children,
@@ -137,6 +141,7 @@ export function WgContextProvider({
 	useMembersPolling(
 		encodedShareCode,
 		identity && accountReady ? identity.memberId : null,
+		changeVersions,
 		refreshMembers,
 	);
 	useSyncOnFocusAndOnline(sync, identity, accountReady);

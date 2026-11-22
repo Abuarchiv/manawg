@@ -1,18 +1,12 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import type { WgChangeVersions } from '@/core/db/change-versions';
 import { apiFetch } from '@/core/infra/api-client';
 import {
 	LIST_REFRESH_INTERVAL_MS,
 	useVisibilityPausedInterval,
 } from '@/core/utils/use-visibility-paused-interval';
-
-/** `GET /api/wg/[code]/changes`: transaction ids as strings, compared for equality only. */
-export interface WgChangeVersions {
-	data: string;
-	members: string;
-	chat: string;
-}
 
 export type WgChangeScope = keyof WgChangeVersions;
 
@@ -42,12 +36,18 @@ export function useWgChange(scope: WgChangeScope, onChange: () => void, enabled 
 
 /**
  * The one poll of an open WG tab, every 30 s while visible and in use (paused like every
- * `useVisibilityPausedInterval`). The first answer is the baseline; later answers notify the
- * scopes whose version moved. A removed member's 401 raises the membership-lost event in
- * `apiFetch`, as the members poll did.
+ * `useVisibilityPausedInterval`). It compares against `baseline`, the versions the WG layout read
+ * on the server before any client read of the page; later answers notify the scopes whose
+ * version moved. Without a baseline (the server read failed, another member signed in) the
+ * first answer cannot tell what the page missed, so it notifies every scope once. A removed
+ * member's 401 raises the membership-lost event in `apiFetch`, as the members poll did.
  */
-export function useWgChangesPoll(encodedShareCode: string, memberId: string | null): void {
-	const lastRef = useRef<WgChangeVersions | null>(null);
+export function useWgChangesPoll(
+	encodedShareCode: string,
+	memberId: string | null,
+	baseline: WgChangeVersions | null,
+): void {
+	const lastRef = useRef<WgChangeVersions | null>(baseline);
 	const runningRef = useRef(false);
 
 	const poll = async (): Promise<void> => {
@@ -64,9 +64,8 @@ export function useWgChangesPoll(encodedShareCode: string, memberId: string | nu
 			}
 			const previous = lastRef.current;
 			lastRef.current = res.data;
-			if (!previous) return;
 			for (const scope of ['members', 'data', 'chat'] as const) {
-				if (res.data[scope] !== previous[scope])
+				if (!previous || res.data[scope] !== previous[scope])
 					for (const listener of listeners[scope]) listener();
 			}
 		} catch {
@@ -78,9 +77,16 @@ export function useWgChangesPoll(encodedShareCode: string, memberId: string | nu
 	const pollRef = useRef(poll);
 	pollRef.current = poll;
 
+	// A different member's reads are not covered by the server baseline.
+	const baselineMemberRef = useRef(memberId);
 	useEffect(() => {
-		lastRef.current = null;
-		if (memberId && encodedShareCode) void pollRef.current();
+		if (!memberId || !encodedShareCode) return;
+		if (baselineMemberRef.current === null) baselineMemberRef.current = memberId;
+		if (baselineMemberRef.current !== memberId) {
+			baselineMemberRef.current = memberId;
+			lastRef.current = null;
+		}
+		if (lastRef.current === null) void pollRef.current();
 	}, [encodedShareCode, memberId]);
 
 	useVisibilityPausedInterval(

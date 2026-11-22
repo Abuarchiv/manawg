@@ -16,6 +16,7 @@ import { SessionExpiredBanner } from '@/components/wg/SessionExpiredBanner';
 import { WgContextProvider } from '@/components/wg/WgContextProvider';
 import type { SessionMember } from '@/core/auth/local-account';
 import { REQUEST_PATH_HEADER, wgReturnPath } from '@/core/auth/next-path';
+import { readWgChangeVersions, type WgChangeVersions } from '@/core/db/change-versions';
 import { loadWgShell, loadWgViewer } from '@/core/guards/load-wg-viewer';
 import { isValidShareCode, normalizeShareCode } from '@/core/utils/share-code';
 import { loadFixtureWgView } from '@/fixtures/pages';
@@ -65,6 +66,9 @@ async function signInPath(code: string): Promise<string> {
 	return `/login?next=${encodeURIComponent(wgReturnPath(code, await requestedPath()))}`;
 }
 
+/** What the fixture API's change poll answers unless a spec routes it. */
+const FIXTURE_CHANGE_VERSIONS: WgChangeVersions = { data: '0', members: '0', chat: '0' };
+
 export default async function WgLayout({ children, params }: Props) {
 	const { code: rawCode } = await params;
 	const code = normalizeShareCode(rawCode);
@@ -84,6 +88,7 @@ export default async function WgLayout({ children, params }: Props) {
 				code={code}
 				wg={fixture.wg}
 				members={fixture.members}
+				changeVersions={FIXTURE_CHANGE_VERSIONS}
 				{...(first ? { initialIdentity: { memberId: first.id, name: first.name } } : {})}
 			>
 				{children}
@@ -101,12 +106,16 @@ export default async function WgLayout({ children, params }: Props) {
 	}
 	const { memberId, memberName, ...wg } = access;
 	const initialIdentity: SessionMember = { memberId, name: memberName, authUserId: user.id };
+	// Read before any client read of the page, so a change after it is never mistaken for the
+	// baseline. Without it the first answered change poll reloads everything once.
+	const changeVersions = await readWgChangeVersions(wg.id).catch(() => null);
 
 	return (
 		<WgShell
 			code={code}
 			wg={wg}
 			members={members}
+			changeVersions={changeVersions}
 			initialIdentity={initialIdentity}
 			initialIsAdmin={initialIsAdmin}
 		>
@@ -119,6 +128,7 @@ function WgShell({
 	code,
 	wg,
 	members,
+	changeVersions,
 	initialIdentity,
 	initialIsAdmin,
 	children,
@@ -137,6 +147,7 @@ function WgShell({
 		isAdmin?: boolean;
 		hasAccount?: boolean;
 	}>;
+	changeVersions: WgChangeVersions | null;
 	initialIdentity?: SessionMember;
 	initialIsAdmin?: boolean;
 	children: ReactNode;
@@ -151,6 +162,7 @@ function WgShell({
 				key={wg.id}
 				wg={wg}
 				members={members}
+				changeVersions={changeVersions}
 				initialIdentity={initialIdentity}
 				initialIsAdmin={initialIsAdmin}
 			>

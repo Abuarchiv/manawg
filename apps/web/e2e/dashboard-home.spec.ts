@@ -492,6 +492,8 @@ test.describe('daily overview home', () => {
 
 		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}`);
 		await dismissOnboarding(page);
+		// The layout's server render is the baseline; the first check runs one period later.
+		await page.clock.runFor(31_000);
 		await expect.poll(() => pollReads).toBeGreaterThan(0);
 
 		// Past the five idle minutes, a whole poll period passes without a request.
