@@ -253,6 +253,64 @@ test.describe('Start card', () => {
 		expect(calls).toEqual([true]);
 	});
 
+	test('a confirmed link that expires before the second tap is not shared', async ({ page }) => {
+		await page.addInitScript(() => {
+			let inClick = false;
+			const calls: boolean[] = [];
+			(window as unknown as { __shareInClick: boolean[] }).__shareInClick = calls;
+			window.addEventListener('click', () => (inClick = true), true);
+			window.addEventListener('click', () => setTimeout(() => (inClick = false)));
+			Object.defineProperty(navigator, 'userActivation', {
+				value: {
+					get isActive() {
+						return inClick;
+					},
+				},
+				configurable: true,
+			});
+			Object.defineProperty(navigator, 'share', {
+				value: async () => void calls.push(inClick),
+				configurable: true,
+			});
+			Object.defineProperty(navigator, 'canShare', { value: () => true, configurable: true });
+		});
+		await mockEmptyLists(page, SOLO_BASE);
+		// The load and the first tap's check see the old link; the replacement is slow to arrive.
+		let calls = 0;
+		let expiresAt = 0;
+		await page.route(`**${SOLO_BASE}/invites/current`, async (route) => {
+			calls++;
+			if (calls > 2) {
+				await new Promise((resolve) => setTimeout(resolve, 4000));
+				return route.fallback();
+			}
+			if (!expiresAt) expiresAt = Date.now() + 6000;
+			return route.fulfill({
+				json: {
+					invite: {
+						id: '1f0c4b5e-2a3d-4e6f-8a9b-0c1d2e3f4a5b',
+						url: `${new URL(route.request().url()).origin}/invite/old-invite-token-00001`,
+						expiresAt: new Date(expiresAt).toISOString(),
+					},
+				},
+			});
+		});
+		await open(page, SOLO_WG.shareCode);
+		const link = page.locator('[data-invite-card-link]');
+		await expect(link).toHaveText(/old-invite-token-00001$/);
+		const share = page.getByRole('button', { name: /^Link teilen: Einladung in / });
+		await share.click();
+		await expect(page.getByText('Link geprüft. Tippe nochmal zum Teilen.')).toBeVisible();
+		await page.waitForFunction((at) => Date.now() > at, expiresAt);
+		await share.click({ force: true });
+		await page.waitForTimeout(500);
+		const shared = await page.evaluate(
+			() => (window as unknown as { __shareInClick: boolean[] }).__shareInClick,
+		);
+		expect(shared).toEqual([]);
+		await expect(link).toHaveText(/fixture-invite-token01$/, { timeout: 10_000 });
+	});
+
 	test('a link revoked after the last refresh is never shared', async ({ page }) => {
 		await page.addInitScript(() => {
 			const written: string[] = [];

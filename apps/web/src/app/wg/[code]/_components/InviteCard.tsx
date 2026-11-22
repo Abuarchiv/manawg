@@ -22,8 +22,13 @@ import posthog from '@/shared/lib/analytics';
 const MAX_TIMEOUT_MS = 2_147_483_647;
 const REFRESH_GAP_MS = 5000;
 
-/** A second tap may share a link the server confirmed this recently without asking again. */
-const CHECKED_FOR_MS = 30_000;
+/**
+ * A second tap may share a link the server confirmed this recently without asking again.
+ * Strict browsers spend the tap on any request, so a check right before the share is impossible
+ * there; a link revoked inside this window still goes out, and its recipient sees the "link
+ * invalid" page. The window can only shrink, never close: a revoke may follow any check.
+ */
+const CHECKED_FOR_MS = 10_000;
 
 type Notice = 'shared' | 'copied' | 'failed' | 'checked' | 'fresh';
 
@@ -122,6 +127,12 @@ export function InviteCard() {
 			let invite = state.invite;
 			const checked = checkedRef.current;
 			checkedRef.current = null;
+			// Expiry needs no server: a dead link reloads and is never shared.
+			if (new Date(invite.expiresAt).getTime() <= Date.now()) {
+				setShared(null);
+				setAttempt((n) => n + 1);
+				return;
+			}
 			// A revoked or used-up link must never go out, so the server confirms it first. A
 			// confirmation from a tap moments ago lets this tap share inside its own gesture.
 			if (!(checked?.id === invite.id && Date.now() - checked.at < CHECKED_FOR_MS)) {
