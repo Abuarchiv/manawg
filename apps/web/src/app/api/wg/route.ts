@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { recordAuditEvent } from '@/core/audit';
-import { db, wgMembers, wgs } from '@/core/db';
+import { wgMembers, wgs } from '@/core/db';
 import { assertAccountCanAcquireMembership } from '@/core/db/account-deletion';
 import {
 	responseCodec,
@@ -16,6 +16,7 @@ import { conflict, rateLimitResponse, serverError } from '@/core/http/api-errors
 import { parseBody } from '@/core/http/parse-body';
 import { requestLocale } from '@/core/i18n/request-locale';
 import { readIdempotencyKey } from '@/core/idempotency-store';
+import { afterResponse } from '@/core/infra/after-response';
 import { logApiError } from '@/core/infra/observability';
 import { inheritedMailPrefs } from '@/core/mail/unsubscribe';
 import { checkRateLimit, clientIpKey, rateLimitFailMode, registerLimiter } from '@/core/rate-limit';
@@ -68,8 +69,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 		}
 	};
 
-	// The share-code uniqueness check runs before the transaction, so the unique index can still
-	// fire inside it; the write then retries with a fresh code instead of failing a double click.
+	// The unique index on share_code is the only uniqueness check: a collision (1 in 32^8 per WG)
+	// rolls back and retries with a fresh code, so no lookup query runs before the write.
 	let shareCode = '';
 	type Created = { wgId: string; memberId: string; memberName: string; wgName: string };
 	const createWg: WriteFn<WriteOutcome<unknown, Created>, undefined> = async (tx) => {
@@ -112,7 +113,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 				codec: wgCreateCodec,
 				beforeReplay: accountDeletionReplayResponse,
 				prepare: async () => {
-					shareCode = await findFreeShareCode();
+					shareCode = freshShareCode();
 					return shareCode ? { input: undefined } : { stop: serverError('share_code_exhausted') };
 				},
 				inTransaction: (work) =>
@@ -122,8 +123,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 					}),
 				retryAfterRollback: (err, attempt) => {
 					if (!isUniqueViolation(err) || attempt >= SHARE_CODE_RETRIES) return null;
-					const candidate = generateShareCode();
-					if (isValidShareCode(candidate)) shareCode = candidate;
+					shareCode = freshShareCode() || shareCode;
 					return createWg;
 				},
 			},
@@ -134,15 +134,18 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 			return NextResponse.json(result.body, { status: result.status });
 		}
 		const created = result.context;
-		await recordAuditEvent({
-			wgId: created.wgId,
-			memberId: created.memberId,
-			eventType: 'wg.created',
-			entityType: 'wg',
-			entityId: created.wgId,
-			actorName: created.memberName,
-			metadata: { name: created.wgName, shareCode },
-		});
+		// The invite screen waits on this response; the audit row is best-effort and need not.
+		afterResponse(() =>
+			recordAuditEvent({
+				wgId: created.wgId,
+				memberId: created.memberId,
+				eventType: 'wg.created',
+				entityType: 'wg',
+				entityId: created.wgId,
+				actorName: created.memberName,
+				metadata: { name: created.wgName, shareCode },
+			}),
+		);
 		return NextResponse.json(result.body, { status: result.status });
 	} catch (err) {
 		if (err instanceof TransactionAbort) {
@@ -161,15 +164,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 	}
 }
 
-async function findFreeShareCode(): Promise<string> {
+function freshShareCode(): string {
 	for (let attempt = 0; attempt < SHARE_CODE_RETRIES; attempt += 1) {
 		const candidate = generateShareCode();
-		if (!isValidShareCode(candidate)) continue;
-		const existing = await db.query.wgs.findFirst({
-			where: (w, { eq }) => eq(w.shareCode, candidate),
-			columns: { id: true },
-		});
-		if (!existing) return candidate;
+		if (isValidShareCode(candidate)) return candidate;
 	}
 	return '';
 }

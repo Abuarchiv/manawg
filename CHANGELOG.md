@@ -91,6 +91,8 @@ settled.
 
 ### Fixed
 
+- Creating a flat answers sooner: the response no longer waits for the activity-log entry, and
+  the share code is checked by the database's unique index instead of a lookup before the write.
 - Screen readers read a busy button by its label alone ("Saving…") instead of "Loading Saving…".
   Twenty buttons in chat, expenses, debts, import and the noticeboard showed a spinner that
   added its own name.

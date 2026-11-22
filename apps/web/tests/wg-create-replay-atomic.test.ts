@@ -28,6 +28,8 @@ interface HarnessState {
 	events: string[];
 	failAt: string | null;
 	shareCodeExhausted: boolean;
+	/** WG inserts that still collide with the share-code unique index before one succeeds. */
+	shareCodeCollisions: number;
 	accountDeleted: boolean;
 	claimBody: Row;
 	pauseAudit: boolean;
@@ -68,6 +70,11 @@ const withTransaction = async (operation: (tx: unknown) => Promise<unknown>) => 
 				returning: async () => {
 					if (table === wgs) {
 						state.events.push('wg_insert');
+						// Every generated code collides with the unique index on share_code.
+						if (state.shareCodeExhausted || state.shareCodeCollisions > 0) {
+							state.shareCodeCollisions -= 1;
+							throw Object.assign(new Error('dup'), { code: '23505' });
+						}
 						const row = { ...values, id: 'wg-1' };
 						draft.wgs.push(row);
 						return [row];
@@ -124,9 +131,6 @@ mock.module('@/core/auth/server', {
 mock.module('@/core/db', {
 	namedExports: {
 		db: {
-			query: {
-				wgs: { findFirst: async () => (state.shareCodeExhausted ? { id: 'existing' } : null) },
-			},
 			delete: (table: unknown) => ({
 				where: (where: Condition) => ({
 					returning: async () => {
@@ -201,6 +205,7 @@ function harness({
 	pauseAudit = false,
 	claimBody = { _claimed: true } as Row,
 	accountDeleted = false,
+	keyed = true,
 } = {}) {
 	let auditReached: () => void = () => {};
 	let releaseAudit: () => void = () => {};
@@ -219,6 +224,7 @@ function harness({
 		events: [],
 		failAt,
 		shareCodeExhausted: false,
+		shareCodeCollisions: 0,
 		accountDeleted,
 		claimBody,
 		pauseAudit,
@@ -229,7 +235,7 @@ function harness({
 	const request = () =>
 		new NextRequest('http://localhost/api/wg', {
 			method: 'POST',
-			headers: { 'idempotency-key': key },
+			headers: keyed ? { 'idempotency-key': key } : {},
 			body: JSON.stringify({ name: 'WG', creatorName: 'Mina' }),
 		});
 	return {
@@ -330,12 +336,26 @@ test('share-code exhaustion leaves no claim, so retry can create immediately', a
 	state.shareCodeExhausted = true;
 	const failed = await post();
 	assert.equal(failed.status, 500);
-	assert.equal(state.claims, 0);
+	assert.deepEqual(await failed.json(), { error: 'share_code_exhausted' });
+	// Every attempt rolled back, so the claim was released with the lease it held.
 	assert.equal(state.slot, null);
 	assert.equal(state.wgs.length, 0);
 	state.shareCodeExhausted = false;
 	const retry = await post();
 	assert.equal(retry.status, 200);
-	assert.equal(state.claims, 1);
+	assert.equal(state.claims, 2);
 	assert.equal(state.wgs.length, 1);
 });
+
+for (const keyed of [true, false]) {
+	test(`a share-code collision retries in the same request (${keyed ? 'with' : 'without'} key)`, async () => {
+		const { state, post } = harness({ keyed });
+		state.shareCodeCollisions = 1;
+		const response = await post();
+		assert.equal(response.status, 200);
+		assert.equal(state.wgs.length, 1);
+		assert.equal(state.members.length, 1);
+		assert.equal(state.events.filter((event) => event === 'wg_insert').length, 2);
+		assert.equal(state.claims, keyed ? 1 : 0);
+	});
+}
