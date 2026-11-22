@@ -2,6 +2,7 @@ import { mutationError } from '@/core/http/error-codes';
 import { apiFetch } from '@/core/infra/api-client';
 import { copyText, type NavigatorWithShare } from '@/core/utils/clipboard';
 import { INVITE_VALID_DAYS } from '@/core/utils/invite-token';
+import { MS_PER_DAY } from '@/core/utils/time';
 import type { Message } from '@/shared/i18n/message';
 import { MAX_ACTIVE_INVITES } from '@/shared/lib/limits';
 
@@ -62,8 +63,17 @@ export async function currentInvite(
 	return { ok: false, message: createError(res.error) };
 }
 
-export function inviteShareMessage(wgName: string, url: string): Message {
-	return { key: 'shell.inviteShare.text', values: { wgName, url, days: INVITE_VALID_DAYS } };
+/** The share text. It promises the days the link has left (a reused link may expire sooner). */
+export function inviteShareMessage(
+	wgName: string,
+	url: string,
+	expiresAt?: string,
+	now = new Date(),
+): Message {
+	const days = expiresAt
+		? Math.max(1, Math.ceil((new Date(expiresAt).getTime() - now.getTime()) / MS_PER_DAY))
+		: INVITE_VALID_DAYS;
+	return { key: 'shell.inviteShare.text', values: { wgName, url, days } };
 }
 
 /** Native share sheet when there is one, the clipboard otherwise. `text` is the rendered share message, which already carries the link. */

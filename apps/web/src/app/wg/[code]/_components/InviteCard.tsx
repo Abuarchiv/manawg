@@ -17,6 +17,9 @@ import { dateTimeFormat } from '@/shared/i18n/intl';
 import { type Message, useMessage } from '@/shared/i18n/message';
 import posthog from '@/shared/lib/analytics';
 
+/** setTimeout fires at once beyond 2^31 - 1 ms. */
+const MAX_TIMEOUT_MS = 2_147_483_647;
+
 type CardState =
 	| { status: 'loading' }
 	| { status: 'ready'; invite: CreatedInvite }
@@ -63,11 +66,34 @@ export function InviteCard() {
 		};
 	}, [wg.shareCode, identity.memberId, refreshMembers, attempt]);
 
-	async function share(url: string): Promise<void> {
+	// At its expiry the card fetches the replacement on its own.
+	const expiresAt = state.status === 'ready' ? state.invite.expiresAt : null;
+	useEffect(() => {
+		if (!expiresAt) return;
+		const delay = Math.min(new Date(expiresAt).getTime() - Date.now(), MAX_TIMEOUT_MS);
+		const timer = window.setTimeout(() => setAttempt((n) => n + 1), Math.max(0, delay));
+		return () => window.clearTimeout(timer);
+	}, [expiresAt]);
+
+	async function share(): Promise<void> {
 		if (sharing) return;
 		setSharing(true);
 		try {
-			const outcome = await shareInvite(render(inviteShareMessage(wg.name, url)));
+			// Revoked or expired since the card loaded: the server answers with the replacement.
+			const current = await currentInvite(wg.shareCode, identity.memberId);
+			if (!current.ok) {
+				setState({ status: 'failed', message: current.message });
+				return;
+			}
+			if (!current.invite) {
+				void refreshMembers();
+				return;
+			}
+			const invite = current.invite;
+			setState({ status: 'ready', invite });
+			const outcome = await shareInvite(
+				render(inviteShareMessage(wg.name, invite.url, invite.expiresAt)),
+			);
 			if (outcome === 'cancelled') return;
 			setShared(outcome);
 			if (outcome !== 'failed') {
@@ -122,7 +148,7 @@ export function InviteCard() {
 				className="h-auto w-full whitespace-normal"
 				disabled={!invite || sharing}
 				aria-label={t('shareLabel', { wgName: wg.name })}
-				onClick={() => invite && void share(invite.url)}
+				onClick={() => void share()}
 			>
 				{sharing ? (
 					<Spinner data-icon="inline-start" aria-hidden />

@@ -163,6 +163,57 @@ test.describe('Start card', () => {
 		await expect(page.getByText('abgelaufen')).toHaveCount(0);
 	});
 
+	for (const [label, expiresInMs] of [
+		['expires', 1500],
+		['is revoked', 14 * DAY_MS],
+	] as const) {
+		test(`a link that ${label} while the card is open is replaced before sharing`, async ({
+			page,
+		}) => {
+			await page.addInitScript(() => {
+				const written: string[] = [];
+				(window as unknown as { __copied: string[] }).__copied = written;
+				Object.defineProperty(navigator, 'share', { value: undefined, configurable: true });
+				Object.defineProperty(navigator, 'clipboard', {
+					value: { writeText: async (text: string) => void written.push(text) },
+					configurable: true,
+				});
+			});
+			await mockEmptyLists(page, SOLO_BASE);
+			// The first answer is the old link; it dies while the page stays open, so the server's
+			// next answer is the fresh fixture link.
+			let calls = 0;
+			await page.route(`**${SOLO_BASE}/invites/current`, (route) => {
+				calls++;
+				if (calls > 1) return route.fallback();
+				return route.fulfill({
+					json: {
+						invite: {
+							id: '1f0c4b5e-2a3d-4e6f-8a9b-0c1d2e3f4a5b',
+							url: `${new URL(route.request().url()).origin}/invite/old-invite-token-00001`,
+							expiresAt: new Date(Date.now() + expiresInMs).toISOString(),
+						},
+					},
+				});
+			});
+			await open(page, SOLO_WG.shareCode);
+			const link = page.locator('[data-invite-card-link]');
+			await expect(link).toHaveText(/old-invite-token-00001$/);
+			if (expiresInMs < DAY_MS) {
+				// At its expiry the card fetches the replacement on its own.
+				await expect(link).toHaveText(/fixture-invite-token01$/, { timeout: 5000 });
+			}
+			await page.getByRole('button', { name: /^Link teilen: Einladung in / }).click();
+			await expect(link).toHaveText(/fixture-invite-token01$/);
+			const readCopied = () =>
+				page.evaluate(() => (window as unknown as { __copied: string[] }).__copied);
+			await expect.poll(async () => (await readCopied()).length).toBe(1);
+			const copied = await readCopied();
+			expect(copied[0]).toContain('/invite/fixture-invite-token01');
+			expect(copied[0]).not.toContain('old-invite-token');
+		});
+	}
+
 	test('a snoozed card asks for no link', async ({ page }) => {
 		let requested = 0;
 		await page.route(`**${SOLO_BASE}/invites/current`, (route) => {
