@@ -11,7 +11,6 @@ import {
 import { apiFetch } from '@/core/infra/api-client';
 import { hideStaleNetworkError } from '@/core/sync/collection-overlay';
 import { useSyncedCollection } from '@/core/sync/use-synced-collection';
-import { LIST_REFRESH_INTERVAL_MS } from '@/core/utils/use-visibility-paused-interval';
 import type { RecurringExpense, RecurringFilter } from '@/features/expenses/expense-types';
 import {
 	recurringActionError,
@@ -61,7 +60,6 @@ export function useRecurringPage() {
 		describeError: (error) =>
 			t(wgLoadError({ key: 'expenses-recurring.page.loadError.lead' }, error.status, error.error)),
 		hideError: hideStaleNetworkError,
-		pollIntervalMs: LIST_REFRESH_INTERVAL_MS,
 	});
 	const {
 		items: recurringExpenses,

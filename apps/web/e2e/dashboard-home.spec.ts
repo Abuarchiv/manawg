@@ -484,25 +484,27 @@ test.describe('daily overview home', () => {
 		await page.clock.install({ time: new Date('2026-09-27T10:00:00.000Z') });
 		await setupMember(page);
 		await mockChoresDashboard(page, []);
-		let unreadReads = 0;
-		await page.route(`**${BASE}/chat/unread-count`, (route) => {
-			unreadReads++;
-			return route.fulfill({ status: 200, json: { count: 0, overflow: false } });
+		let pollReads = 0;
+		await page.route(`**${BASE}/changes`, (route) => {
+			pollReads++;
+			return route.fulfill({ status: 200, json: { data: '0', members: '0', chat: '0' } });
 		});
 
 		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}`);
 		await dismissOnboarding(page);
-		await expect.poll(() => unreadReads).toBeGreaterThan(0);
+		// The layout's server render is the baseline; the first check runs one period later.
+		await page.clock.runFor(31_000);
+		await expect.poll(() => pollReads).toBeGreaterThan(0);
 
 		// Past the five idle minutes, a whole poll period passes without a request.
 		await page.clock.fastForward(6 * 60_000);
-		const idleReads = unreadReads;
+		const idlePolls = pollReads;
 		await page.clock.runFor(60_000);
-		expect(unreadReads).toBe(idleReads);
+		expect(pollReads).toBe(idlePolls);
 
 		await page.keyboard.press('Shift');
 		await page.clock.runFor(2_000);
-		await expect.poll(() => unreadReads).toBeGreaterThan(idleReads);
+		await expect.poll(() => pollReads).toBeGreaterThan(idlePolls);
 	});
 
 	test('refreshes the agenda range after Berlin midnight on resume', async ({ page }) => {

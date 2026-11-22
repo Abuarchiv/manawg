@@ -56,6 +56,12 @@ settled.
 
 ### Changed
 
+- An open flat tab sends one small "what changed" request every 30 seconds instead of one
+  request per list, member roster and unread badge, and reloads only what changed. A list page
+  that nobody else changes now costs at most two requests a minute. The chat checks every 8
+  seconds while messages come in and slows to every 30 seconds after two quiet minutes; a new
+  message, sending or typing speeds it up again. Self-hosted instances apply the new table and
+  triggers with the usual migrations on start.
 - A healthy `/api/health` answer may now be cached by a CDN or caching proxy for four minutes
   (`Cache-Control: public, s-maxage=240`), so an uptime monitor checking every minute no longer
   runs the health check each time. An unhealthy or rate-limited answer is still never cached, and
