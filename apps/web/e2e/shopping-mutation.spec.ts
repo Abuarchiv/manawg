@@ -129,12 +129,13 @@ test.describe('shopping retry', () => {
 				await route.fallback();
 				return;
 			}
-			// Never answers: the page is reloaded while the request is open.
+			// Never answers: the item is reopened in a second tab while the request is open.
 			await new Promise(() => {});
 		});
 		await setupMember(page);
 		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/shopping`);
 		await dismissOnboarding(page);
+		await waitForHydration(page, '[aria-label="Artikel-Name"]');
 		const input = page.getByLabel('Artikel-Name');
 		await input.fill('Brot');
 		await page.getByRole('button', { name: 'Artikel hinzufügen', exact: true }).click();
@@ -150,9 +151,13 @@ test.describe('shopping retry', () => {
 			return raw ? (JSON.parse(raw) as { name?: string }).name : null;
 		});
 		expect(storedName).toBe('Brot');
-		await page.unroute(`**/api/wg/${FIXTURE_WG.shareCode}/shopping`);
-		await page.reload();
-		await expect(page.getByLabel('Artikel-Name')).toHaveValue('Brot');
+		// A reload is no killed tab: WebKit still runs the page while it unloads, takes the aborted
+		// request for a network error and moves the item to the offline queue. A second tab reads the
+		// draft while the first one stays frozen with its request open.
+		const reopened = await page.context().newPage();
+		await setupMember(reopened);
+		await navigateToFeature(reopened, `/wg/${FIXTURE_WG.shareCode}/shopping`);
+		await expect(reopened.getByLabel('Artikel-Name')).toHaveValue('Brot');
 	});
 
 	test('uses a fresh idempotency key after an offline-queued shopping create', async ({ page }) => {
