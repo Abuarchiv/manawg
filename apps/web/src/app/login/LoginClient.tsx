@@ -220,7 +220,7 @@ export function LoginClient({ appOrigin }: { appOrigin: string }) {
 						? t('titleJoin')
 						: t('titleCreated');
 	// The steps share one URL, so the server title cannot follow them.
-	useDocumentTitle(`${title} — ManaWG`);
+	const stepAnnouncement = useDocumentTitle(`${title} — ManaWG`);
 
 	useClearCallbackError(signedInHere);
 
@@ -246,6 +246,9 @@ export function LoginClient({ appOrigin }: { appOrigin: string }) {
 				}
 				backHref={explorationHref()}
 			>
+				<p role="status" className="sr-only">
+					{stepAnnouncement}
+				</p>
 				{accountSwitchError && <ErrorBox>{accountSwitchError}</ErrorBox>}
 				<StartNotices search={searchParams.toString()} signedIn={false} />
 				{(authState === 'error' || (retried && authState === 'loading')) && (
@@ -321,6 +324,9 @@ export function LoginClient({ appOrigin }: { appOrigin: string }) {
 			}
 			backHref={explorationHref()}
 		>
+			<p role="status" className="sr-only">
+				{stepAnnouncement}
+			</p>
 			<StartNotices search={searchParams.toString()} signedIn />
 			{accountSwitchError && <ErrorBox>{accountSwitchError}</ErrorBox>}
 			{deniedWgCode && step === 'choose' && (
