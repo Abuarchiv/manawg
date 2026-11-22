@@ -175,11 +175,18 @@ jobs:
       - name: Deploy production
         env:
           SHA: ${{ steps.candidate.outputs.sha }}
-          # The secret chosen in "Verify dispatch" (selectDeployHook).
-          DEPLOY_HOOK: ${{ secrets[steps.candidate.outputs.hook] }}
+          HOOK: ${{ steps.candidate.outputs.hook }}
+          PRODUCTION_DEPLOY_HOOK: ${{ secrets.PRODUCTION_DEPLOY_HOOK }}
+          VERCEL_PRODUCTION_DEPLOY_HOOK: ${{ secrets.VERCEL_PRODUCTION_DEPLOY_HOOK }}
         run: |
+          # HOOK names the secret chosen in "Verify dispatch" (selectDeployHook).
+          case "$HOOK" in
+            PRODUCTION_DEPLOY_HOOK) deploy_hook="$PRODUCTION_DEPLOY_HOOK" ;;
+            VERCEL_PRODUCTION_DEPLOY_HOOK) deploy_hook="$VERCEL_PRODUCTION_DEPLOY_HOOK" ;;
+            *) echo "Unknown deploy hook: $HOOK" >&2; exit 1 ;;
+          esac
           # The hook builds the main tip; if main moved meanwhile, the version check below fails.
-          curl -fsS -X POST "$DEPLOY_HOOK" > /dev/null
+          curl -fsS -X POST "$deploy_hook" > /dev/null
           for attempt in $(seq 120); do
             # A unique query bypasses the CDN copy of a healthy answer (it may still name the old commit).
             health="$(curl -sS "$PRODUCTION_APP_URL/api/health?t=$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT-$attempt" || true)"
