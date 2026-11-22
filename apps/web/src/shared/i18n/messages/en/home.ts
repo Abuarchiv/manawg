@@ -62,6 +62,8 @@ export default {
 		shared: 'Invitation shared',
 		copied: 'Invitation link copied',
 		failed: 'Sharing failed',
+		checked: 'Link checked. Tap again to share.',
+		fresh: 'New link ready. Tap again to share.',
 		retry: 'Try again',
 	},
 	soloInvite: {

@@ -64,6 +64,8 @@ export default {
 		shared: 'Invitación compartida',
 		copied: 'Enlace de invitación copiado',
 		failed: 'No se pudo compartir',
+		checked: 'Enlace comprobado. Toca otra vez para compartir.',
+		fresh: 'Nuevo enlace listo. Toca otra vez para compartir.',
 		retry: 'Reintentar',
 	},
 	soloInvite: {

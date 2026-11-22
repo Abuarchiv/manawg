@@ -22,6 +22,18 @@ import posthog from '@/shared/lib/analytics';
 const MAX_TIMEOUT_MS = 2_147_483_647;
 const REFRESH_GAP_MS = 5000;
 
+/** A second tap may share a link the server confirmed this recently without asking again. */
+const CHECKED_FOR_MS = 30_000;
+
+type Notice = 'shared' | 'copied' | 'failed' | 'checked' | 'fresh';
+
+/** `navigator.userActivation` where the browser has it: is the tap still usable after a wait? */
+function tapStillActive(): boolean {
+	const activation = (navigator as Navigator & { userActivation?: { isActive: boolean } })
+		.userActivation;
+	return activation ? activation.isActive : true;
+}
+
 type CardState =
 	| { status: 'loading' }
 	| { status: 'ready'; invite: CreatedInvite }
@@ -38,7 +50,9 @@ export function InviteCard() {
 	const { wg, identity, refreshMembers } = useWg();
 	const [state, setState] = useState<CardState>({ status: 'loading' });
 	const [attempt, setAttempt] = useState(0);
-	const [shared, setShared] = useState<'shared' | 'copied' | 'failed' | null>(null);
+	const [shared, setShared] = useState<Notice | null>(null);
+	// The link the server confirmed on the last tap, for a second tap that shares without waiting.
+	const checkedRef = useRef<{ id: string; at: number } | null>(null);
 	const [sharing, setSharing] = useState(false);
 	const shownRef = useRef(false);
 
@@ -105,12 +119,33 @@ export function InviteCard() {
 		if (sharing || state.status !== 'ready') return;
 		setSharing(true);
 		try {
-			const invite = state.invite;
-			// The share sheet needs the tap's user activation, which any awaited request spends.
-			// A link that died before the expiry timer caught it reloads; the next tap shares.
-			if (new Date(invite.expiresAt).getTime() <= Date.now()) {
-				setAttempt((n) => n + 1);
-				return;
+			let invite = state.invite;
+			const checked = checkedRef.current;
+			checkedRef.current = null;
+			// A revoked or used-up link must never go out, so the server confirms it first. A
+			// confirmation from a tap moments ago lets this tap share inside its own gesture.
+			if (!(checked?.id === invite.id && Date.now() - checked.at < CHECKED_FOR_MS)) {
+				const current = await currentInvite(wg.shareCode, identity.memberId);
+				if (!current.ok) {
+					setState({ status: 'failed', message: current.message });
+					return;
+				}
+				if (!current.invite) {
+					void refreshMembers();
+					return;
+				}
+				if (current.invite.id !== invite.id) {
+					setState({ status: 'ready', invite: current.invite });
+					setShared('fresh');
+					return;
+				}
+				invite = current.invite;
+				// A browser that ties the share sheet to the tap has spent it on the request.
+				if (!tapStillActive()) {
+					checkedRef.current = { id: invite.id, at: Date.now() };
+					setShared('checked');
+					return;
+				}
 			}
 			const outcome = await shareInvite(
 				render(inviteShareMessage(wg.name, invite.url, invite.expiresAt)),
@@ -163,8 +198,14 @@ export function InviteCard() {
 			)}
 			<output
 				aria-live="polite"
-				// The check icon shows success; a failure needs words on screen too.
-				className={shared === 'failed' ? 'text-destructive text-xs' : 'sr-only'}
+				// The check icon shows success; anything that asks for action needs words on screen.
+				className={
+					shared === 'failed'
+						? 'text-destructive text-xs'
+						: shared === 'checked' || shared === 'fresh'
+							? 'text-muted-foreground text-xs'
+							: 'sr-only'
+				}
 			>
 				{shared ? t(shared) : ''}
 			</output>

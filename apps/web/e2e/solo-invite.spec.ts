@@ -215,16 +215,24 @@ test.describe('Start card', () => {
 		});
 	}
 
-	test('sharing opens the share sheet inside the tap, without waiting for the network', async ({
+	test('a share sheet that lost the tap asks for a second tap and shares a checked link', async ({
 		page,
 	}) => {
 		await page.addInitScript(() => {
-			// The share sheet needs the tap's user activation, which an awaited request spends.
+			// A strict browser: the share sheet only opens inside the tap itself.
 			let inClick = false;
 			const calls: boolean[] = [];
 			(window as unknown as { __shareInClick: boolean[] }).__shareInClick = calls;
 			window.addEventListener('click', () => (inClick = true), true);
-			window.addEventListener('click', () => (inClick = false));
+			window.addEventListener('click', () => setTimeout(() => (inClick = false)));
+			Object.defineProperty(navigator, 'userActivation', {
+				value: {
+					get isActive() {
+						return inClick;
+					},
+				},
+				configurable: true,
+			});
 			Object.defineProperty(navigator, 'share', {
 				value: async () => void calls.push(inClick),
 				configurable: true,
@@ -234,12 +242,56 @@ test.describe('Start card', () => {
 		await mockEmptyLists(page, SOLO_BASE);
 		await open(page, SOLO_WG.shareCode);
 		await expect(page.locator('[data-invite-card-link]')).toHaveText(/fixture-invite-token01$/);
-		await page.getByRole('button', { name: /^Link teilen: Einladung in / }).click();
+		const share = page.getByRole('button', { name: /^Link teilen: Einladung in / });
+		await share.click();
+		await expect(page.getByText('Link geprüft. Tippe nochmal zum Teilen.')).toBeVisible();
+		await share.click();
 		await expect(page.getByText('Einladung geteilt')).toBeAttached();
 		const calls = await page.evaluate(
 			() => (window as unknown as { __shareInClick: boolean[] }).__shareInClick,
 		);
 		expect(calls).toEqual([true]);
+	});
+
+	test('a link revoked after the last refresh is never shared', async ({ page }) => {
+		await page.addInitScript(() => {
+			const written: string[] = [];
+			(window as unknown as { __copied: string[] }).__copied = written;
+			Object.defineProperty(navigator, 'share', { value: undefined, configurable: true });
+			Object.defineProperty(navigator, 'clipboard', {
+				value: { writeText: async (text: string) => void written.push(text) },
+				configurable: true,
+			});
+		});
+		await mockEmptyLists(page, SOLO_BASE);
+		// The card loads the old link; it is revoked on the server, and no refresh runs before the tap.
+		let calls = 0;
+		await page.route(`**${SOLO_BASE}/invites/current`, (route) => {
+			calls++;
+			if (calls > 1) return route.fallback();
+			return route.fulfill({
+				json: {
+					invite: {
+						id: '1f0c4b5e-2a3d-4e6f-8a9b-0c1d2e3f4a5b',
+						url: `${new URL(route.request().url()).origin}/invite/old-invite-token-00001`,
+						expiresAt: new Date(Date.now() + 14 * DAY_MS).toISOString(),
+					},
+				},
+			});
+		});
+		await open(page, SOLO_WG.shareCode);
+		const link = page.locator('[data-invite-card-link]');
+		await expect(link).toHaveText(/old-invite-token-00001$/);
+		const share = page.getByRole('button', { name: /^Link teilen: Einladung in / });
+		await share.click();
+		await expect(page.getByText('Neuer Link bereit. Tippe nochmal zum Teilen.')).toBeVisible();
+		await expect(link).toHaveText(/fixture-invite-token01$/);
+		const readCopied = () =>
+			page.evaluate(() => (window as unknown as { __copied: string[] }).__copied);
+		expect(await readCopied()).toEqual([]);
+		await share.click();
+		await expect.poll(async () => (await readCopied()).length).toBe(1);
+		expect((await readCopied())[0]).toContain('/invite/fixture-invite-token01');
 	});
 
 	test('a failed share says so on screen', async ({ page }) => {

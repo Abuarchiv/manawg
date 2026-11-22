@@ -59,6 +59,8 @@ export default {
 		shared: 'Einladung geteilt',
 		copied: 'Einladungslink kopiert',
 		failed: 'Teilen fehlgeschlagen',
+		checked: 'Link geprüft. Tippe nochmal zum Teilen.',
+		fresh: 'Neuer Link bereit. Tippe nochmal zum Teilen.',
 		retry: 'Erneut versuchen',
 	},
 	soloInvite: {
