@@ -255,7 +255,8 @@ export function assertPreviewEvidence({
  * the newest run (highest run ID) whose required jobs did not all skip decides, and only its
  * latest attempt: an older failed run never aborts the release while a newer run is pending, and
  * an older success never passes it after a newer run failed. Runs for non-success Vercel
- * deployment statuses skip every job and are ignored.
+ * deployment statuses skip every required job and are ignored, unless a job of that run failed
+ * (such as preview-source), which fails the gate.
  *
  * @param {string} gate result of selectPreviewGate
  * @param {{ id: number, jobs: { name: string, status: string, conclusion: string | null, run_attempt?: number }[] }[]} runs
@@ -266,24 +267,20 @@ export function previewGateVerdict(gate, runs) {
 	if (!required) {
 		throw new Error(`Unknown Preview gate: ${gate}.`);
 	}
+	const failed = (job) =>
+		job.status === 'completed' && !['success', 'skipped'].includes(job.conclusion);
 	for (const run of [...runs].sort((a, b) => b.id - a.id)) {
 		const attempt = Math.max(0, ...run.jobs.map((job) => job.run_attempt ?? 0));
-		const jobs = run.jobs.filter(
-			(job) => required.jobs.includes(job.name) && (job.run_attempt ?? 0) === attempt,
-		);
-		if (jobs.length > 0 && jobs.every((job) => job.conclusion === 'skipped')) continue;
+		const latest = run.jobs.filter((job) => (job.run_attempt ?? 0) === attempt);
+		const jobs = latest.filter((job) => required.jobs.includes(job.name));
 		const done = (name) => jobs.find((job) => job.name === name && job.status === 'completed');
 		if (required.jobs.every((name) => done(name)?.conclusion === 'success')) {
 			return { state: 'passed', runId: run.id };
 		}
-		if (
-			required.jobs.every(done) ||
-			jobs.some(
-				(job) => job.status === 'completed' && !['success', 'skipped'].includes(job.conclusion),
-			)
-		) {
-			return { state: 'failed', runId: run.id };
-		}
+		// A failed job (preview-source too) decides even when it made the required jobs skip.
+		if (latest.some(failed)) return { state: 'failed', runId: run.id };
+		if (jobs.length > 0 && jobs.every((job) => job.conclusion === 'skipped')) continue;
+		if (required.jobs.every(done)) return { state: 'failed', runId: run.id };
 		return { state: 'pending', runId: run.id };
 	}
 	return { state: 'pending' };

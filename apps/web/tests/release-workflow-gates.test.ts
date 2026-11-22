@@ -298,3 +298,23 @@ test('vercel preview gate skips runs for non-success deployment statuses', () =>
 		{ state: 'pending', runId: 202 },
 	);
 });
+
+test('preview gate fails when the newest run failed before its required jobs', () => {
+	const job = (name: string, conclusion: string) => ({ name, status: 'completed', conclusion });
+	for (const gate of ['database', 'vercel'] as const) {
+		assert.deepEqual(
+			previewGateVerdict(gate, [
+				{
+					id: 202,
+					jobs: [
+						job('preview-source', 'failure'),
+						job('db-supabase-preview', 'skipped'),
+						job('e2e-preview', 'skipped'),
+					],
+				},
+				{ id: 101, jobs: [job('db-supabase-preview', 'success'), job('e2e-preview', 'success')] },
+			]),
+			{ state: 'failed', runId: 202 },
+		);
+	}
+});
