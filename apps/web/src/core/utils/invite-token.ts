@@ -3,6 +3,9 @@ const INVITE_TOKEN_REGEX = /^[A-Za-z0-9_-]{22}$/;
 const INVITE_LINK_REGEX = /\/invite\/([A-Za-z0-9_-]{22})(?![A-Za-z0-9_-])/;
 const INVITE_QUERY_REGEX = /[?&]invite=([A-Za-z0-9_-]{22})(?![A-Za-z0-9_-])/;
 
+/** What anyone holding an invitation link may learn before signing in. */
+export type InvitePreview = { wgName: string; inviterName: string | null; memberCount: number };
+
 /** How long a new invitation link works, in days. */
 export const INVITE_VALID_DAYS = 14;
 

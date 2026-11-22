@@ -6,11 +6,22 @@ import { queryFake } from '../../../../tests/support/query-fake';
 const freshFake = () =>
 	queryFake([[{ id: 'wg-1', shareCode: 'ABCD2345', name: 'Haus' }], [{ id: 'm-1', name: 'Mina' }]]);
 let fake = freshFake();
+let auditDone: Promise<void> = Promise.resolve();
+let shareCodeLookups = 0;
 
-mock.module('@/core/audit', { namedExports: { recordAuditEvent: async () => undefined } });
+mock.module('@/core/audit', { namedExports: { recordAuditEvent: () => auditDone } });
 mock.module('@/core/db', {
 	namedExports: {
-		db: { query: { wgs: { findFirst: async () => undefined } } },
+		db: {
+			query: {
+				wgs: {
+					findFirst: async () => {
+						shareCodeLookups += 1;
+						return undefined;
+					},
+				},
+			},
+		},
 		wgMembers: {},
 		wgs: {},
 	},
@@ -78,4 +89,25 @@ test('a request without a language signal stores German', async () => {
 	const res = await create({});
 	assert.equal(res.status, 200);
 	assert.equal(fake.values.at(-1)?.locale, 'de');
+});
+
+// #1057: the invite screen waits on this response, so it must not wait on the audit row.
+test('the response does not wait for the audit event', async () => {
+	auditDone = new Promise(() => undefined);
+	try {
+		const res = await Promise.race([
+			create({}),
+			new Promise<'blocked'>((resolve) => setTimeout(resolve, 200, 'blocked')),
+		]);
+		assert.notEqual(res, 'blocked');
+	} finally {
+		auditDone = Promise.resolve();
+	}
+});
+
+test('no share-code lookup runs before the write; the unique index retries collisions', async () => {
+	shareCodeLookups = 0;
+	const res = await create({});
+	assert.equal(res.status, 200);
+	assert.equal(shareCodeLookups, 0);
 });

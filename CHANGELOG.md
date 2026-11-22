@@ -13,6 +13,9 @@ settled.
 - Self-hosted instances refuse passwords from known data breaches in Supabase Auth as well
   (`GOTRUE_PASSWORD_HIBP_ENABLED`), so direct calls to `/auth/v1` get the same check as the app's
   registration and password change. Pull the new `compose.yaml` and restart.
+- The link preview of an invitation in WhatsApp, Signal, Telegram and other messengers names who
+  invites to which flat ("Mika invites you to the flat “Lindenstraße”") and, once the flat has two
+  members, how many are already in. Links that can no longer be used keep the generic preview.
 - The Docker image takes `SENTRY_RELEASE`, `SENTRY_ORG` and `SENTRY_PROJECT` build arguments and
   a `sentry_auth_token` build secret. With them, error reports carry the release and point at the
   original source lines; the token is not stored in the image.
@@ -53,6 +56,12 @@ settled.
 
 ### Changed
 
+- An open flat tab sends one small "what changed" request every 30 seconds instead of one
+  request per list, member roster and unread badge, and reloads only what changed. A list page
+  that nobody else changes now costs at most two requests a minute. The chat checks every 8
+  seconds while messages come in and slows to every 30 seconds after two quiet minutes; a new
+  message, sending or typing speeds it up again. Self-hosted instances apply the new table and
+  triggers with the usual migrations on start.
 - A healthy `/api/health` answer may now be cached by a CDN or caching proxy for four minutes
   (`Cache-Control: public, s-maxage=240`), so an uptime monitor checking every minute no longer
   runs the health check each time. An unhealthy or rate-limited answer is still never cached, and
@@ -95,6 +104,8 @@ settled.
   "Flat created") shows its own tab title and is announced to screen readers, instead of
   "Sign in". Reloading the "Flat created" step shows the invite link again instead of opening
   the flat.
+- Creating a flat answers sooner: the response no longer waits for the activity-log entry, and
+  the share code is checked by the database's unique index instead of a lookup before the write.
 - Screen readers read a busy button by its label alone ("Saving…") instead of "Loading Saving…".
   Twenty buttons in chat, expenses, debts, import and the noticeboard showed a spinner that
   added its own name.

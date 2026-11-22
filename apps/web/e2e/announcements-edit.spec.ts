@@ -6,6 +6,7 @@ import {
 	dismissOnboarding,
 	FIXTURE_WG,
 	navigateToFeature,
+	reportDataChangedOnEveryPoll,
 	setupMember,
 	skipUnlessFixtures,
 } from './support/helpers';
@@ -163,6 +164,7 @@ test.describe('pinboard edit', () => {
 		let patchBody: unknown = null;
 		await page.clock.install();
 		await setupMember(page);
+		await reportDataChangedOnEveryPoll(page, `/api/wg/${FIXTURE_WG.shareCode}`);
 		await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/announcements/edit-post`, (route) => {
 			if (route.request().method() !== 'PATCH') return route.fallback();
 			patchBody = route.request().postDataJSON();
