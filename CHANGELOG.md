@@ -91,6 +91,10 @@ settled.
 
 ### Fixed
 
+- After signing up, each step of creating or joining a flat ("Your flat", "Create a new flat",
+  "Flat created") shows its own tab title and is announced to screen readers, instead of
+  "Sign in". Reloading the "Flat created" step shows the invite link again instead of opening
+  the flat.
 - Screen readers read a busy button by its label alone ("Saving…") instead of "Loading Saving…".
   Twenty buttons in chat, expenses, debts, import and the noticeboard showed a spinner that
   added its own name.

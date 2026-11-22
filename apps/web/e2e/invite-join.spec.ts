@@ -111,7 +111,10 @@ test.describe('invitation link', () => {
 			}),
 		);
 		await page.reload();
-		await expect(page.getByRole('heading', { name: 'WG erstellt', level: 1 })).toBeVisible();
+		// A cold reload waits for the session check and the account's WG list.
+		await expect(page.getByRole('heading', { name: 'WG erstellt', level: 1 })).toBeVisible({
+			timeout: 30_000,
+		});
 		await expect(page).toHaveTitle('WG erstellt — ManaWG');
 		await expect(page.getByRole('button', { name: 'Einladungslink kopieren' })).toContainText(
 			'/invite/',
