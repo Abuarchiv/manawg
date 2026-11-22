@@ -14,6 +14,8 @@ import { MEMBER_NAME_MAX_LENGTH, WG_NAME_MAX_LENGTH } from '@/shared/lib/limits'
 export const WG_NAME_MAX = WG_NAME_MAX_LENGTH;
 export const NAME_MAX = MEMBER_NAME_MAX_LENGTH;
 export const START_DRAFT_KEY = 'manawg:draft:start';
+/** Query parameter that marks the invite step (`/login?created=<code>`), so a reload keeps it. */
+export const CREATED_PARAM = 'created';
 
 export interface CreateResponse {
 	wg: { id: string; shareCode: string; name: string };
