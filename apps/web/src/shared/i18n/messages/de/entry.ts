@@ -45,6 +45,10 @@ export default {
 		loadFailed: 'Deine WGs konnten gerade nicht geladen werden.',
 		recheck: 'Erneut prüfen',
 		rechecking: 'Prüfe…',
+		accountDeleted: {
+			title: 'Konto gelöscht',
+			body: 'Dein Konto und deine Anmeldedaten sind gelöscht.',
+		},
 		accountDeletion: {
 			title: 'Konto wird gelöscht',
 			body: 'ManaWG hat deine Zugänge zu allen WGs entfernt. Die Löschung beim Anmeldedienst steht noch aus und wird automatisch erneut versucht.',

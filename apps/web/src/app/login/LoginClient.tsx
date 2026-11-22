@@ -16,6 +16,7 @@ import { useConfirmLogoutDiscard } from '@/components/entry/use-confirm-logout-d
 import { Button } from '@/components/ui/button';
 import { FieldGroup, FieldSeparator } from '@/components/ui/field';
 import { Skeleton } from '@/components/ui/skeleton';
+import { AccountDeleteSection } from '@/components/wg/settings/AccountDeleteSection';
 import { isAuthPagePath } from '@/core/auth/auth-intent';
 import { safeNextPath, withHash } from '@/core/auth/next-path';
 import { invitePath } from '@/core/utils/invite-token';
@@ -356,6 +357,8 @@ export function LoginClient({ appOrigin }: { appOrigin: string }) {
 					{switching ? t('wait') : te('signOut.switch')}
 				</Button>
 			)}
+			{/* Without a WG there are no WG settings, so deletion is offered here (GDPR Art. 17). */}
+			{step === 'choose' && accountWgs.length === 0 && <AccountDeleteSection />}
 			{logoutDiscardDialog}
 		</EntryFrame>
 	);
