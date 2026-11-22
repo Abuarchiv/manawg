@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useToast } from '@/components/ui/Toast';
+import { useStableCallback } from '@/core/hooks/use-stable-callback';
 import { isReadOnlyMode } from '@/core/http/error-codes';
 import {
 	type PendingIdempotentRequest,
@@ -282,11 +283,14 @@ export function useShoppingAdd({
 		}
 	}
 
-	function changeName(value: string): void {
+	// Stable identities let the memoized field skip page renders: a render that lands between the
+	// browser writing typed text and React's input listener would reset the controlled value.
+	const changeName = useStableCallback((value: string): void => {
 		const next = value.replace(/^\s+/, '');
 		nameValueRef.current = next;
 		setNewName(next);
-	}
+	});
+	const submit = useStableCallback((): void => void add());
 
-	return { newName, changeName, adding, addError, add };
+	return { newName, changeName, submit, adding, addError, add };
 }

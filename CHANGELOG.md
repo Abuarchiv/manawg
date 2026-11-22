@@ -110,6 +110,9 @@ settled.
 
 ### Fixed
 
+- Text typed into the shopping list field right as the list or pantry finished loading could
+  vanish, mostly in Safari. The field now keeps it.
+
 - After signing up, each step of creating or joining a flat ("Your flat", "Create a new flat",
   "Flat created") shows its own tab title and is announced to screen readers, instead of
   "Sign in". Reloading the "Flat created" step shows the invite link again instead of opening

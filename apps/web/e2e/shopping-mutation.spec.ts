@@ -20,6 +20,27 @@ test.describe('shopping retry', () => {
 		await expect(response.json()).resolves.toMatchObject({ error: 'auth_required' });
 	});
 
+	test('keeps typed text when the page re-renders during the input event', async ({ page }) => {
+		skipUnlessFixtures();
+		await setupMember(page);
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/shopping`);
+		await dismissOnboarding(page);
+		await waitForHydration(page, '[aria-label="Artikel-Name"]');
+		// A store update (useSyncExternalStore renders synchronously) can land in the microtask
+		// checkpoint between the browser writing the typed text and React's input listener; WebKit
+		// hit this when a list or pantry fetch resolved at load. Forces that order: a window capture
+		// listener runs before React's root listener and refetches the pantry (it refreshes on focus).
+		await page.evaluate(() => {
+			window.addEventListener('input', () => window.dispatchEvent(new Event('focus')), {
+				capture: true,
+				once: true,
+			});
+		});
+		await page.getByLabel('Artikel-Name').fill('Rettich');
+		await expect(page.getByLabel('Artikel-Name')).toHaveValue('Rettich');
+		await expect(page.getByRole('button', { name: 'Artikel hinzufügen' })).toBeEnabled();
+	});
+
 	test('retries an uncertain shopping create with the same idempotency key', async ({ page }) => {
 		skipUnlessFixtures();
 		const keys: string[] = [];
