@@ -123,6 +123,27 @@ test('a reviewed settlement marks the debtor share paid and answers the pair', {
 	assert.ok(await settledAt(flat.splitId));
 });
 
+test('a flat without expenses or with an expense without shares loads an empty snapshot', {
+	skip,
+}, async () => {
+	const flat = await flatWithDebt();
+	await database.delete(schema.expenses).where(eq(schema.expenses.wgId, flat.wgId));
+	const empty = await loadSettlementSnapshot(database, flat.wgId);
+	assert.deepEqual(empty.expenses, []);
+	assert.equal(empty.members.length, 2);
+
+	const [expense] = await database
+		.insert(schema.expenses)
+		.values({ wgId: flat.wgId, paidByMemberId: flat.payer, amountCents: 300, description: 'Tea' })
+		.returning({ id: schema.expenses.id });
+	assert.ok(expense);
+	const unshared = await loadSettlementSnapshot(database, flat.wgId);
+	assert.deepEqual(
+		unshared.expenses.map(({ id, splits }) => ({ id, splits })),
+		[{ id: expense.id, splits: [] }],
+	);
+});
+
 test('a review that no longer matches is refused and settles nothing', { skip }, async () => {
 	const flat = await flatWithDebt();
 	const confirmation = await reviewedConfirmation(flat.wgId, flat.debtor, flat.payer);
@@ -310,4 +331,33 @@ test('a cash payment of another flat or by a moved-out member is not touched', {
 	});
 	assert.equal(movedOut.status, 401);
 	assert.equal(await paymentStatus(paymentId), 'completed');
+});
+
+test('the balance reads only completed payments of its own flat', { skip }, async () => {
+	const { loadCompletedExpensePayments } = await import(
+		'../src/features/expenses/server/expense-payments.ts'
+	);
+	const flat = await flatWithDebt();
+	const other = await flatWithDebt();
+	const pair = { fromMemberId: flat.debtor, toMemberId: flat.payer, expectedNetCents: 500 };
+	const kept = (await record(flat.wgId, flat.debtor, pair)).body as { paymentId: string };
+	await record(other.wgId, other.debtor, {
+		fromMemberId: other.debtor,
+		toMemberId: other.payer,
+		expectedNetCents: 500,
+	});
+
+	const payments = await loadCompletedExpensePayments(flat.wgId, database as never);
+	assert.equal(payments.length, 1);
+	const [payment] = payments;
+	assert.ok(payment);
+	assert.equal(payment.id, kept.paymentId);
+	assert.deepEqual(
+		[payment.fromMemberId, payment.toMemberId, payment.amountCents, payment.currency],
+		[flat.debtor, flat.payer, 500, 'EUR'],
+	);
+	assert.ok(payment.completedAt && !Number.isNaN(Date.parse(payment.completedAt)));
+
+	await voidPayment(flat.wgId, flat.payer, kept.paymentId);
+	assert.deepEqual(await loadCompletedExpensePayments(flat.wgId, database as never), []);
 });

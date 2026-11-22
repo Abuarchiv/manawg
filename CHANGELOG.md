@@ -56,6 +56,10 @@ settled.
 
 ### Changed
 
+- The **Database** workflow runs the unit and database suites together with coverage and uploads
+  the report as the `coverage` artifact. It fails when settle-up, ledger, payment or invite code
+  drops below its measured coverage floor, and when any test skips itself although a database is
+  set.
 - A healthy `/api/health` answer may now be cached by a CDN or caching proxy for four minutes
   (`Cache-Control: public, s-maxage=240`), so an uptime monitor checking every minute no longer
   runs the health check each time. An unhealthy or rate-limited answer is still never cached, and
