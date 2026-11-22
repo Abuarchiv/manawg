@@ -35,6 +35,60 @@ test.describe('invitation link', () => {
 		await expect(page).toHaveURL(new RegExp(`/wg/${FIXTURE_WG.shareCode}$`));
 	});
 
+	test('each start step has its own title and the invite step survives a reload', async ({
+		page,
+	}) => {
+		await setupMember(page);
+		await mockNoWgs(page);
+
+		await page.goto('/login');
+		await expect(page.getByRole('heading', { name: 'Deine WG', level: 1 })).toBeVisible();
+		await expect(page).toHaveTitle('Deine WG — ManaWG');
+		await page.getByRole('button', { name: 'Neue WG erstellen', exact: true }).click();
+		await expect(page).toHaveTitle('Neue WG erstellen — ManaWG');
+		await page.getByLabel('WG-Name').fill('Fixture WG');
+		await page.getByLabel('Dein Anzeigename').fill('Anna');
+		const createResponse = page.waitForResponse(
+			(response) => response.url().endsWith('/api/wg') && response.request().method() === 'POST',
+		);
+		await page.getByRole('button', { name: 'WG erstellen', exact: true }).click();
+		const created = (await (await createResponse).json()) as {
+			wg: { id: string; shareCode: string };
+			creator: { id: string };
+		};
+
+		await expect(page.getByRole('heading', { name: 'WG erstellt', level: 1 })).toBeVisible();
+		await expect(page).toHaveTitle('WG erstellt — ManaWG');
+		await expect(page.getByRole('button', { name: 'Einladungslink kopieren' })).toContainText(
+			'/invite/',
+		);
+
+		// After the reload the account lists the new WG; the invite step must come back.
+		await page.route('**/api/wg/mine', (route) =>
+			route.fulfill({
+				json: {
+					wgs: [
+						{
+							id: created.wg.id,
+							code: created.wg.shareCode,
+							name: 'Fixture WG',
+							memberId: created.creator.id,
+						},
+					],
+				},
+			}),
+		);
+		await page.reload();
+		await expect(page.getByRole('heading', { name: 'WG erstellt', level: 1 })).toBeVisible();
+		await expect(page).toHaveTitle('WG erstellt — ManaWG');
+		await expect(page.getByRole('button', { name: 'Einladungslink kopieren' })).toContainText(
+			'/invite/',
+			{ timeout: 30_000 },
+		);
+		await page.getByRole('button', { name: 'Zur WG', exact: true }).click();
+		await expect(page).toHaveURL(new RegExp(`/wg/${created.wg.shareCode}$`));
+	});
+
 	test.describe('name errors on the join page', () => {
 		const TOKEN = 'fixture-invite-token01';
 
