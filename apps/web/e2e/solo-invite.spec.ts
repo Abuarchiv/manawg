@@ -44,8 +44,7 @@ interface StrictCall {
 
 /**
  * A strict browser: the share sheet and the clipboard only work inside the tap itself, and an
- * awaited request ends the tap. `ClipboardItem` takes a promise, so a write started inside the tap
- * may resolve later. Every call lands in `window.__strict`.
+ * awaited request ends the tap. Every call lands in `window.__strict`.
  */
 async function strictBrowser(page: Page): Promise<() => Promise<StrictCall[]>> {
 	await page.addInitScript(() => {
@@ -68,23 +67,11 @@ async function strictBrowser(page: Page): Promise<() => Promise<StrictCall[]>> {
 			configurable: true,
 		});
 		Object.defineProperty(navigator, 'canShare', { value: () => true, configurable: true });
-		class FakeClipboardItem {
-			constructor(readonly items: Record<string, Promise<Blob> | Blob>) {}
-		}
-		Object.defineProperty(window, 'ClipboardItem', {
-			value: FakeClipboardItem,
-			configurable: true,
-		});
 		Object.defineProperty(navigator, 'clipboard', {
 			value: {
 				writeText: async (text: string) => {
 					if (!inClick) throw new DOMException('no gesture', 'NotAllowedError');
 					calls.push({ via: 'copy', inClick, text });
-				},
-				write: async (items: FakeClipboardItem[]) => {
-					if (!inClick) throw new DOMException('no gesture', 'NotAllowedError');
-					const blob = await items[0]?.items['text/plain'];
-					calls.push({ via: 'copy', inClick: true, text: (await blob?.text()) ?? '' });
 				},
 			},
 			configurable: true,
@@ -298,29 +285,32 @@ test.describe('Start card', () => {
 		});
 	}
 
-	test('a share sheet that lost the tap asks for a second tap and copies a checked link', async ({
-		page,
-	}) => {
+	test('a share sheet that lost the tap opens on the next tap, every time', async ({ page }) => {
 		const readCalls = await strictBrowser(page);
 		await mockEmptyLists(page, SOLO_BASE);
 		await open(page, SOLO_WG.shareCode);
 		await expect(page.locator('[data-invite-card-link]')).toHaveText(/fixture-invite-token01$/);
 		const share = page.getByRole('button', { name: /^Link teilen: Einladung in / });
-		await share.click();
-		await expect(page.getByText('Link geprüft. Tippe nochmal zum Kopieren.')).toBeVisible();
-		expect(await readCalls()).toEqual([]);
-		await share.click();
-		await expect(page.getByText('Einladungslink kopiert')).toBeAttached();
+		for (let round = 1; round <= 2; round++) {
+			await share.click();
+			await expect(page.getByText('Link geprüft. Tippe nochmal zum Teilen.')).toBeVisible();
+			await share.click();
+			await expect(page.getByText('Einladung geteilt')).toBeAttached();
+			await expect.poll(async () => (await readCalls()).length).toBe(round);
+		}
 		const calls = await readCalls();
-		expect(calls).toHaveLength(1);
-		expect(calls[0]).toMatchObject({ via: 'copy', inClick: true });
+		expect(calls.map((call) => [call.via, call.inClick])).toEqual([
+			['share', true],
+			['share', true],
+		]);
 		expect(calls[0]?.text).toContain('/invite/fixture-invite-token01');
 	});
 
 	test('a confirmed link revoked before the second tap is not shared', async ({ page }) => {
 		const readCalls = await strictBrowser(page);
 		await mockEmptyLists(page, SOLO_BASE);
-		// The load and the first tap's check see the old link; then it is revoked on the server.
+		// The load and the first tap's check see the old link; then it is revoked on the server,
+		// which moves the WG's data version like the audit event of a real revoke.
 		let revoked = false;
 		await page.route(`**${SOLO_BASE}/invites/current`, (route) => {
 			if (revoked) return route.fallback();
@@ -334,16 +324,19 @@ test.describe('Start card', () => {
 				},
 			});
 		});
+		await page.route(`**${SOLO_BASE}/changes*`, (route) =>
+			route.fulfill({ json: { data: revoked ? '1' : '0', members: '0', chat: '0' } }),
+		);
 		await open(page, SOLO_WG.shareCode);
 		const link = page.locator('[data-invite-card-link]');
 		await expect(link).toHaveText(/old-invite-token-00001$/);
 		const share = page.getByRole('button', { name: /^Link teilen: Einladung in / });
 		await share.click();
-		await expect(page.getByText('Link geprüft. Tippe nochmal zum Kopieren.')).toBeVisible();
+		await expect(page.getByText('Link geprüft. Tippe nochmal zum Teilen.')).toBeVisible();
 		revoked = true;
-		// Right away, before any live signal could arrive.
+		// No reload, focus or visibility change: the live channel alone replaces the link.
+		await expect(link).toHaveText(/fixture-invite-token01$/, { timeout: 2500 });
 		await share.click();
-		await expect(link).toHaveText(/fixture-invite-token01$/);
 		await page.waitForTimeout(500);
 		const calls = await readCalls();
 		expect(calls.filter((call) => call.text.includes('old-invite-token'))).toEqual([]);
@@ -377,7 +370,7 @@ test.describe('Start card', () => {
 		await expect(link).toHaveText(/old-invite-token-00001$/);
 		const share = page.getByRole('button', { name: /^Link teilen: Einladung in / });
 		await share.click();
-		await expect(page.getByText('Link geprüft. Tippe nochmal zum Kopieren.')).toBeVisible();
+		await expect(page.getByText('Link geprüft. Tippe nochmal zum Teilen.')).toBeVisible();
 		await page.waitForFunction((at) => Date.now() > at, expiresAt);
 		await share.click({ force: true });
 		await page.waitForTimeout(500);
@@ -493,14 +486,14 @@ test.describe('Start card', () => {
 			joined ? route.fulfill({ json: { invite: null } }) : route.fallback(),
 		);
 		await mockRoster(page, () => joined);
-		await page.route(`**${SOLO_BASE}/changes`, (route) =>
+		await page.route(`**${SOLO_BASE}/changes*`, (route) =>
 			route.fulfill({ json: { data: '0', members: joined ? '1' : '0', chat: '0' } }),
 		);
 		await open(page, SOLO_WG.shareCode);
 		await expect(page.locator('[data-invite-card-link]')).toBeVisible();
 		// Mina joins on her phone; this tab neither reloads nor changes visibility or focus.
 		joined = true;
-		await expect(page.locator('[data-invite-card-link]')).toHaveCount(0, { timeout: 6000 });
+		await expect(page.locator('[data-invite-card-link]')).toHaveCount(0, { timeout: 2500 });
 		await expect(
 			page.getByText('Mina ist dabei. Startet mit der ersten Ausgabe oder dem Einkauf.'),
 		).toBeVisible();
@@ -534,7 +527,7 @@ test.describe('Start card', () => {
 			}),
 		);
 		// The roster version moves with the join, as the database trigger does.
-		await page.route(`**${SOLO_BASE}/changes`, (route) =>
+		await page.route(`**${SOLO_BASE}/changes*`, (route) =>
 			route.fulfill({ json: { data: '0', members: joined ? '1' : '0', chat: '0' } }),
 		);
 		await open(page, SOLO_WG.shareCode);
@@ -615,7 +608,7 @@ test.describe('Start card', () => {
 			}),
 		);
 		// The WG tab's change poll reports the moved roster version once Mina is in.
-		await page.route(`**${SOLO_BASE}/changes`, (route) =>
+		await page.route(`**${SOLO_BASE}/changes*`, (route) =>
 			route.fulfill({ json: { data: '0', members: joined ? '1' : '0', chat: '0' } }),
 		);
 		const cdp = await page.context().newCDPSession(page);

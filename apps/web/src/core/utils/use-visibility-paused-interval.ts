@@ -20,8 +20,7 @@ let lastActivity = Date.now();
 const wakeListeners = new Set<() => void>();
 let trackingActivity = false;
 
-/** Nobody has used the page for five minutes. */
-export function isIdle(): boolean {
+function isIdle(): boolean {
 	return Date.now() - lastActivity > IDLE_AFTER_MS;
 }
 

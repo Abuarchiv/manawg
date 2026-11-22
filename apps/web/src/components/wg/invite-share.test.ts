@@ -32,3 +32,35 @@ test('the share text promises only the days the link has left', () => {
 	assert.equal(days('2026-11-23T11:00:00Z'), 1, 'a link that expires tomorrow');
 	assert.equal(days('2026-11-25T13:00:00Z'), 4, 'a part day counts as a day');
 });
+
+function setNavigator(value: object): void {
+	Object.defineProperty(globalThis, 'navigator', { value, configurable: true });
+}
+
+test('closing the share sheet copies nothing', async () => {
+	const writeText = mock.fn(async (_text: string) => {});
+	setNavigator({
+		share: async () => Promise.reject(new DOMException('closed', 'AbortError')),
+		clipboard: { writeText },
+	});
+	assert.equal(await shareInvite(text), 'cancelled');
+	assert.equal(writeText.mock.callCount(), 0);
+});
+
+test('a refused or missing share sheet copies the text instead', async () => {
+	for (const nav of [
+		{ share: async () => Promise.reject(new DOMException('no', 'NotAllowedError')) },
+		{ share: async () => {}, canShare: () => false },
+		{},
+	]) {
+		const writeText = mock.fn(async (_text: string) => {});
+		setNavigator({ ...nav, clipboard: { writeText } });
+		assert.equal(await shareInvite(text), 'copied');
+		assert.deepEqual(writeText.mock.calls[0]?.arguments, [text]);
+	}
+});
+
+test('without share sheet or working clipboard the share fails', async () => {
+	setNavigator({ clipboard: { writeText: async () => Promise.reject(new Error('denied')) } });
+	assert.equal(await shareInvite(text), 'failed');
+});

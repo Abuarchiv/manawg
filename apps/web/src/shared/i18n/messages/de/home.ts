@@ -59,7 +59,7 @@ export default {
 		shared: 'Einladung geteilt',
 		copied: 'Einladungslink kopiert',
 		failed: 'Teilen fehlgeschlagen',
-		checked: 'Link geprüft. Tippe nochmal zum Kopieren.',
+		checked: 'Link geprüft. Tippe nochmal zum Teilen.',
 		fresh: 'Neuer Link bereit. Tippe nochmal zum Teilen.',
 		retry: 'Erneut versuchen',
 	},

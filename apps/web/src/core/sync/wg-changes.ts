@@ -22,13 +22,6 @@ const listeners: Record<WgChangeScope, Set<ChangeListener>> = {
 	chat: new Set(),
 };
 
-const pollers = new Set<() => void>();
-
-/** Runs the open WG tab's change poll now, for a reader that needs news sooner than every 30 s. */
-export function pollWgChangesNow(): void {
-	for (const poll of pollers) poll();
-}
-
 /**
  * Runs `onChange` whenever the WG shell's change poll sees `scope` move: the list pages reload
  * on `data`, the shell on `members`, the unread badge on `chat`. Replaces one interval per
@@ -118,14 +111,6 @@ export function useWgChangesPoll(
 		() => void pollRef.current(),
 		memberId ? LIST_REFRESH_INTERVAL_MS : null,
 	);
-
-	useEffect(() => {
-		const poll = () => void pollRef.current();
-		pollers.add(poll);
-		return () => {
-			pollers.delete(poll);
-		};
-	}, []);
 
 	// A push (such as "Mina joined") polls at once instead of waiting for the next tick.
 	useEffect(() => {
