@@ -62,6 +62,13 @@ export function landingUrl(path = '/'): string {
 	return `${LANDING_ORIGIN}${path.startsWith('/') ? path : `/${path}`}`;
 }
 
+/** FAQ on the landing for Settings → Help; Spanish readers get the English page, as for legal pages. */
+export function faqUrl(locale: Locale = DEFAULT_LOCALE): string {
+	return landingUrl(
+		`${locale === 'de' ? '/faq' : '/en/faq'}?utm_source=app&utm_medium=referral&utm_campaign=help`,
+	);
+}
+
 /** JSON-LD `@id`s defined by the landing (src/lib/schema-ids.ts there); referenced, never redefined here. */
 export const LANDING_SCHEMA_IDS = {
 	organisation: `${LANDING_ORIGIN}/#organisation`,

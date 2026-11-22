@@ -84,3 +84,11 @@ test('English readers of the official instance get the English legal pages, othe
 	});
 	assert.equal(selfHosted.landing.legalUrl('/agb', 'en'), 'https://example.com/agb');
 });
+
+test('the FAQ link points to the landing FAQ in the reader language with app UTM parameters', async () => {
+	const { landing } = await loadWith({});
+	const utm = '?utm_source=app&utm_medium=referral&utm_campaign=help';
+	assert.equal(landing.faqUrl('de'), `https://manawg.com/faq${utm}`);
+	assert.equal(landing.faqUrl('en'), `https://manawg.com/en/faq${utm}`);
+	assert.equal(landing.faqUrl('es'), `https://manawg.com/en/faq${utm}`);
+});
