@@ -49,6 +49,10 @@ export default {
 		loadFailed: 'Your flats could not be loaded right now.',
 		recheck: 'Check again',
 		rechecking: 'Checking…',
+		accountDeleted: {
+			title: 'Account deleted',
+			body: 'Your account and your sign-in details have been deleted.',
+		},
 		accountDeletion: {
 			title: 'Account is being deleted',
 			body: 'ManaWG has removed your access to all flats. Deletion at the sign-in service is still pending and will be retried automatically.',

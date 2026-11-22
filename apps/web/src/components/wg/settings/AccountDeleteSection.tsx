@@ -106,7 +106,7 @@ export function AccountDeleteSection() {
 			}
 			const currentAccount = getLocalAccount();
 			if (abort.signal.aborted || (currentAccount !== null && currentAccount !== account)) return;
-			window.location.assign(pending ? '/?accountDeletion=pending' : '/');
+			window.location.assign(`/?accountDeletion=${pending ? 'pending' : 'done'}`);
 		} catch {
 			if (isCurrent()) {
 				setError(t('unknownOutcome'));

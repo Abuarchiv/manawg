@@ -86,6 +86,7 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 	const router = useRouter();
 	const searchParams = useSearchParams();
 	const accountDeletionPending = searchParams.get('accountDeletion') === 'pending';
+	const accountDeleted = searchParams.get('accountDeletion') === 'done';
 	const leftWg = searchParams.get('left') === '1';
 	const deletedWg = searchParams.get('deleted') === '1';
 	const [memberships, setMemberships] = useState<AccountWg[]>([]);
@@ -238,6 +239,14 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 							{module?.title ?? 'ManaWG'}
 						</h1>
 					</header>
+					{accountDeleted && (
+						<Alert>
+							<AlertTitle>{t('public.accountDeleted.title')}</AlertTitle>
+							<AlertDescription className="text-foreground">
+								{t('public.accountDeleted.body')}
+							</AlertDescription>
+						</Alert>
+					)}
 					{accountDeletionPending && (
 						<Alert>
 							<AlertTitle>{t('public.accountDeletion.title')}</AlertTitle>

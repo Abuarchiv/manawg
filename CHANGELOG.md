@@ -10,6 +10,9 @@ settled.
 
 ### Added
 
+- Accounts without a flat can be deleted from the "Your flat" screen after sign-in, with the same
+  confirmation as in the flat settings. After a completed deletion the start page confirms
+  "Account deleted".
 - Self-hosted instances refuse passwords from known data breaches in Supabase Auth as well
   (`GOTRUE_PASSWORD_HIBP_ENABLED`), so direct calls to `/auth/v1` get the same check as the app's
   registration and password change. Pull the new `compose.yaml` and restart.
