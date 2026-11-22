@@ -422,6 +422,39 @@ test.describe('settings theme responsive', () => {
 	});
 });
 
+test.describe('settings help links', () => {
+	skipUnlessFixtures();
+
+	for (const { locale, help, name, href } of [
+		{ locale: 'de', help: 'Hilfe', name: 'Häufige Fragen', href: 'https://manawg.com/faq' },
+		{
+			locale: 'en',
+			help: 'Help',
+			name: 'Frequently asked questions',
+			href: 'https://manawg.com/en/faq',
+		},
+	]) {
+		test(`help lists the ${locale} FAQ first, opening in a new tab`, async ({ page }) => {
+			const base = new URL(process.env.BASE_URL ?? 'http://localhost:3101');
+			await page
+				.context()
+				.addCookies([{ name: 'manawg_locale', value: locale, domain: base.hostname, path: '/' }]);
+			await setupMember(page);
+			await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/settings`);
+			const links = page.getByRole('region', { name: help, exact: true }).getByRole('link');
+			const first = links.first();
+			await expect(first).toHaveAccessibleName(new RegExp(name));
+			await expect(first).toHaveAttribute(
+				'href',
+				`${href}?utm_source=app&utm_medium=referral&utm_campaign=help`,
+			);
+			await expect(first).toHaveAttribute('target', '_blank');
+			await expect(first).toHaveAttribute('rel', 'noopener noreferrer');
+			await expect(links.nth(1)).toHaveAttribute('href', /^mailto:support@example\.test/);
+		});
+	}
+});
+
 test.describe('invitations', () => {
 	skipUnlessFixtures();
 

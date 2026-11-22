@@ -1,5 +1,6 @@
-# Database tests against a disposable PostgreSQL: the suites in the test:db script of
-# apps/web/package.json, the runtime pool timeouts against their own server (pnpm test:db-timeouts)
+# Database tests against a disposable PostgreSQL: every unit and database suite in one run with
+# coverage (pnpm test:coverage, which also starts the runtime pool timeout case against its own
+# server), a coverage floor for the money and invite code that also fails on any skipped test,
 # and the account-deletion suite (test:e2e:account-delete-db). Every pull request and every push
 # to main, so the check can be required without blocking unrelated pull requests.
 name: Database
@@ -38,8 +39,6 @@ jobs:
       - uses: ./.github/actions/setup
       - name: Apply the migrations
         run: node apps/web/scripts/test-db-setup.mjs "$DB_URL"
-      - name: Database unit tests
-        run: TEST_DATABASE_URL="$DB_URL" pnpm --filter @manawg/web test:db
       - name: Put the PostgreSQL server binaries on PATH
         run: |
           bins=(/usr/lib/postgresql/*/bin)
@@ -49,7 +48,14 @@ jobs:
             bins=(/usr/lib/postgresql/*/bin)
           fi
           printf '%s\n' "${bins[@]}" | sort -V | tail -n 1 >> "$GITHUB_PATH"
-      - name: Database timeout tests
-        run: pnpm --filter @manawg/web test:db-timeouts
+      - name: Unit and database tests with coverage floor
+        run: TEST_DATABASE_URL="$DB_URL" pnpm --filter @manawg/web test:coverage
+      - name: Upload the coverage report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: coverage
+          path: apps/web/coverage
+          retention-days: 14
       - name: Account deletion suite
         run: ACCOUNT_DELETE_TEST_URL="$DB_URL" pnpm --filter @manawg/web test:e2e:account-delete-db

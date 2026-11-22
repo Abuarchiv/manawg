@@ -25,6 +25,7 @@ export default {
 		languageSystem: 'Sistema',
 		install: 'Instalar la app',
 		help: 'Ayuda',
+		faq: 'Preguntas frecuentes',
 		reportProblem: 'Informar de un problema por correo',
 		version: 'ManaWG {version}',
 	},

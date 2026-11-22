@@ -22,6 +22,7 @@ export default {
 		languageSystem: 'System',
 		install: 'App installieren',
 		help: 'Hilfe',
+		faq: 'Häufige Fragen',
 		reportProblem: 'Fehler per E-Mail melden',
 		version: 'ManaWG {version}',
 	},

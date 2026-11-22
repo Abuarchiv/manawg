@@ -10,6 +10,9 @@ settled.
 
 ### Added
 
+- Settings → Profile → Help links the frequently asked questions on manawg.com first, in German
+  or English (Spanish readers get the English page), opening in a new tab. The report-by-email
+  link follows it.
 - Accounts without a flat can be deleted from the "Your flat" screen after sign-in, with the same
   confirmation as in the flat settings. After a completed deletion the start page confirms
   "Account deleted".
@@ -70,6 +73,10 @@ settled.
   seconds while messages come in and slows to every 30 seconds after two quiet minutes; a new
   message, sending or typing speeds it up again. Self-hosted instances apply the new table and
   triggers with the usual migrations on start.
+- The **Database** workflow runs the unit and database suites together with coverage and uploads
+  the report as the `coverage` artifact. It fails when settle-up, ledger, payment or invite code
+  drops below its measured coverage floor, and when any test skips itself although a database is
+  set.
 - A healthy `/api/health` answer may now be cached by a CDN or caching proxy for four minutes
   (`Cache-Control: public, s-maxage=240`), so an uptime monitor checking every minute no longer
   runs the health check each time. An unhealthy or rate-limited answer is still never cached, and
