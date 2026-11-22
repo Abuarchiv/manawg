@@ -78,7 +78,7 @@ test('names the inviter and the flat, and adds the member count to the descripti
 	reset({ wgName: 'Lindenstraße', inviterName: 'Mika', memberCount: 3 });
 	const meta = await inviteMetadata(TOKEN, 'en');
 	const title = 'Mika invites you to the flat “Lindenstraße”';
-	const description = `3 flatmates already in. ${generic.description}`;
+	const description = `${title}. 3 flatmates already in. ${generic.description}`;
 	assert.deepEqual(titles(meta), {
 		title,
 		og: `${title} — ManaWG`,
@@ -118,14 +118,19 @@ test('an inviter without a name gets the anonymous wording', async () => {
 	const meta = await inviteMetadata(TOKEN, 'en');
 	assert.equal(meta.title, 'You are invited to the flat “Lindenstraße”');
 	assert.equal(meta.openGraph?.title, 'You are invited to the flat “Lindenstraße” — ManaWG');
-	assert.equal(meta.description, `2 flatmates already in. ${generic.description}`);
+	const description = `You are invited to the flat “Lindenstraße”. 2 flatmates already in. ${generic.description}`;
+	assert.equal(meta.description, description);
+	assert.equal(meta.openGraph?.description, description);
+	assert.equal(meta.twitter?.description, description);
 });
 
-test('a flat with a single member keeps the generic description', async () => {
+test('a flat with a single member names the invitation without a member count', async () => {
 	reset({ wgName: 'Lindenstraße', inviterName: 'Mika', memberCount: 1 });
 	const meta = await inviteMetadata(TOKEN, 'en');
-	assert.equal(meta.description, generic.description);
-	assert.equal(meta.openGraph?.description, generic.description);
+	const description = `Mika invites you to the flat “Lindenstraße”. ${generic.description}`;
+	assert.equal(meta.description, description);
+	assert.equal(meta.openGraph?.description, description);
+	assert.equal(meta.twitter?.description, description);
 });
 
 test('a dead token (unknown, expired, revoked, used up, malformed) keeps the generic metadata', async () => {

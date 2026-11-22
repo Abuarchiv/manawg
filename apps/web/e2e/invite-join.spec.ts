@@ -358,7 +358,9 @@ test.describe('invitation link preview card', () => {
 		const html = await res.text();
 		expect(ogTitle(html)).toBe('Mika lädt dich in die WG „Kastanienallee 12“ ein — ManaWG');
 		expect(html).toContain('<title>Mika lädt dich in die WG „Kastanienallee 12“ ein');
-		expect(html).toContain('2 Mitbewohner sind schon dabei.');
+		expect(html).toContain(
+			'<meta property="og:description" content="Mika lädt dich in die WG „Kastanienallee 12“ ein. 2 Mitbewohner sind schon dabei.',
+		);
 	});
 
 	test('an unknown link keeps the generic card and the same status', async ({ request }) => {

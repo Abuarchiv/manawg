@@ -22,9 +22,9 @@ async function lookup(token: string): Promise<InvitePreview | null> {
 /**
  * Metadata of the invitation page. Invite links are mostly shared in chats, and link-preview
  * crawlers run no JavaScript, so a usable invitation is named here the way the page heading names
- * it: who invites to which flat, plus the member count once the flat has two. Any token that
- * cannot be used, and any lookup error, keeps the generic invitation card. The token itself never
- * goes into the metadata. The lookup is the read-only one behind the preview endpoint, without its
+ * it: who invites to which flat, in the title and the description, plus the member count once
+ * the flat has two. Any token that cannot be used, and any lookup error, keeps the generic
+ * invitation card. The token itself never goes into the metadata. The lookup is the read-only one behind the preview endpoint, without its
  * per-IP budget: messenger crawlers fetch from a handful of addresses, and a guessed token
  * (128 bits) only ever finds the generic card.
  */
@@ -38,10 +38,18 @@ export async function inviteMetadata(token: string, requestLocale: string): Prom
 		: preview.inviterName
 			? invite('invite.guestTitle', { inviter: preview.inviterName, wgName: preview.wgName })
 			: invite('invite.guestTitleAnonymous', { wgName: preview.wgName });
-	const description =
-		preview && preview.memberCount >= 2
-			? `${invite('invite.guestMembers', { count: preview.memberCount })}. ${meta('invite.description')}`
-			: meta('invite.description');
+	// Some cards show only the description, so it names the invitation too.
+	const description = !preview
+		? meta('invite.description')
+		: [
+				heading,
+				preview.memberCount >= 2
+					? invite('invite.guestMembers', { count: preview.memberCount })
+					: null,
+				meta('invite.description'),
+			]
+				.filter(Boolean)
+				.join('. ');
 	// openGraph/twitter titles do not go through the root title template.
 	const title = `${heading} — ManaWG`;
 	return {
