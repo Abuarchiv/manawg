@@ -39,14 +39,13 @@ migration, and a migration takes the gated release path. No index is removed now
 
 | Index | Why it stays |
 | --- | --- |
-| `announcement_comments_member_idx`, `announcement_reactions_member_idx`, `announcement_reactions_announcement_idx`, `calendar_subscriptions_member_idx`, `expense_imports_imported_by_member_idx`, `expense_payments_from_member_idx`, `expense_payments_to_member_idx`, `expense_reminders_creditor_member_idx`, `expense_reminders_debtor_member_idx`, `expense_reminders_sent_by_member_idx`, `recurring_expenses_created_by_member_idx`, `recurring_expenses_paid_by_member_idx`, `shopping_items_added_by_idx`, `shopping_items_bought_by_member_idx`, `wg_chat_reactions_member_idx`, `wg_events_created_by_member_idx`, `wg_inventory_log_member_idx` | Covers a foreign key to `wg_members`. Deleting a member or an account (cascade, set null, restrict checks) would otherwise scan the child table. |
+| `announcement_comments_member_idx`, `announcement_reactions_member_idx`, `calendar_subscriptions_member_idx`, `expense_imports_imported_by_member_idx`, `expense_payments_from_member_idx`, `expense_payments_to_member_idx`, `expense_reminders_creditor_member_idx`, `expense_reminders_debtor_member_idx`, `expense_reminders_sent_by_member_idx`, `recurring_expenses_created_by_member_idx`, `recurring_expenses_paid_by_member_idx`, `shopping_items_added_by_idx`, `shopping_items_bought_by_member_idx`, `wg_chat_reactions_member_idx`, `wg_events_created_by_member_idx`, `wg_inventory_log_member_idx` | Covers a foreign key to `wg_members`. Deleting a member or an account (cascade, set null, restrict checks) would otherwise scan the child table. |
 | `expenses_import_idx` | Covers `expenses.import_id`; undoing an import deletes `expense_imports`, which checks this key. |
 | `wg_chat_reads_last_read_idx` | Covers the foreign key to `wg_chat_messages`, checked when chat messages are deleted. |
 | `push_subscriptions_endpoint_lookup_idx` | Lookups and deletes by `endpoint` alone (`notification-writes.ts`); the unique `(member_id, endpoint)` index cannot serve them. |
 | `recurring_expenses_next_due_idx` | Cron scan of due, unpaused templates (`cron/recurring-advance`). |
 | `announcements_pinned_idx` | Pinned posts per WG on the board. The planner currently picks `announcements_status_idx`; keep until the board query is measured at scale. |
 | `wg_members_auth_user_idx` | Account lookups by `auth_user_id` across WGs (account deletion, mail opt-out, onboarding mail). |
-| `wg_members_one_admin_per_wg_idx`, `wg_members_wg_auth_user_unique_idx`, `wg_inventory_items_unique_name` | Unique indexes that enforce data rules; usage counters do not apply. |
 
 ### Candidates for a later cleanup
 
@@ -59,5 +58,8 @@ tables, then re-run the advisors:
 - `wg_inventory_items_wg_idx (wg_id)`: covered by `wg_inventory_items_recent_decrement_idx` and
   `wg_inventory_items_unique_name`.
 - `wg_members_wg_idx (wg_id)`: covered by `wg_members_unique_name_per_wg (wg_id, name)`.
+- `announcement_reactions_announcement_idx (announcement_id)`: covered by
+  `announcement_reactions_unique_member_reaction (announcement_id, member_id, reaction)`, which also
+  serves the foreign key to `announcements`.
 - `expense_reminders_debtor_idx (wg_id, debtor_member_id, sent_at)`: the cooldown query filters by
   the full pair and uses `expense_reminders_pair_idx`; no query filters by debtor alone.
