@@ -77,9 +77,9 @@ settled.
   message, sending or typing speeds it up again. Self-hosted instances apply the new table and
   triggers with the usual migrations on start.
 - The **Docker** workflow checks the new-password rule against the GoTrue image in `compose.yaml`
-  as its own step, "GoTrue password contract" (`./docker/smoke.sh password-contract`). It chooses
-  passwords below and at the minimum, with emoji, and fails when the app and GoTrue count their
-  length differently, or when GoTrue is not running.
+  as its own step, "GoTrue password contract" (`./docker/smoke.sh password-contract`). It types
+  passwords below and at the minimum, with emoji, into the reset form and fails when the form and
+  GoTrue judge their length differently, or when GoTrue is not running.
 - The **Database** workflow runs the unit and database suites together with coverage and uploads
   the report as the `coverage` artifact. It fails when settle-up, ledger, payment or invite code
   drops below its measured coverage floor, and when any test skips itself although a database is

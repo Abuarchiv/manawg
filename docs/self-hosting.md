@@ -48,8 +48,9 @@ scheduled jobs and backs up and restores the data. It leaves the test data and a
 `backups/` behind, so run it on a local instance, not on one people use.
 
 Before you change the GoTrue image in `compose.yaml`, also run `./docker/smoke.sh password-contract`
-(needs Node.js 22.18 or later). It chooses new passwords below and at the minimum, with emoji,
-against the running GoTrue and fails when GoTrue and the app count their length differently.
+from a checkout with `pnpm install` and `pnpm --filter @manawg/web exec playwright install chromium`.
+It types new passwords below and at the minimum, with emoji, into the reset form in Chromium and
+fails when the form and the running GoTrue judge their length differently.
 
 ### What runs
 

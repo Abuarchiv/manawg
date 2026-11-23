@@ -74,11 +74,11 @@ jobs:
           ./docker/setup.sh
           echo MAILPIT_PORT=18025 >> .env
           docker compose up -d --no-build
-      # Its own step, so a GoTrue update that disagrees with the app's password rule shows by name.
-      # The script fails when GoTrue is not running or not the image compose.yaml names.
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      # Its own step, so a GoTrue update that disagrees with the reset form shows by name. The
+      # script fails when GoTrue is not running or not the image compose.yaml names.
+      - uses: ./.github/actions/setup
         with:
-          node-version: 22
+          playwright-browser: chromium
       - name: GoTrue password contract
         env:
           MANAWG_IMAGE: manawg-app
