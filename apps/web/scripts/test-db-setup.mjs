@@ -6,23 +6,16 @@
  *
  *   node scripts/test-db-setup.mjs postgresql://postgres@127.0.0.1:55432/manawg_test
  *
- * Refuses anything but a loopback host, so it cannot touch a real database.
+ * Refuses anything but a loopback host, so it cannot touch a real database. The populated upgrade
+ * rehearsal (`pnpm test:db-upgrade`) imports SUPABASE_STUB to prepare its own database the same way.
  */
 
 import { readFileSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import pg from 'pg';
 
-const url = process.argv[2];
-if (!url) {
-	console.error('Usage: node scripts/test-db-setup.mjs <loopback PostgreSQL URL>');
-	process.exit(2);
-}
-if (!['localhost', '127.0.0.1', '[::1]'].includes(new URL(url).hostname)) {
-	console.error('The test database must be on a loopback host.');
-	process.exit(2);
-}
-
-const SUPABASE_STUB = `
+export const SUPABASE_STUB = `
 do $$ begin
 	if not exists (select 1 from pg_roles where rolname = 'anon') then create role anon nologin; end if;
 	if not exists (select 1 from pg_roles where rolname = 'authenticated') then create role authenticated nologin; end if;
@@ -47,22 +40,51 @@ create or replace function auth.role() returns text language sql stable as
 	$$ select current_setting('request.jwt.claim.role', true) $$;
 `;
 
-const drizzle = new URL('../drizzle/', import.meta.url);
-const { entries } = JSON.parse(readFileSync(new URL('meta/_journal.json', drizzle), 'utf8'));
-const client = new pg.Client({ connectionString: url });
-await client.connect();
-try {
-	await client.query(SUPABASE_STUB);
-	for (const { tag } of entries) {
-		try {
-			await client.query(readFileSync(new URL(`${tag}.sql`, drizzle), 'utf8'));
-		} catch (error) {
-			console.error(`Migration ${tag} failed: ${error.message}`);
-			process.exitCode = 1;
-			break;
-		}
+/**
+ * A client for a loopback test database, or a throw. Checks the host node-postgres will actually
+ * connect to: a `?host=` parameter in the URL overrides the URL's hostname.
+ */
+export function loopbackClient(url) {
+	const client = new pg.Client({ connectionString: url });
+	if (!['localhost', '127.0.0.1', '::1'].includes(client.host)) {
+		throw new Error('The test database must be on a loopback host.');
 	}
-	if (!process.exitCode) process.stdout.write(`Applied ${entries.length} migrations.\n`);
-} finally {
-	await client.end();
+	return client;
+}
+
+async function setup(url) {
+	let client;
+	try {
+		client = loopbackClient(url);
+	} catch (error) {
+		console.error(error.message);
+		process.exit(2);
+	}
+	const drizzle = new URL('../drizzle/', import.meta.url);
+	const { entries } = JSON.parse(readFileSync(new URL('meta/_journal.json', drizzle), 'utf8'));
+	await client.connect();
+	try {
+		await client.query(SUPABASE_STUB);
+		for (const { tag } of entries) {
+			try {
+				await client.query(readFileSync(new URL(`${tag}.sql`, drizzle), 'utf8'));
+			} catch (error) {
+				console.error(`Migration ${tag} failed: ${error.message}`);
+				process.exitCode = 1;
+				break;
+			}
+		}
+		if (!process.exitCode) process.stdout.write(`Applied ${entries.length} migrations.\n`);
+	} finally {
+		await client.end();
+	}
+}
+
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+	const url = process.argv[2];
+	if (!url) {
+		console.error('Usage: node scripts/test-db-setup.mjs <loopback PostgreSQL URL>');
+		process.exit(2);
+	}
+	await setup(url);
 }

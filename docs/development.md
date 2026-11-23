@@ -172,6 +172,7 @@ More scripts in `apps/web/package.json`:
 | `pnpm --filter @manawg/web test:e2e:account-delete-db` | Account deletion against a disposable loopback Postgres in `ACCOUNT_DELETE_TEST_URL` |
 | `pnpm --filter @manawg/web test:db` | Database-backed unit tests against the loopback Postgres in `TEST_DATABASE_URL` (exits 2 when it is unset) |
 | `pnpm --filter @manawg/web test:db-timeouts` | Runtime pool timeouts against a throwaway local Postgres (`RUN_DB_TIMEOUT_INTEGRATION=1` is set by the script) |
+| `pnpm --filter @manawg/web test:db-upgrade` | Populated upgrade rehearsal: seeded memberships on the schema before `0045`, upgraded and then migrated again through `scripts/db-migrate.mjs` (exits 2 when `UPGRADE_TEST_DATABASE_URL` is unset) |
 | `pnpm --filter @manawg/web test:coverage` | Every unit and database suite in one run with coverage, the pool timeout case included (needs `TEST_DATABASE_URL`, `initdb` and `pg_ctl`). Writes `coverage/lcov.info` and `coverage/tests.tap`, then `scripts/check-coverage-floor.mjs` fails on a money or invite file below its floor and on any skipped test. Run in `database.yml` |
 | `pnpm --filter @manawg/web bundle:check` | Bundle budget (`scripts/check-bundle-budget.mjs`, needs a build) |
 | `pnpm --filter @manawg/web analytics:check` | PostHog privacy contract (`scripts/check-analytics-privacy.mjs`) |
@@ -195,6 +196,7 @@ These tests skip themselves unless their variable is set. `pnpm test:unit` and `
 | --- | --- | --- | --- |
 | `TEST_DATABASE_URL` | The database-backed suites listed in the `test:db` script of `apps/web/package.json` (scope checks per feature, ledgers, locks, invites, cron writes) | `TEST_DATABASE_URL=postgresql://postgres@127.0.0.1:55432/manawg_test pnpm --filter @manawg/web test:db`. The URL must be a disposable loopback Postgres prepared with `scripts/test-db-setup.mjs` | Yes, in `database.yml` |
 | `RUN_DB_TIMEOUT_INTEGRATION` | The pool timeout case in `tests/runtime-pool.test.ts` | `pnpm --filter @manawg/web test:db-timeouts` (needs `initdb` and `pg_ctl` on the PATH and a non-root user) | Yes, in `database.yml` |
+| `UPGRADE_TEST_DATABASE_URL` | The populated upgrade rehearsal in `tests/upgrade/` | `UPGRADE_TEST_DATABASE_URL=postgresql://postgres@127.0.0.1:55432/postgres pnpm --filter @manawg/web test:db-upgrade`. A loopback Postgres server whose user may create databases; the test creates and drops its own | Yes, in `database.yml` |
 | `ACCOUNT_DELETE_TEST_URL` | `e2e/account-delete-db-*.spec.ts` (account deletion against real data) | `ACCOUNT_DELETE_TEST_URL=postgresql://postgres@127.0.0.1:55432/manawg_test pnpm --filter @manawg/web test:e2e:account-delete-db` (loopback host and explicit port required) | Yes, in `database.yml` |
 | `OCR_RUNTIME_E2E` | The real Tesseract worker proof in `e2e/expense-ui-form.spec.ts` | `OCR_RUNTIME_E2E=true pnpm --filter @manawg/web test:e2e:fixtures e2e/expense-ui-form.spec.ts` | No, run by hand. It needs no network (the worker, WASM core and models come from the app's `public/tesseract`, copied from `node_modules` by `next.config.ts`) but loads the real OCR engine, which is slow |
 
