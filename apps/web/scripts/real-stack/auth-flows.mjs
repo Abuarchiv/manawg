@@ -292,4 +292,52 @@ expect(
 	!!(await passwordLogin(adminMade, 'admin-password-5')).access_token,
 	'confirmed-at-creation account keeps its password',
 );
+
+// 4e The choose-a-password form counts code points as GoTrue does: four emoji (8 UTF-16 units)
+// stay in the form, 8 code points with emoji are saved, a weak_password answer is translated.
+const emojiUser = `emoji${Date.now()}@example.test`;
+const formBrowser = await chromium.launch();
+const formCtx = await formBrowser.newContext({
+	...devices['iPhone 13'],
+	baseURL: BASE,
+	locale: 'de-DE',
+});
+await formCtx.request.post('/api/auth/sign-up', {
+	headers: { origin: BASE },
+	data: { email: emojiUser, password: 'first-password-6', name: 'Emoji', next: '/' },
+});
+const form = await formCtx.newPage();
+await form.goto((await mailLinks(emojiUser, 1)) ?? SB);
+await form.waitForURL('**/auth/reset?choose=1');
+const passwordPosts = [];
+form.on('request', (r) => {
+	if (r.url().endsWith('/api/auth/password')) passwordPosts.push(r.url());
+});
+const choose = async (value) => {
+	await form.getByLabel('Neues Passwort').fill(value);
+	await form.getByLabel('Passwort bestätigen').fill(value);
+	await form.getByRole('button', { name: 'Passwort speichern' }).click();
+};
+await choose('😀😀😀😀');
+await form.getByText('Das Passwort muss mindestens 8 Zeichen lang sein.').waitFor();
+expect(passwordPosts.length === 0, 'four emoji are rejected before a request is sent');
+await form.route('**/api/auth/password', (route) =>
+	route.fulfill({
+		status: 422,
+		contentType: 'application/json',
+		body: JSON.stringify({ error: 'weak_password', code: 'weak_password' }),
+	}),
+);
+await choose('😀😀😀😀😀😀😀😀');
+await form.getByText('Wähle ein längeres oder anderes sicheres Passwort').waitFor();
+expect(passwordPosts.length === 1, 'a weak_password answer shows the translated message');
+await form.unroute('**/api/auth/password');
+const emojiPassword = 'kq😀😀zx😀😀';
+await choose(emojiPassword);
+await form.waitForURL((url) => !url.pathname.startsWith('/auth/reset'));
+expect(
+	!!(await passwordLogin(emojiUser, emojiPassword)).access_token,
+	'8 code points with emoji are saved by the form and accepted by GoTrue',
+);
+await formBrowser.close();
 finish();
