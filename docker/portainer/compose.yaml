@@ -272,7 +272,7 @@ services:
   # Local mail catch-all (profile "mailpit"): every mail lands at http://localhost:${MAILPIT_PORT:-8025}
   # on the Docker host. Enable it with COMPOSE_PROFILES=mailpit and SMTP_HOST=mailpit, SMTP_PORT=1025.
   mailpit:
-    image: axllent/mailpit:v1.33.1
+    image: axllent/mailpit:v1.34.0
     restart: unless-stopped
     profiles: ["mailpit"]
     logging: *logging
