@@ -22,14 +22,31 @@ test.describe('shopping retry', () => {
 
 	test('keeps typed text when the page re-renders during the input event', async ({ page }) => {
 		skipUnlessFixtures();
+		let inventoryStarted = 0;
+		let inventoryFinished = 0;
+		page.on('requestfinished', (request) => {
+			if (request.url().includes('/inventory')) inventoryFinished += 1;
+		});
+		await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/inventory*`, (route) => {
+			inventoryStarted += 1;
+			return route.fulfill({ json: { items: [] } });
+		});
 		await setupMember(page);
 		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/shopping`);
 		await dismissOnboarding(page);
 		await waitForHydration(page, '[aria-label="Artikel-Name"]');
+		// No pantry fetch may be in flight, or the refetch below joins it and nothing renders.
+		await expect.poll(() => inventoryStarted).toBeGreaterThan(0);
+		await expect.poll(() => inventoryFinished).toBe(inventoryStarted);
+		await page.evaluate(
+			() => new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve, 0))),
+		);
+		const startedBefore = inventoryStarted;
 		// A store update (useSyncExternalStore renders synchronously) can land in the microtask
-		// checkpoint between the browser writing the typed text and React's input listener; WebKit
-		// hit this when a list or pantry fetch resolved at load. Forces that order: a window capture
-		// listener runs before React's root listener and refetches the pantry (it refreshes on focus).
+		// checkpoint between the browser writing typed text and React's input listener; WebKit hit
+		// this when a list or pantry fetch resolved at load. Forces that order: a window capture
+		// listener runs before React's root listener, and the focus event refetches the pantry,
+		// which publishes to the store at once.
 		await page.evaluate(() => {
 			window.addEventListener('input', () => window.dispatchEvent(new Event('focus')), {
 				capture: true,
@@ -37,6 +54,8 @@ test.describe('shopping retry', () => {
 			});
 		});
 		await page.getByLabel('Artikel-Name').fill('Rettich');
+		// The forced render really happened; otherwise this test would pass without the fix.
+		await expect.poll(() => inventoryStarted).toBeGreaterThan(startedBefore);
 		await expect(page.getByLabel('Artikel-Name')).toHaveValue('Rettich');
 		await expect(page.getByRole('button', { name: 'Artikel hinzufügen' })).toBeEnabled();
 	});
