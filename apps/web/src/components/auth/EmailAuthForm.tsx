@@ -9,6 +9,7 @@ import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
 import { type AuthFailure, classifyAuthError } from '@/core/auth/password-errors';
+import { isSignInPasswordTooShort, SIGN_IN_PASSWORD_MIN_LENGTH } from '@/core/auth/password-rules';
 import type { Message } from '@/shared/i18n/message';
 import {
 	type AuthFormProps,
@@ -16,7 +17,6 @@ import {
 	GenericAuthError,
 	isValidEmail,
 	normalizeEmail,
-	SIGN_IN_PASSWORD_MIN_LENGTH,
 	useResendCooldown,
 } from './auth-form-shared';
 
@@ -60,7 +60,7 @@ export function useEmailAuth({
 		if (busy) return;
 		resetEmailFeedback();
 		const normalizedEmail = normalizeEmail(email);
-		if (!isValidEmail(normalizedEmail) || password.length < SIGN_IN_PASSWORD_MIN_LENGTH) {
+		if (!isValidEmail(normalizedEmail) || isSignInPasswordTooShort(password)) {
 			setEmailError('invalid');
 			setInvalidAttempt((attempt) => attempt + 1);
 			return;
@@ -136,8 +136,7 @@ export function useEmailAuth({
 	const emailFieldInvalid =
 		emailError === 'reset-invalid' ||
 		(emailError === 'invalid' && !isValidEmail(normalizeEmail(email)));
-	const passwordFieldInvalid =
-		emailError === 'invalid' && password.length < SIGN_IN_PASSWORD_MIN_LENGTH;
+	const passwordFieldInvalid = emailError === 'invalid' && isSignInPasswordTooShort(password);
 
 	return {
 		email,

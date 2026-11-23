@@ -122,6 +122,9 @@ settled.
 - Moving focus with Tab in Safari no longer leaves the focused button or field hidden under the
   bottom bar when the smooth scroll to it stopped part way.
 
+- The new-password form counts characters the way Supabase Auth does, so an emoji counts as one
+  character. A password of four emoji is now rejected in the form with the minimum-length hint
+  instead of being sent and refused by the server.
 - After signing up, each step of creating or joining a flat ("Your flat", "Create a new flat",
   "Flat created") shows its own tab title and is announced to screen readers, instead of
   "Sign in". Reloading the "Flat created" step shows the invite link again instead of opening
