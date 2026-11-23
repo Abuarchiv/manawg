@@ -144,7 +144,7 @@ services:
       retries: 20
 
   gateway:
-    image: caddy:2.11.8-alpine
+    image: caddy:2.11.9-alpine
     restart: unless-stopped
     logging: *logging
     depends_on:
