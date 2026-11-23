@@ -47,6 +47,10 @@ default Mailpit setup. It signs up a test account, creates a WG, uploads a pictu
 scheduled jobs and backs up and restores the data. It leaves the test data and a backup in
 `backups/` behind, so run it on a local instance, not on one people use.
 
+Before you change the GoTrue image in `compose.yaml`, also run `./docker/smoke.sh password-contract`
+(needs Node.js 22.18 or later). It chooses new passwords below and at the minimum, with emoji,
+against the running GoTrue and fails when GoTrue and the app count their length differently.
+
 ### What runs
 
 | Service | Image | Does |
