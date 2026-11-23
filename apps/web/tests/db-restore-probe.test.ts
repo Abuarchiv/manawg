@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
@@ -25,10 +25,11 @@ test('restored Storage rows match object files and recorded sizes', () => {
 		const objectPath = path.join(storage, 'receipts', '2026', 'one.jpg');
 		mkdirSync(path.dirname(objectPath), { recursive: true });
 		writeFileSync(objectPath, 'image');
-		assert.deepEqual(
-			verifyStorageCoverage([['receipts', '2026/one.jpg', '5']], storage),
-			{ objectCount: 1, byteCount: 5, sizeChecked: 1 },
-		);
+		assert.deepEqual(verifyStorageCoverage([['receipts', '2026/one.jpg', '5']], storage), {
+			objectCount: 1,
+			byteCount: 5,
+			sizeChecked: 1,
+		});
 		assert.throws(() => verifyStorageCoverage([['receipts', '../outside.jpg', '5']], storage));
 		assert.throws(() => verifyStorageCoverage([['receipts', 'missing.jpg', '1']], storage));
 		assert.throws(() => verifyStorageCoverage([['receipts', '2026/one.jpg', '4']], storage));

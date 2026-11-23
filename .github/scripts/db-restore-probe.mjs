@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
-import { randomBytes } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
+import { randomBytes } from 'node:crypto';
 import {
 	appendFileSync,
 	chmodSync,
@@ -85,13 +85,18 @@ export function verifyStorageCoverage(rows, storageRoot) {
 		}
 		if (rawSize !== null && rawSize !== undefined && rawSize !== '') {
 			const expectedSize = Number(rawSize);
-			if (!Number.isSafeInteger(expectedSize) || expectedSize < 0 || fileStat.size !== expectedSize) {
+			if (
+				!Number.isSafeInteger(expectedSize) ||
+				expectedSize < 0 ||
+				fileStat.size !== expectedSize
+			) {
 				throw new Error('A Storage object size differs from its restored metadata.');
 			}
 			sizeChecked += 1;
 		}
 		const relative = path.relative(root, file);
-		if (expectedFiles.has(relative)) throw new Error('Storage metadata contains a duplicate object.');
+		if (expectedFiles.has(relative))
+			throw new Error('Storage metadata contains a duplicate object.');
 		expectedFiles.add(relative);
 		byteCount += fileStat.size;
 	}
@@ -117,7 +122,12 @@ export function verifyStorageCoverage(rows, storageRoot) {
 	return { objectCount: expectedFiles.size, byteCount, sizeChecked };
 }
 
-function run(command, args, stage, { env = process.env, timeout = 120_000, diagnostic = false } = {}) {
+function run(
+	command,
+	args,
+	stage,
+	{ env = process.env, timeout = 120_000, diagnostic = false } = {},
+) {
 	const result = spawnSync(command, args, {
 		encoding: 'utf8',
 		env,
@@ -125,7 +135,11 @@ function run(command, args, stage, { env = process.env, timeout = 120_000, diagn
 		timeout,
 	});
 	if (result.error || result.status !== 0) {
-		const detail = diagnostic ? ` ${String(result.stderr ?? '').trim().slice(-300)}` : '';
+		const detail = diagnostic
+			? ` ${String(result.stderr ?? '')
+					.trim()
+					.slice(-300)}`
+			: '';
 		throw new Error(`${stage} failed (exit ${result.status ?? 'spawn'}).${detail}`);
 	}
 	return result.stdout ?? '';
@@ -149,16 +163,22 @@ function appendSummary(message) {
 	if (process.env.GITHUB_STEP_SUMMARY) {
 		appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${message}\n`);
 	}
-	console.log(message.replace(/\n/g, ' '));
+	process.stdout.write(`${message.replace(/\n/g, ' ')}\n`);
 }
 
 async function restoreProbe() {
 	if (process.env.GITHUB_REF !== 'refs/heads/main') {
 		throw new Error('Restore probe is permitted only from main.');
 	}
-	for (const secret of ['DATABASE_MIGRATION_URL', 'SUPABASE_BACKUP_SECRET_KEY', 'PRODUCTION_DEPLOY_HOOK']) {
+	for (const secret of [
+		'DATABASE_MIGRATION_URL',
+		'SUPABASE_BACKUP_SECRET_KEY',
+		'PRODUCTION_DEPLOY_HOOK',
+	]) {
 		if (process.env[secret]) {
-			throw new Error('Restore probe must not receive Production connection or deployment secrets.');
+			throw new Error(
+				'Restore probe must not receive Production connection or deployment secrets.',
+			);
 		}
 	}
 	let privateKey = process.env.BACKUP_GPG_PRIVATE_KEY;
@@ -180,7 +200,11 @@ async function restoreProbe() {
 	const runnerRoot = path.resolve(runnerTemp);
 	const artifactRoot = path.resolve(artifactDir);
 	const artifactRelative = path.relative(runnerRoot, artifactRoot);
-	if (!artifactRelative || artifactRelative.startsWith(`..${path.sep}`) || path.isAbsolute(artifactRelative)) {
+	if (
+		!artifactRelative ||
+		artifactRelative.startsWith(`..${path.sep}`) ||
+		path.isAbsolute(artifactRelative)
+	) {
 		throw new Error('Restore artifact directory is outside Runner.Temp.');
 	}
 	const artifactRootStat = lstatSync(artifactRoot);
@@ -188,7 +212,8 @@ async function restoreProbe() {
 		throw new Error('Restore artifact directory is invalid.');
 	}
 	const artifacts = readdirSync(artifactRoot).filter((name) => name.endsWith('.tar.gpg'));
-	if (artifacts.length !== 1) throw new Error('Restore probe requires exactly one encrypted backup artifact.');
+	if (artifacts.length !== 1)
+		throw new Error('Restore probe requires exactly one encrypted backup artifact.');
 	const backupFile = path.join(artifactRoot, artifacts[0]);
 	const backupStat = lstatSync(backupFile);
 	if (!backupStat.isFile() || backupStat.isSymbolicLink() || backupStat.size === 0) {
@@ -218,7 +243,9 @@ async function restoreProbe() {
 		delete process.env.BACKUP_GPG_PRIVATE_KEY;
 		delete process.env.BACKUP_GPG_PASSPHRASE;
 		const gpgEnv = safeEnvironment({ GNUPGHOME: gpgHome });
-		run('gpgconf', ['--homedir', gpgHome, '--launch', 'gpg-agent'], 'GPG agent start', { env: gpgEnv });
+		run('gpgconf', ['--homedir', gpgHome, '--launch', 'gpg-agent'], 'GPG agent start', {
+			env: gpgEnv,
+		});
 		run(
 			'gpg',
 			['--batch', '--quiet', '--homedir', gpgHome, '--import', privateKeyFile],
@@ -245,32 +272,50 @@ async function restoreProbe() {
 			{ env: gpgEnv },
 		);
 
-		const names = run('tar', ['-tf', decryptedTar], 'Backup archive listing').trimEnd().split(/\r?\n/);
-		const verbose = run('tar', ['-tvf', decryptedTar], 'Backup archive inspection').trimEnd().split(/\r?\n/);
-		if (names.length === 0 || names.length !== verbose.length || new Set(names).size !== names.length) {
+		const names = run('tar', ['-tf', decryptedTar], 'Backup archive listing')
+			.trimEnd()
+			.split(/\r?\n/);
+		const verbose = run('tar', ['-tvf', decryptedTar], 'Backup archive inspection')
+			.trimEnd()
+			.split(/\r?\n/);
+		if (
+			names.length === 0 ||
+			names.length !== verbose.length ||
+			new Set(names).size !== names.length
+		) {
 			throw new Error('Backup archive entries are incomplete or duplicated.');
 		}
 		let hasDump = false;
 		let hasStorage = false;
 		for (let index = 0; index < names.length; index += 1) {
-			const type = verbose[index]?.[0] === 'd' ? 'directory' : verbose[index]?.[0] === '-' ? 'file' : 'unsafe';
+			const type =
+				verbose[index]?.[0] === 'd' ? 'directory' : verbose[index]?.[0] === '-' ? 'file' : 'unsafe';
 			validateArchiveEntry(names[index], type);
 			if (names[index] === 'database.dump' && type === 'file') hasDump = true;
 			if ((names[index] === 'storage/' || names[index] === 'storage') && type === 'directory') {
 				hasStorage = true;
 			}
 		}
-		if (!hasDump || !hasStorage) throw new Error('Backup archive lacks the database dump or Storage tree.');
+		if (!hasDump || !hasStorage)
+			throw new Error('Backup archive lacks the database dump or Storage tree.');
 		mkdirSync(extractedDir, { mode: 0o700 });
 		run('tar', ['-xf', decryptedTar, '-C', extractedDir], 'Backup extraction');
 		const dumpStat = lstatSync(databaseDump);
 		const storageStat = lstatSync(storageDir);
-		if (!dumpStat.isFile() || dumpStat.isSymbolicLink() || !storageStat.isDirectory() || storageStat.isSymbolicLink()) {
+		if (
+			!dumpStat.isFile() ||
+			dumpStat.isSymbolicLink() ||
+			!storageStat.isDirectory() ||
+			storageStat.isSymbolicLink()
+		) {
 			throw new Error('Restored archive layout is invalid.');
 		}
 
-		const containerExists = spawnSync('docker', ['container', 'inspect', containerName], { stdio: 'ignore' });
-		if (containerExists.status === 0) throw new Error('Temporary restore container name already exists.');
+		const containerExists = spawnSync('docker', ['container', 'inspect', containerName], {
+			stdio: 'ignore',
+		});
+		if (containerExists.status === 0)
+			throw new Error('Temporary restore container name already exists.');
 		const localPassword = randomBytes(32).toString('hex');
 		writeFileSync(
 			postgresEnvFile,
@@ -282,7 +327,8 @@ async function restoreProbe() {
 				'POSTGRES_PORT=5432',
 				'PGPORT=5432',
 				'PGDATABASE=postgres',
-			].join('\n') + '\n',
+				'',
+			].join('\n'),
 			{ mode: 0o600 },
 		);
 		run(
@@ -328,7 +374,16 @@ async function restoreProbe() {
 		if (!ready) throw new Error('Disposable Postgres did not become ready.');
 		run(
 			'docker',
-			['exec', containerName, 'createdb', '-U', 'supabase_admin', '-T', 'template0', 'manawg_restore_probe'],
+			[
+				'exec',
+				containerName,
+				'createdb',
+				'-U',
+				'supabase_admin',
+				'-T',
+				'template0',
+				'manawg_restore_probe',
+			],
 			'Empty restore database creation',
 		);
 		run(
@@ -452,16 +507,23 @@ async function restoreProbe() {
 			].join('\n'),
 		);
 	} finally {
-		if (containerStarted) spawnSync('docker', ['stop', containerName], { stdio: 'ignore', timeout: 30_000 });
-		spawnSync('gpgconf', ['--homedir', gpgHome, '--kill', 'gpg-agent'], { stdio: 'ignore', timeout: 5_000 });
+		if (containerStarted)
+			spawnSync('docker', ['stop', containerName], { stdio: 'ignore', timeout: 30_000 });
+		spawnSync('gpgconf', ['--homedir', gpgHome, '--kill', 'gpg-agent'], {
+			stdio: 'ignore',
+			timeout: 5_000,
+		});
 		const runnerRoot = path.resolve(runnerTemp);
-		if (workDir.startsWith(`${runnerRoot}${path.sep}`)) rmSync(workDir, { recursive: true, force: true });
+		if (workDir.startsWith(`${runnerRoot}${path.sep}`))
+			rmSync(workDir, { recursive: true, force: true });
 	}
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
 	restoreProbe().catch((error) => {
-		console.error(`Restore probe failed: ${error instanceof Error ? error.message : 'unknown error'}`);
+		console.error(
+			`Restore probe failed: ${error instanceof Error ? error.message : 'unknown error'}`,
+		);
 		process.exitCode = 1;
 	});
 }
