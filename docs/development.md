@@ -350,9 +350,11 @@ Before the dispatch:
    `git diff --name-only <running SHA> origin/main -- apps/web/drizzle`, and read each one.
 4. Take a fresh database backup: run the **Database nightly** workflow by hand
    (`gh workflow run database-nightly.yml`) and wait for `backup-production` to pass. Its
-   encrypted artifact is the restore point. Restore it into a disposable database and apply the
-   pending migrations there ([Restore the encrypted nightly backup](database-recovery.md#restore-the-encrypted-nightly-backup)),
-   which also rehearses the migration on production data.
+   encrypted artifact is the restore point, taken before the migration. Restore it into a
+   disposable database
+   ([Restore the encrypted nightly backup](database-recovery.md#restore-the-encrypted-nightly-backup)):
+   `db:check` from the running SHA must pass on it (it is the rollback state), and `db:migrate`
+   from the main tip must apply the pending migrations on it (a rehearsal on production data).
 5. The newest `workflow_run` run of `preview.yml` for the main tip passed `db-supabase-preview`,
    so the migrations already applied on the Preview database.
 
@@ -367,8 +369,10 @@ Rolling back:
   **or the new version damages data**: migrations only move forward, and an older version on an
   already migrated database is not supported ([Updating](self-hosting.md#updating)). Restore the
   backup from step 4 into a new database
-  ([Restore the encrypted nightly backup](database-recovery.md#restore-the-encrypted-nightly-backup)),
-  run the image of the previous SHA against it and switch over. Writes made after the backup are
+  ([Restore the encrypted nightly backup](database-recovery.md#restore-the-encrypted-nightly-backup)).
+  It holds the schema from before the migration: do not run `db:migrate` from the new version
+  on it. Check it with `db:check` from a checkout of the previous SHA, run the image of that SHA
+  against it and switch over. Writes made after the backup are
   lost, so decide this quickly.
 - **Nothing failed, but the release is wrong**: fix forward with a new version. A published tag
   is not moved.

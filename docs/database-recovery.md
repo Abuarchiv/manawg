@@ -110,6 +110,7 @@ what the dump expects but does not contain, then restore:
 create role anon nologin;
 create role authenticated nologin;
 create role service_role nologin bypassrls;
+create role manawg_app login bypassrls password '<long random password>';
 create schema extensions;
 create extension pgcrypto schema extensions;
 create extension "uuid-ossp" schema extensions;
@@ -123,24 +124,40 @@ pg_restore --no-owner --no-privileges --schema=public --schema=drizzle --schema=
   --schema=storage --dbname=<disposable url> database.dump
 ```
 
-The restore must finish without `ERROR` lines. Because the dump carries no privileges, functions
-get PostgreSQL's default `EXECUTE` for `PUBLIC`; take it away again, then let the migration
-runner apply newer migrations and check schema, ledger and security:
+The restore must finish without `ERROR` lines. The dump carries no privileges, so put them back:
+functions get PostgreSQL's default `EXECUTE` for `PUBLIC`, and `manawg_app` has no table rights.
+The migration ledger already lists `0034_app_role_grants`, so the migration runner does not grant
+them again; run that file by hand:
 
 ```sh
 psql <disposable url> -c 'revoke execute on all functions in schema public from public, anon, authenticated'
-MANAWG_SELF_HOSTED=true DATABASE_MIGRATION_URL=<disposable url> pnpm --filter @manawg/web db:migrate
+psql <disposable url> -v ON_ERROR_STOP=1 -f apps/web/drizzle/0034_app_role_grants.sql
+psql <disposable url> -Atc "select has_table_privilege('manawg_app', 'public.wgs', 'SELECT')"  # t
 ```
 
+The restored database is at the migration level of the backup. Check it with the version that
+will run on it, from a checkout of that version's commit:
+
+```sh
+git checkout <SHA that will run on it>
+MANAWG_SELF_HOSTED=true DATABASE_MIGRATION_URL=<disposable url> pnpm --filter @manawg/web db:check
+```
+
+`db:check` compares the schema with that version's newest snapshot and fails on any table,
+column or constraint the version does not know, so it also tells you when the backup is newer
+than the version. Run `db:migrate` instead of `db:check` only when you restore to move forward
+and want the newer migrations applied.
+
 Check that the counts of `public.wgs`, `public.wg_members`, `auth.users` and `storage.objects`
-match the source, that `storage.objects` has as many rows as `storage/` has files, and that
-`drizzle.__drizzle_migrations` has one row per applied migration.
+match the source, that `storage.objects` has as many rows as `storage/` has files, and that the
+app role can read: `psql` as `manawg_app` and count `public.wgs`.
 
 To recover production from it, create a new Supabase project (never restore over one that still
 serves users), restore as above as `postgres`, upload each `storage/<bucket>/<object>` to the same
-bucket and path with the service key (`POST /storage/v1/object/<bucket>/<object>`), run
-`db:migrate`, then point the app's database and Supabase variables at the new project and
-redeploy. Writes made after the backup are lost. Delete the decrypted files when you are done.
+bucket and path with the service key (`POST /storage/v1/object/<bucket>/<object>`), run the
+checks, then point the app's database and Supabase variables at the new project and deploy the
+version you checked. Writes made after the backup are lost. Delete the decrypted files when you
+are done.
 
 ## Database roles
 
