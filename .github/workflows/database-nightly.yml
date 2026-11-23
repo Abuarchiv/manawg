@@ -1,11 +1,18 @@
 # Every night: an encrypted backup of the production database (backup-production) and a query
 # against the Preview database so the free Supabase project is not paused (preview-keepalive).
+# A manual run may opt in to restore that run's encrypted backup in a disposable local database.
 name: Database nightly
 
 on:
   schedule:
     - cron: '17 2 * * *'
   workflow_dispatch:
+    inputs:
+      restore_probe:
+        description: Restore this run's backup in a disposable local database and verify Storage coverage.
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -33,7 +40,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: main
+          ref: ${{ github.sha }}
           fetch-depth: 1
           persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -70,6 +77,39 @@ jobs:
           retention-days: 90
           if-no-files-found: error
           compression-level: 0
+
+  # Manual, opt-in only. Production secrets decrypt the artifact, but the restore target is a
+  # network-isolated local container with tmpfs data; it never connects to a Supabase project.
+  restore-probe:
+    if: github.event_name == 'workflow_dispatch' && inputs.restore_probe == true && github.ref == 'refs/heads/main'
+    needs: backup-production
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      actions: read
+      contents: read
+    environment:
+      name: Production
+      deployment: false
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: production-database-${{ github.run_id }}
+          path: ${{ runner.temp }}/restore-probe-artifact
+      - name: Restore and verify the encrypted backup locally
+        env:
+          BACKUP_ARTIFACT_DIR: ${{ runner.temp }}/restore-probe-artifact
+          BACKUP_GPG_PRIVATE_KEY: ${{ secrets.BACKUP_GPG_PRIVATE_KEY }}
+          BACKUP_GPG_PASSPHRASE: ${{ secrets.BACKUP_GPG_PASSPHRASE }}
+        run: node .github/scripts/db-restore-probe.mjs
 
   preview-keepalive:
     if: vars.SUPABASE_PREVIEW_PROJECT_HOST != ''
