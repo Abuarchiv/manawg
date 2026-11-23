@@ -368,8 +368,8 @@ Rolling back:
 - **Deploy fails or the new version never turns healthy** (the workflow fails before it tags),
   **or the new version damages data**: migrations only move forward, and an older version on an
   already migrated database is not supported ([Updating](self-hosting.md#updating)). Restore the
-  backup from step 4 into a new database
-  ([Restore the encrypted nightly backup](database-recovery.md#restore-the-encrypted-nightly-backup)).
+  backup from step 4 into a new Supabase project or database
+  ([Into an initialized Supabase database](database-recovery.md#into-an-initialized-supabase-database)).
   It holds the schema from before the migration: do not run `db:migrate` from the new version
   on it. Check it with `db:check` from a checkout of the previous SHA, run the image of that SHA
   against it and switch over. Writes made after the backup are

@@ -152,12 +152,50 @@ Check that the counts of `public.wgs`, `public.wg_members`, `auth.users` and `st
 match the source, that `storage.objects` has as many rows as `storage/` has files, and that the
 app role can read: `psql` as `manawg_app` and count `public.wgs`.
 
-To recover production from it, create a new Supabase project (never restore over one that still
-serves users), restore as above as `postgres`, upload each `storage/<bucket>/<object>` to the same
-bucket and path with the service key (`POST /storage/v1/object/<bucket>/<object>`), run the
-checks, then point the app's database and Supabase variables at the new project and deploy the
-version you checked. Writes made after the backup are lost. Delete the decrypted files when you
-are done.
+#### Into an initialized Supabase database
+
+A new Supabase project, or the `db` service of the Docker stack, already has the `auth` and
+`storage` schemas with their tables, roles and migration ledgers, so the empty-database restore
+above fails there (`relation "auth.users" already exists`). Restore the app schemas whole and only
+the rows of `auth` and `storage`. Never do this on a project that still serves users. Connect as
+`postgres` (as `supabase_admin` in the Docker stack) and stop Auth and Storage first (Docker:
+`docker compose stop auth storage`):
+
+```sql
+do $$ begin
+  if not exists (select 1 from pg_roles where rolname = 'manawg_app') then
+    create role manawg_app login bypassrls password '<long random password>';
+  end if;
+end $$;
+drop schema if exists drizzle cascade;
+drop schema public cascade;
+create schema public;
+create schema drizzle;
+grant usage on schema public to anon, authenticated, service_role;
+-- Empty the Auth and Storage tables, but keep their own migration ledgers.
+do $$ declare t text; begin
+  for t in select format('%I.%I', schemaname, tablename) from pg_tables
+    where schemaname in ('auth', 'storage') and tablename not in ('schema_migrations', 'migrations')
+  loop execute 'truncate ' || t || ' cascade'; end loop;
+end $$;
+```
+
+```sh
+pg_restore --no-owner --no-privileges --schema=public --schema=drizzle --dbname=<url> database.dump
+pg_restore -l database.dump | grep -E 'TABLE DATA (auth|storage) ' \
+  | grep -v -E ' (schema_migrations|migrations) ' > auth-storage.list
+pg_restore --data-only --disable-triggers -L auth-storage.list --dbname=<url> database.dump
+```
+
+Neither may print an `ERROR` line. Then put the privileges back, run `db:check` and the counts as
+above, and start Auth and Storage again. The backup's Auth and Storage rows must fit the
+target's Auth and Storage versions; use the versions of the backed-up instance.
+
+Upload each `storage/<bucket>/<object>` to the same bucket and path with the service key
+(`POST /storage/v1/object/<bucket>/<object>` with `x-upsert: true`), and read one back to compare
+the bytes. Then point the app's database and Supabase variables at the new database and deploy
+the version you checked. Writes made after the backup are lost. Delete the decrypted files when
+you are done.
 
 ## Database roles
 
