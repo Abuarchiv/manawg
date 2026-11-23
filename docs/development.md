@@ -331,6 +331,49 @@ URL secret, because anyone who has it can start a deployment. When the deploy fa
 version never turns healthy, the workflow fails before it tags, so roll back on the host and fix
 the cause before the next dispatch.
 
+With `PREVIEW_GATE=database` the release never calls Vercel: it pushes no `preview-main`, waits
+for no Vercel deployment and posts only `PRODUCTION_DEPLOY_HOOK`. Keep it that way while
+production is self-hosted. A Vercel production deployment would run the crons of
+`apps/web/vercel.json` a second time against the same database, next to the self-hosted `cron`
+service.
+
+#### Releasing a self-hosted production
+
+Before the dispatch:
+
+1. `PREVIEW_GATE` is `database` (`gh variable list`) and the environment `Production` has
+   `PRODUCTION_DEPLOY_HOOK` (`gh secret list --env Production`). A `POST` to the hook path with a
+   wrong token must answer `404`; never test it with the real token, which deploys.
+2. `PRODUCTION_APP_URL/api/health` answers `ok` and names the running SHA. Note it, and keep the
+   image of that SHA on the host: it is the rollback target.
+3. List the migrations the release applies:
+   `git diff --name-only <running SHA> origin/main -- apps/web/drizzle`. Read each one and note
+   whether the running version still works on the migrated schema. Migrations that only add
+   tables, columns, functions or triggers keep it working; ones that drop or rename do not.
+4. Take a fresh database backup: run the **Database nightly** workflow by hand
+   (`gh workflow run database-nightly.yml`) and wait for `backup-production` to pass. Its
+   encrypted artifact is the restore point ([Backup and restore](database-recovery.md)).
+5. The newest `workflow_run` run of `preview.yml` for the main tip passed `db-supabase-preview`,
+   so the migrations already applied on the Preview database.
+
+During the release, the workflow stops at the first failing stage. `db:migrate` applies all
+pending migrations in one transaction, so a failed migration leaves production unchanged.
+
+Rolling back:
+
+- **Deploy fails or the new version never turns healthy** (the workflow fails before it tags):
+  put the image of the previous SHA back on the host. When step 3 found only additive
+  migrations, that version runs on the migrated schema and nothing else is needed.
+- **The new version damages data, or a migration has to be undone**: migrations are never
+  reversed in place. Restore the backup from step 4 into a new database
+  ([Backup and restore](database-recovery.md)), point the previous version at it and switch
+  over. Writes made after the backup are lost, so decide this quickly.
+- **Nothing failed, but the release is wrong**: fix forward with a new version. A published tag
+  is not moved.
+
+After the release: `/api/health` reports `status` and `database` `ok` and `version` equal to
+the tagged SHA, the GitHub release exists and `docker.yml` started for the tag.
+
 ## Cron jobs
 
 Defined in `apps/web/vercel.json` (UTC schedules), which Vercel reads and the `cron` container of
