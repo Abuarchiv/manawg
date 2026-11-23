@@ -157,11 +157,18 @@ app role can read: `psql` as `manawg_app` and count `public.wgs`.
 A new Supabase project, or the `db` service of the Docker stack, already has the `auth` and
 `storage` schemas with their tables, roles and migration ledgers, so the empty-database restore
 above fails there (`relation "auth.users" already exists`). Restore the app schemas whole and only
-the rows of `auth` and `storage`. Never do this on a project that still serves users. Connect as
-`postgres` (as `supabase_admin` in the Docker stack) and stop Auth and Storage first (Docker:
-`docker compose stop auth storage`):
+the rows of `auth` and `storage`. Never do this on a project that still serves users.
 
-```sql
+Connect as `postgres`, which on Supabase is not a superuser and does not own the Auth and Storage
+tables: it cannot disable their triggers (`pg_restore --disable-triggers` fails with
+`must be owner of table users`) and has no rights on a few Storage tables. Instead the rows go in
+with `session_replication_role = replica`, which `postgres` may set and which skips triggers and
+foreign key checks, and only for tables that hold rows in the backup. Stop Auth and Storage first
+(Docker: `docker compose stop auth storage`). With `PGHOST`, `PGUSER=postgres` and `PGDATABASE`
+set for the target, in the directory with `database.dump`:
+
+```sh
+psql -v ON_ERROR_STOP=1 <<'SQL'
 do $$ begin
   if not exists (select 1 from pg_roles where rolname = 'manawg_app') then
     create role manawg_app login bypassrls password '<long random password>';
@@ -172,24 +179,31 @@ drop schema public cascade;
 create schema public;
 create schema drizzle;
 grant usage on schema public to anon, authenticated, service_role;
--- Empty the Auth and Storage tables, but keep their own migration ledgers.
-do $$ declare t text; begin
-  for t in select format('%I.%I', schemaname, tablename) from pg_tables
-    where schemaname in ('auth', 'storage') and tablename not in ('schema_migrations', 'migrations')
-  loop execute 'truncate ' || t || ' cascade'; end loop;
-end $$;
+SQL
+pg_restore --no-owner --no-privileges --schema=public --schema=drizzle --exit-on-error \
+  --dbname="$PGDATABASE" database.dump
+
+# Auth and Storage tables with rows in the backup, without their migration ledgers.
+tables=$(pg_restore --data-only -n auth -n storage -f - database.dump |
+  awk '/^COPY / {t = $2; n = 0; next} $0 == "\\." {if (n) print t; t = ""; next} t != "" {n++}' |
+  grep -v -e '\.schema_migrations$' -e '\.migrations$')
+{
+  echo 'set session_replication_role = replica;'
+  for t in $tables; do echo "delete from $t;"; done
+  pg_restore --data-only $(for t in $tables; do printf -- '-n %s -t %s ' "${t%%.*}" "${t#*.}"; done) \
+    -f - database.dump
+} | psql -v ON_ERROR_STOP=1 --single-transaction -q -o /dev/null
 ```
 
-```sh
-pg_restore --no-owner --no-privileges --schema=public --schema=drizzle --dbname=<url> database.dump
-pg_restore -l database.dump | grep -E 'TABLE DATA (auth|storage) ' \
-  | grep -v -E ' (schema_migrations|migrations) ' > auth-storage.list
-pg_restore --data-only --disable-triggers -L auth-storage.list --dbname=<url> database.dump
-```
+Both must finish without an error; the second runs in one transaction, so a failure leaves the
+Auth and Storage rows as they were. Then put the privileges back, run `db:check` and the counts as
+above, and start Auth and Storage again. The backup's Auth and Storage rows must fit the target's
+Auth and Storage versions; use the versions of the backed-up instance.
 
-Neither may print an `ERROR` line. Then put the privileges back, run `db:check` and the counts as
-above, and start Auth and Storage again. The backup's Auth and Storage rows must fit the
-target's Auth and Storage versions; use the versions of the backed-up instance.
+This path is rehearsed on the Docker stack's `supabase/postgres` image as the non-superuser
+`postgres` role. On a hosted project, first check that `postgres` may run
+`set session_replication_role = replica`; if it may not, restore the Auth and Storage rows with
+Supabase support instead of working around it.
 
 Upload each `storage/<bucket>/<object>` to the same bucket and path with the service key
 (`POST /storage/v1/object/<bucket>/<object>` with `x-upsert: true`), and read one back to compare
