@@ -1,7 +1,7 @@
 {
 	"$schema": "https://unpkg.com/knip@6/schema.json",
 	"workspaces": {
-		".": { "entry": [], "project": [] },
+		".": { "entry": [], "project": [], "ignoreBinaries": ["gpgconf"] },
 		"apps/web": {
 			"entry": [
 				"drizzle.config.ts",
