@@ -17,6 +17,7 @@ import { fileURLToPath } from 'node:url';
 
 const RESTORE_PROBE_IMAGE =
 	'supabase/postgres@sha256:0b64586fb84124b9070525a6528616594a1aa84a75d84cd4c3d43acc8de3ba92';
+const POSTGRES_INIT_COMPLETE = 'PostgreSQL init process complete; ready for start up.';
 
 export function validateArchiveEntry(name, type) {
 	if (typeof name !== 'string' || !name || /[\0\t\r\n]/.test(name) || name.startsWith('/')) {
@@ -120,6 +121,10 @@ export function verifyStorageCoverage(rows, storageRoot) {
 	}
 
 	return { objectCount: expectedFiles.size, byteCount, sizeChecked };
+}
+
+export function isFinalPostgresReady(logs, probeStatus) {
+	return probeStatus === 0 && logs.includes(POSTGRES_INIT_COMPLETE);
 }
 
 function run(
@@ -359,13 +364,32 @@ async function restoreProbe() {
 		);
 		containerStarted = true;
 		let ready = false;
+		let logs = '';
 		for (let retry = 0; retry < 60; retry += 1) {
+			if (!logs.includes(POSTGRES_INIT_COMPLETE)) {
+				const logResult = spawnSync('docker', ['logs', containerName], {
+					encoding: 'utf8',
+					maxBuffer: 64 * 1024 * 1024,
+				});
+				logs =
+					logResult.status === 0
+						? `${logResult.stdout ?? ''}\n${logResult.stderr ?? ''}`
+						: '';
+			}
 			const probe = spawnSync(
 				'docker',
-				['exec', containerName, 'pg_isready', '-U', 'supabase_admin', '-h', '/var/run/postgresql'],
+				[
+					'exec',
+					containerName,
+					'pg_isready',
+					'-U',
+					'supabase_admin',
+					'-h',
+					'/var/run/postgresql',
+				],
 				{ stdio: 'ignore' },
 			);
-			if (probe.status === 0) {
+			if (isFinalPostgresReady(logs, probe.status)) {
 				ready = true;
 				break;
 			}

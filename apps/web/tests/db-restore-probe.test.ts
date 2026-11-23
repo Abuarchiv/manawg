@@ -3,10 +3,19 @@ import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
-import {
-	validateArchiveEntry,
-	verifyStorageCoverage,
-} from '../../../.github/scripts/db-restore-probe.mjs';
+import * as restoreProbe from '../../../.github/scripts/db-restore-probe.mjs';
+
+const { validateArchiveEntry, verifyStorageCoverage } = restoreProbe;
+
+test('waits for the final PostgreSQL server after the init server exits', () => {
+	const initLog = 'database system is ready to accept connections';
+	const finalStartupLog = `${initLog}\nPostgreSQL init process complete; ready for start up.`;
+	const isFinalReady = restoreProbe.isFinalPostgresReady;
+
+	assert.equal(isFinalReady?.(initLog, 0) ?? false, false);
+	assert.equal(isFinalReady?.(finalStartupLog, 1) ?? false, false);
+	assert.equal(isFinalReady?.(finalStartupLog, 0) ?? false, true);
+});
 
 test('restore archive accepts only the database dump and Storage tree', () => {
 	assert.equal(validateArchiveEntry('database.dump'), 'database.dump');
