@@ -1,5 +1,6 @@
 import { Plus } from 'lucide-react';
 import { useTranslations } from 'next-intl';
+import { memo } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,7 +9,11 @@ import { ThumbAction } from '@/components/wg/ThumbAction';
 import { NAME_MAX } from '@/features/shopping/components/constants';
 import { type Message, useMessage } from '@/shared/i18n/message';
 
-export function ShoppingAddBar({
+/**
+ * Memoized: a parent render (list poll, pantry fetch) must not re-render the controlled field
+ * while the browser holds typed text React has not seen yet, or the text is reset.
+ */
+export const ShoppingAddBar = memo(function ShoppingAddBar({
 	value,
 	onChange,
 	onSubmit,
@@ -91,4 +96,4 @@ export function ShoppingAddBar({
 			</div>
 		</ThumbAction>
 	);
-}
+});

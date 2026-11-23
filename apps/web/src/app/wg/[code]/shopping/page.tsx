@@ -187,7 +187,7 @@ export default function ShoppingPage() {
 			<ShoppingAddBar
 				value={add.newName}
 				onChange={add.changeName}
-				onSubmit={() => void add.add()}
+				onSubmit={add.submit}
 				adding={add.adding}
 				addError={add.addError}
 				addNotice={shopping.addNotice}
