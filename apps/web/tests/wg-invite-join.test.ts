@@ -510,25 +510,29 @@ test('two invite cards opened at once share one fresh link', { skip }, async () 
 		// park on a lock before they can commit a link, then race once it is released.
 		const holder = new pg.Client({ connectionString: url });
 		await holder.connect();
+		let racing: Promise<Response[]> | undefined;
 		try {
 			await holder.query('begin');
 			await holder.query('lock table wg_invites in share mode');
-			let settled = false;
-			const racing = Promise.all([
-				f.current(f.a.memberUserId, f.a.code),
-				f.current(f.a.memberUserId, f.a.code),
-			]).finally(() => {
-				settled = true;
-			});
+			const done = [false, false];
+			racing = Promise.all(
+				done.map((_, n) =>
+					f.current(f.a.memberUserId, f.a.code).finally(() => {
+						done[n] = true;
+					}),
+				),
+			);
+			const deadline = Date.now() + 5_000;
 			for (;;) {
 				// Polled outside the holder's transaction, which would keep one stats snapshot.
 				const { rows } = await f.database.execute<{ waiting: number }>(
 					sql`select count(*)::int as waiting from pg_stat_activity
 					    where application_name = ${appName} and wait_event_type = 'Lock'`,
 				);
-				if (rows[0]?.waiting === 2 || settled) break;
+				if (rows[0]?.waiting === 2) break;
+				assert.ok(!done.includes(true), 'a request finished before both waited on the lock');
+				assert.ok(Date.now() < deadline, 'both requests did not wait on the lock within 5 s');
 			}
-			assert.equal(settled, false, 'both requests were waiting at the same time');
 			await holder.query('commit');
 			const responses = await racing;
 
@@ -551,7 +555,9 @@ test('two invite cards opened at once share one fresh link', { skip }, async () 
 			const token = one.url.split('/invite/')[1] ?? '';
 			assert.equal((await f.preview(randomUUID(), token)).status, 200, 'the shared link works');
 		} finally {
+			// Closing the holder rolls its transaction back, so a parked request can finish.
 			await holder.end();
+			await Promise.allSettled([racing]);
 		}
 	});
 });
