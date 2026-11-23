@@ -25,6 +25,9 @@ on:
       - apps/web/vercel.json
       - apps/web/src/proxy.ts
       - apps/web/src/core/auth/**
+      # The password contract: the reset form and the script that drives it.
+      - apps/web/src/components/auth/**
+      - apps/web/scripts/real-stack/password-contract.mjs
       - apps/web/src/core/infra/**
       - apps/web/src/core/mail/**
       - supabase/templates/**
