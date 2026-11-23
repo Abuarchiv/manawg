@@ -161,19 +161,43 @@ the rows of `auth` and `storage`. Never do this on a project that still serves u
 
 Connect as `postgres`, which on Supabase is not a superuser and does not own the Auth and Storage
 tables: it cannot disable their triggers (`pg_restore --disable-triggers` fails with
-`must be owner of table users`) and has no rights on a few Storage tables. Instead the rows go in
+`must be owner of table users`) and may only read a few Storage tables. Instead the rows go in
 with `session_replication_role = replica`, which `postgres` may set and which skips triggers and
-foreign key checks, and only for tables that hold rows in the backup. Stop Auth and Storage first
-(Docker: `docker compose stop auth storage`). With `PGHOST`, `PGUSER=postgres` and `PGDATABASE`
-set for the target, in the directory with `database.dump`:
+foreign key checks. Stop Auth and Storage first (Docker: `docker compose stop auth storage`).
+
+Run the script below with `sh` (not as lines pasted into zsh), with `PGHOST`, `PGPORT`,
+`PGUSER=postgres`, `PGPASSWORD` and `PGDATABASE` set for the target, in the directory with
+`database.dump`. It stops at the first error. It reads the whole dump and writes the Auth and
+Storage input to files before it changes anything, so a missing or damaged dump changes nothing.
+The Auth and Storage rows then load in one transaction: every Auth and Storage table except the
+two migration ledgers is emptied, also when the backup has no rows for it, and a table `postgres`
+cannot empty must already be empty, or the transaction stops with nothing changed.
 
 ```sh
-psql -v ON_ERROR_STOP=1 <<'SQL'
+set -eu
+[ -s database.dump ]
+pg_restore -f /dev/null database.dump    # reads the whole dump: fails on a damaged one
+# Rows of Auth and Storage without their migration ledgers. Empty COPY blocks are dropped,
+# because postgres may not write to every Storage table, even nothing.
+pg_restore -l database.dump > toc.list
+awk '$4 == "TABLE" && $5 == "DATA" && ($6 == "auth" || $6 == "storage") &&
+  $7 != "schema_migrations" && $7 != "migrations"' toc.list > auth-storage.list
+[ -s auth-storage.list ]
+pg_restore --data-only -L auth-storage.list -f auth-storage-all.sql database.dump
+awk '/^COPY / {head = $0; rows = ""; n = 0; copy = 1; next}
+  copy && $0 == "\\." {if (n) printf "%s\n%s\\.\n", head, rows; copy = 0; next}
+  copy {rows = rows $0 "\n"; n++; next}
+  {print}' auth-storage-all.sql > auth-storage.sql
+grep -q '^COPY auth.users ' auth-storage.sql
+
+# Only now change the target.
+psql -v ON_ERROR_STOP=1 -q <<'SQL'
 do $$ begin
   if not exists (select 1 from pg_roles where rolname = 'manawg_app') then
     create role manawg_app login bypassrls password '<long random password>';
   end if;
 end $$;
+set client_min_messages = warning;
 drop schema if exists drizzle cascade;
 drop schema public cascade;
 create schema public;
@@ -183,22 +207,30 @@ SQL
 pg_restore --no-owner --no-privileges --schema=public --schema=drizzle --exit-on-error \
   --dbname="$PGDATABASE" database.dump
 
-# Auth and Storage tables with rows in the backup, without their migration ledgers.
-tables=$(pg_restore --data-only -n auth -n storage -f - database.dump |
-  awk '/^COPY / {t = $2; n = 0; next} $0 == "\\." {if (n) print t; t = ""; next} t != "" {n++}' |
-  grep -v -e '\.schema_migrations$' -e '\.migrations$')
-{
-  echo 'set session_replication_role = replica;'
-  for t in $tables; do echo "delete from $t;"; done
-  pg_restore --data-only $(for t in $tables; do printf -- '-n %s -t %s ' "${t%%.*}" "${t#*.}"; done) \
-    -f - database.dump
-} | psql -v ON_ERROR_STOP=1 --single-transaction -q -o /dev/null
+cat > auth-storage-empty.sql <<'SQL'
+set session_replication_role = replica;
+do $$ declare r record; has_rows boolean; begin
+  for r in select schemaname, tablename from pg_tables
+    where schemaname in ('auth', 'storage') and tablename not in ('schema_migrations', 'migrations')
+  loop
+    if has_table_privilege(format('%I.%I', r.schemaname, r.tablename), 'DELETE') then
+      execute format('delete from %I.%I', r.schemaname, r.tablename);
+    else
+      execute format('select exists (select from %I.%I)', r.schemaname, r.tablename) into has_rows;
+      if has_rows then
+        raise exception '%.% has rows that postgres cannot delete', r.schemaname, r.tablename;
+      end if;
+    end if;
+  end loop;
+end $$;
+SQL
+psql -v ON_ERROR_STOP=1 --single-transaction -q -o /dev/null \
+  -f auth-storage-empty.sql -f auth-storage.sql
 ```
 
-Both must finish without an error; the second runs in one transaction, so a failure leaves the
-Auth and Storage rows as they were. Then put the privileges back, run `db:check` and the counts as
-above, and start Auth and Storage again. The backup's Auth and Storage rows must fit the target's
-Auth and Storage versions; use the versions of the backed-up instance.
+Then put the privileges back, run `db:check` and the counts as above, and start Auth and Storage
+again. The backup's Auth and Storage rows must fit the target's Auth and Storage versions; use the
+versions of the backed-up instance. Delete `auth-storage*.sql` with the other decrypted files.
 
 This path is rehearsed on the Docker stack's `supabase/postgres` image as the non-superuser
 `postgres` role. On a hosted project, first check that `postgres` may run
