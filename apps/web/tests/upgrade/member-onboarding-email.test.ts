@@ -8,8 +8,8 @@ import { after, before, test } from 'node:test';
 import { promisify } from 'node:util';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
-import pg from 'pg';
-import { SUPABASE_STUB } from '../../scripts/test-db-setup.mjs';
+import type pg from 'pg';
+import { loopbackClient, SUPABASE_STUB } from '../../scripts/test-db-setup.mjs';
 
 // Populated upgrade rehearsal for 0045_member_onboarding_email: a database on the schema before
 // 0045 with real WG memberships is upgraded through the production entry point
@@ -19,12 +19,6 @@ import { SUPABASE_STUB } from '../../scripts/test-db-setup.mjs';
 // whose user may create databases; the test creates and drops its own database there.
 const serverUrl = process.env.UPGRADE_TEST_DATABASE_URL;
 const skip = serverUrl ? false : 'UPGRADE_TEST_DATABASE_URL is not set';
-if (serverUrl) {
-	assert.ok(
-		['localhost', '127.0.0.1', '[::1]'].includes(new URL(serverUrl).hostname),
-		'UPGRADE_TEST_DATABASE_URL must be a loopback database',
-	);
-}
 
 const TARGET = '0045_member_onboarding_email';
 const webDir = path.resolve(import.meta.dirname, '../..');
@@ -74,13 +68,13 @@ async function ledgerCount() {
 
 before(async () => {
 	if (!serverUrl) return;
-	admin = new pg.Client({ connectionString: serverUrl });
+	admin = loopbackClient(serverUrl);
 	await admin.connect();
 	await admin.query(`create database ${dbName}`);
 	const url = new URL(serverUrl);
 	url.pathname = `/${dbName}`;
 	dbUrl = url.toString();
-	client = new pg.Client({ connectionString: dbUrl });
+	client = loopbackClient(dbUrl);
 	await client.connect();
 	await client.query(SUPABASE_STUB);
 

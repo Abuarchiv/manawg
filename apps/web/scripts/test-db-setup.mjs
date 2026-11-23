@@ -40,14 +40,28 @@ create or replace function auth.role() returns text language sql stable as
 	$$ select current_setting('request.jwt.claim.role', true) $$;
 `;
 
+/**
+ * A client for a loopback test database, or a throw. Checks the host node-postgres will actually
+ * connect to: a `?host=` parameter in the URL overrides the URL's hostname.
+ */
+export function loopbackClient(url) {
+	const client = new pg.Client({ connectionString: url });
+	if (!['localhost', '127.0.0.1', '::1'].includes(client.host)) {
+		throw new Error('The test database must be on a loopback host.');
+	}
+	return client;
+}
+
 async function setup(url) {
-	if (!['localhost', '127.0.0.1', '[::1]'].includes(new URL(url).hostname)) {
-		console.error('The test database must be on a loopback host.');
+	let client;
+	try {
+		client = loopbackClient(url);
+	} catch (error) {
+		console.error(error.message);
 		process.exit(2);
 	}
 	const drizzle = new URL('../drizzle/', import.meta.url);
 	const { entries } = JSON.parse(readFileSync(new URL('meta/_journal.json', drizzle), 'utf8'));
-	const client = new pg.Client({ connectionString: url });
 	await client.connect();
 	try {
 		await client.query(SUPABASE_STUB);
