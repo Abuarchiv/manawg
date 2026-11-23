@@ -1,6 +1,6 @@
 import { MS_PER_DAY } from '@/core/utils/time';
 
-const SOLO_SNOOZE_DAYS = 7;
+const SOLO_SNOOZE_DAYS = 3;
 
 /**
  * Whether the Start card stays hidden for the stored dismissal.
@@ -13,7 +13,7 @@ export function isWelcomeHidden(raw: string | null, now: number, solo: boolean):
 	if (raw === null) return false;
 	if (!solo) return raw === '1';
 	const snoozedAt = Number(raw);
-	// A timestamp from the future (the clock was corrected) must not hide the card for over a week.
+	// A timestamp from the future (the clock was corrected) must not hide the card for longer than the snooze.
 	return snoozedAt <= now && now < snoozedAt + SOLO_SNOOZE_DAYS * MS_PER_DAY;
 }
 

@@ -8,7 +8,7 @@ import pg from 'pg';
 import * as schema from '../src/core/db/schema.ts';
 import { wgInvites } from '../src/core/db/schema-invites.ts';
 import { generateShareCode } from '../src/core/utils/share-code.ts';
-import { MAX_MEMBERS_PER_WG } from '../src/shared/lib/limits.ts';
+import { MAX_ACTIVE_INVITES, MAX_MEMBERS_PER_WG } from '../src/shared/lib/limits.ts';
 
 // Invite join, preview and revoke against a real PostgreSQL: the real route handlers run, only
 // the signed-in account and the rate limiter are replaced. Opt-in: TEST_DATABASE_URL must name
@@ -59,6 +59,7 @@ interface Fixture {
 	invite: (id: string) => Promise<typeof wgInvites.$inferSelect>;
 	list: (userId: string, code: string) => Promise<Response>;
 	create: (userId: string, code: string) => Promise<Response>;
+	current: (userId: string, code: string) => Promise<Response>;
 }
 
 async function withFixture(run: (fixture: Fixture) => Promise<void>) {
@@ -70,6 +71,7 @@ async function withFixture(run: (fixture: Fixture) => Promise<void>) {
 	const revokeRoute = await import('../src/app/api/wg/[code]/invites/[id]/route.ts');
 	const { createWgInvite } = await import('../src/core/db/wg-invites.ts');
 	const listRoute = await import('../src/app/api/wg/[code]/invites/route.ts');
+	const currentRoute = await import('../src/app/api/wg/[code]/invites/current/route.ts');
 
 	const pool = new pg.Pool({ connectionString: url, max: 2 });
 	const database = drizzle(pool, { schema });
@@ -139,6 +141,10 @@ async function withFixture(run: (fixture: Fixture) => Promise<void>) {
 				}),
 			create: (userId, code) =>
 				listRoute.POST(request(userId, `/api/wg/${code}/invites`, 'POST'), {
+					params: Promise.resolve({ code }),
+				}),
+			current: (userId, code) =>
+				currentRoute.POST(request(userId, `/api/wg/${code}/invites/current`, 'POST'), {
 					params: Promise.resolve({ code }),
 				}),
 			memberCount: async (wgId) =>
@@ -445,5 +451,52 @@ test('two active members cannot share a name, even in another case', { skip }, a
 		const clash = await f.join(randomUUID(), f.a.code, token, 'FOUNDER');
 		assert.equal(clash.status, 409);
 		assert.equal(await codeOf(clash), 'name_taken');
+	});
+});
+
+test('the invite card keeps a live link, replaces a dead one and ends with a flatmate', {
+	skip,
+}, async () => {
+	await withFixture(async (f) => {
+		type Current = { invite: { id: string; url: string } | null };
+		const open = async () => {
+			const response = await f.current(f.a.memberUserId, f.a.code);
+			assert.equal(response.status, 200);
+			return ((await response.json()) as Current).invite;
+		};
+		const first = await open();
+		assert.ok(first, 'a WG without any invite gets one');
+		assert.equal((await open())?.id, first.id, 'a live link is shown again, not replaced');
+
+		await f.database
+			.update(wgInvites)
+			.set({ expiresAt: new Date(Date.now() - 1000) })
+			.where(eq(wgInvites.id, first.id));
+		const fresh = await open();
+		assert.ok(fresh && fresh.id !== first.id, 'an expired link is replaced');
+		const token = fresh.url.split('/invite/')[1] ?? '';
+		assert.equal((await f.preview(randomUUID(), token)).status, 200, 'the fresh link works');
+
+		assert.equal((await f.join(randomUUID(), f.a.code, token)).status, 200);
+		assert.equal(await open(), null, 'a WG with two members gets no card link');
+	});
+});
+
+test('the invite card answers the limit instead of a 21st link', { skip }, async () => {
+	await withFixture(async (f) => {
+		const live = await f.database.select().from(wgInvites).where(eq(wgInvites.wgId, f.a.id));
+		for (let i = live.length; i < MAX_ACTIVE_INVITES; i++) await f.joinTokenOf('a');
+		// The newest invitation is dead, but the WG already holds the maximum of live ones.
+		await f.database.insert(wgInvites).values({
+			wgId: f.a.id,
+			token: `revoked-${randomUUID()}`,
+			createdByMemberId: f.a.memberId,
+			expiresAt: new Date(Date.now() + 86_400_000),
+			revokedAt: new Date(),
+			createdAt: new Date(Date.now() + 60_000),
+		});
+		const response = await f.current(f.a.memberUserId, f.a.code);
+		assert.equal(response.status, 409);
+		assert.equal(((await response.json()) as Json).error, 'invite_limit_reached');
 	});
 });

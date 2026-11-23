@@ -42,7 +42,7 @@ import {
 	getE2EWgFixture,
 } from './data';
 import { buildE2EExpenses } from './expenses';
-import { inviteLookup, invitePreview } from './invites';
+import { currentInvite, inviteLookup, invitePreview } from './invites';
 
 /**
  * API answers of the database-free Playwright build, served by the middleware
@@ -370,6 +370,9 @@ export async function answerFixtureApiRequest(req: NextRequest): Promise<NextRes
 				expiresAt: new Date(Date.now() + INVITE_VALID_DAYS * MS_PER_DAY).toISOString(),
 			}),
 		);
+	}
+	if (req.method === 'POST' && rest.join('/') === 'invites/current') {
+		return memberRead(req, code, currentInvite);
 	}
 	if (req.method === 'POST' && rest.join('/') === 'chat/read') {
 		return memberRead(req, code, () => NextResponse.json({ ok: true, applied: false }));

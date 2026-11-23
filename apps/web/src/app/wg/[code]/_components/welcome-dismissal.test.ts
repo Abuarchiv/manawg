@@ -5,10 +5,10 @@ import { isWelcomeHidden, welcomeDismissalValue } from './welcome-dismissal';
 const DAY = 86_400_000;
 const NOW = Date.UTC(2026, 10, 9);
 
-test('a solo dismissal snoozes the card for seven days', () => {
+test('a solo dismissal snoozes the card for three days', () => {
 	const stored = welcomeDismissalValue(NOW, true);
-	assert.equal(isWelcomeHidden(stored, NOW + 6 * DAY, true), true);
-	assert.equal(isWelcomeHidden(stored, NOW + 7 * DAY, true), false);
+	assert.equal(isWelcomeHidden(stored, NOW + 2 * DAY, true), true);
+	assert.equal(isWelcomeHidden(stored, NOW + 3 * DAY, true), false);
 });
 
 test('the legacy permanent value counts as expired while solo', () => {

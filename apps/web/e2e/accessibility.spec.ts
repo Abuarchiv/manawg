@@ -378,11 +378,10 @@ test.describe('label in name audit', () => {
 		await navigateToFeature(page, `/wg/${SOLO_WG.shareCode}`);
 		await dismissOnboarding(page);
 
-		// WCAG 2.5.3 — the visible "Mitbewohner einladen" text must be the whole
-		// accessible name, not a differently-worded aria-label.
-		await expect(
-			page.getByRole('button', { name: 'Mitbewohner einladen', exact: true }),
-		).toBeVisible();
+		// WCAG 2.5.3 — the accessible name starts with the visible "Link teilen" text.
+		const share = page.getByRole('button', { name: /^Link teilen: Einladung in / });
+		await expect(share).toBeVisible();
+		await expect(share).toContainText('Link teilen');
 	});
 
 	test('subscription pause button names the visible action first, then the subscription', async ({

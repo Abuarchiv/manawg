@@ -57,7 +57,8 @@ function isTestDeployment(): boolean {
 
 /**
  * Everything besides page views that leaves the browser: the activation and funnel steps. They
- * carry no property except the failure code of `invite_join_failed`.
+ * carry no property except the failure code of `invite_join_failed` and the share method of
+ * `invite_card_shared`.
  */
 const PRODUCT_EVENTS: readonly string[] = [
 	'wg_created',
@@ -68,12 +69,21 @@ const PRODUCT_EVENTS: readonly string[] = [
 	'invite_opened',
 	'invite_join_failed',
 	'first_expense_created',
+	'invite_card_shown',
+	'invite_card_shared',
+	'invite_card_dismissed',
 ];
 
 /** An API error code (`invite_expired`, `name_taken`, ...) is lowercase snake case; anything else is not forwarded. */
 function failureCode(properties: unknown): string {
 	const code = (properties as { code?: unknown } | null | undefined)?.code;
 	return typeof code === 'string' && /^[a-z0-9_]{1,40}$/.test(code) ? code : 'other';
+}
+
+/** How the invite card handed the link on: the share sheet or the clipboard. */
+function shareMethod(properties: unknown): 'share' | 'copy' {
+	const method = (properties as { method?: unknown } | null | undefined)?.method;
+	return method === 'share' ? 'share' : 'copy';
 }
 
 function loadAnalytics(key: string, host: string): void {
@@ -117,6 +127,9 @@ function loadAnalytics(key: string, host: string): void {
 							$raw_user_agent: navigator.userAgent,
 							...(event.event === 'invite_join_failed'
 								? { code: failureCode(event.properties) }
+								: {}),
+							...(event.event === 'invite_card_shared'
+								? { method: shareMethod(event.properties) }
 								: {}),
 						},
 					};

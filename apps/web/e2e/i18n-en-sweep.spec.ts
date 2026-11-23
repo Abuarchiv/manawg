@@ -189,9 +189,9 @@ test.describe('English sweep', () => {
 			await mockDashboard(page, soloBase, EMPTY_DASHBOARD);
 			await navigateToFeature(page, `/wg/${SOLO_WG.shareCode}`);
 			await dismissOnboarding(page);
-			await expect(
-				page.getByRole('button', { name: 'Invite flatmates', exact: true }),
-			).toBeVisible();
+			const share = page.getByRole('button', { name: /^Share link: invitation to / });
+			await expect(share).toBeVisible();
+			await expect(share).toContainText('Share link');
 		});
 
 		test('subscription pause button leads with the visible action', async ({ page }) => {

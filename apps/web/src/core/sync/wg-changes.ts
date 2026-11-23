@@ -55,7 +55,8 @@ export function useWgChange(
  * on the server before any client read of the page; later answers notify the scopes whose
  * version moved. Without a baseline (the server read failed, another member signed in) the
  * first answer cannot tell what the page missed, so it notifies every scope once. A removed
- * member's 401 raises the membership-lost event in `apiFetch`, as the members poll did.
+ * member's 401 raises the membership-lost event in `apiFetch`, as the members poll did. The
+ * service worker's push message triggers an extra poll.
  */
 export function useWgChangesPoll(
 	encodedShareCode: string,
@@ -110,4 +111,15 @@ export function useWgChangesPoll(
 		() => void pollRef.current(),
 		memberId ? LIST_REFRESH_INTERVAL_MS : null,
 	);
+
+	// A push (such as "Mina joined") polls at once instead of waiting for the next tick.
+	useEffect(() => {
+		const container = typeof navigator !== 'undefined' ? navigator.serviceWorker : undefined;
+		if (!memberId || !container) return;
+		const onMessage = (event: MessageEvent) => {
+			if ((event.data as { type?: unknown } | null)?.type === 'push') void pollRef.current();
+		};
+		container.addEventListener('message', onMessage);
+		return () => container.removeEventListener('message', onMessage);
+	}, [memberId]);
 }

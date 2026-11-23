@@ -16,6 +16,12 @@ settled.
 - Accounts without a flat can be deleted from the "Your flat" screen after sign-in, with the same
   confirmation as in the flat settings. After a completed deletion the start page confirms
   "Account deleted".
+- While a flat has only one member, the Start card shows the current invitation link with a
+  share button (the share sheet, or copying the link where there is none). When the newest link
+  has expired, been used up or revoked, opening the card creates a fresh one, so a flat that is
+  still alone never shows a dead link. "Remind me later" now hides the card for three days instead
+  of seven. The card is gone within seconds of a second member joining, and every share checks
+  the link with the server first.
 - Self-hosted instances refuse passwords from known data breaches in Supabase Auth as well
   (`GOTRUE_PASSWORD_HIBP_ENABLED`), so direct calls to `/auth/v1` get the same check as the app's
   registration and password change. Pull the new `compose.yaml` and restart.

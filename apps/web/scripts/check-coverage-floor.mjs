@@ -43,7 +43,7 @@ const DEFAULT_FLOOR = { lines: 80, branches: 80 };
 const FLOORS = {
 	'src/app/invite/[token]/invite-metadata.ts': { lines: 100, branches: 93 },
 	'src/app/invite/[token]/use-invite-join.ts': { lines: 0, branches: 0 },
-	'src/components/wg/invite-share.ts': { lines: 63, branches: 40 },
+	'src/components/wg/invite-share.ts': { lines: 67, branches: 85 },
 	'src/core/db/invite-preview.ts': { lines: 100, branches: 100 },
 	'src/core/db/schema-invites.ts': { lines: 93, branches: 100 },
 	'src/core/db/wg-invites.ts': { lines: 100, branches: 88 },

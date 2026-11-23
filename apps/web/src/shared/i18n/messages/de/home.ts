@@ -52,6 +52,17 @@ export default {
 		dismissSolo: 'Später erinnern',
 		addExpense: 'Ausgabe hinzufügen',
 	},
+	inviteCard: {
+		share: 'Link teilen',
+		shareLabel: 'Link teilen: Einladung in {wgName}',
+		validUntil: 'Gilt bis {date}',
+		shared: 'Einladung geteilt',
+		copied: 'Einladungslink kopiert',
+		failed: 'Teilen fehlgeschlagen',
+		checked: 'Link geprüft. Tippe nochmal zum Kopieren.',
+		fresh: 'Neuer Link bereit. Tippe nochmal zum Teilen.',
+		retry: 'Erneut versuchen',
+	},
 	soloInvite: {
 		text: 'Du bist noch allein in der WG.',
 	},
