@@ -3,6 +3,9 @@
 import { type ReactNode, useLayoutEffect, useRef } from 'react';
 import { cn } from '@/shared/lib/cn';
 
+/** Quiet time after the last scroll before a focus scroll counts as finished. */
+const FOCUS_SCROLL_SETTLE_MS = 150;
+
 export function ThumbAction({ children }: { children: ReactNode }) {
 	const spacerRef = useRef<HTMLDivElement>(null);
 	const actionRef = useRef<HTMLDivElement>(null);
@@ -25,7 +28,37 @@ export function ThumbAction({ children }: { children: ReactNode }) {
 		syncHeight();
 		const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(syncHeight);
 		observer?.observe(action);
+
+		// WebKit sometimes stops a smooth focus scroll part way when a layout change lands during
+		// it, leaving the focused element under this bar. Once scrolling has been quiet for a moment,
+		// a covered element is scrolled clear once more.
+		let settleTimer: number | undefined;
+		const revealIfCovered = () => {
+			const target = document.activeElement;
+			if (!(target instanceof HTMLElement) || target === document.body) return;
+			if (action.contains(target) || target.closest('nav, [role="dialog"]')) return;
+			const rect = target.getBoundingClientRect();
+			const top = action.getBoundingClientRect().top;
+			if (rect.bottom > top && rect.top < top + action.offsetHeight) {
+				target.scrollIntoView({ block: 'nearest', behavior: 'instant' });
+			}
+		};
+		const settle = () => {
+			window.clearTimeout(settleTimer);
+			settleTimer = window.setTimeout(revealIfCovered, FOCUS_SCROLL_SETTLE_MS);
+		};
+		const onFocusIn = () => {
+			settle();
+			window.addEventListener('scroll', settle, { passive: true });
+		};
+		const onFocusOut = () => window.removeEventListener('scroll', settle);
+		document.addEventListener('focusin', onFocusIn);
+		document.addEventListener('focusout', onFocusOut);
 		return () => {
+			window.clearTimeout(settleTimer);
+			document.removeEventListener('focusin', onFocusIn);
+			document.removeEventListener('focusout', onFocusOut);
+			window.removeEventListener('scroll', settle);
 			observer?.disconnect();
 			root.style.removeProperty('--thumb-action-space');
 			root.style.removeProperty('scroll-padding-bottom');

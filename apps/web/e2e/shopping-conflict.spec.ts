@@ -336,10 +336,6 @@ test.describe('shopping conflict handling', () => {
 		await page.route(`**/api/wg/${shareCode}/inventory*`, (route) =>
 			route.fulfill({ json: { items: [] } }),
 		);
-		// The test measures where focus scrolling ends, not the animation: with `scroll-behavior:
-		// smooth` WebKit sometimes stops a focus scroll part way when the next layout change lands
-		// (button left 80 px under the fixed action, about 1 run in 100).
-		await page.emulateMedia({ reducedMotion: 'reduce' });
 		await navigateToFeature(page, `/wg/${shareCode}/shopping`);
 		await dismissOnboarding(page);
 
