@@ -18,15 +18,18 @@ gap:
   [Architecture → Database](architecture.md#database)). The Supabase client is used for Auth and
   Storage only, never for tables.
 - `anon` and `authenticated` hold no table, sequence or function privileges in `public`
-  (`0007_data_api_security.sql`, `0016`), and they cannot create objects there. RLS without a policy
-  denies every row on top of that, so a forgotten `GRANT` still exposes nothing.
+  (`0007_data_api_security.sql`, `0016`), and they cannot create objects there. This privilege
+  guard is the main barrier. RLS without a policy adds a second layer for `SELECT`, `INSERT`,
+  `UPDATE` and `DELETE` only: a forgotten `GRANT` on those still returns or changes no rows. RLS
+  does not cover `TRUNCATE`, `REFERENCES` or `TRIGGER`, so those rely on the privilege guard alone.
 - Adding a policy would open a second access path that bypasses the server-side membership and
   idempotency checks. Do not add one unless the Data API becomes a deliberate client interface.
 
 Checked on the production catalog: 31 of 31 tables with RLS, 0 policies, 0 effective privileges for
 `anon` and `authenticated`. `pnpm db:check` (`scripts/db-migrate/catalog-security.mjs`) enforces the
-same rules after every migration, and `tests/data-api-access-db.test.ts` runs `SELECT` and `DELETE`
-on every table as both roles and expects permission denied.
+same rules after every migration, including every table privilege such as `TRUNCATE`, and
+`tests/data-api-access-db.test.ts` runs `SELECT`, `DELETE` and `TRUNCATE` on every table as both
+roles and expects permission denied.
 
 The advisor will keep reporting these 31 findings. They are expected.
 

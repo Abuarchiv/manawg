@@ -41,6 +41,8 @@ test('public tables deny the Data API roles', { skip }, async () => {
 				for (const statement of [
 					`select 1 from public.${table_name} limit 1`,
 					`delete from public.${table_name}`,
+					// RLS does not cover TRUNCATE; only the missing privilege stops it.
+					`truncate public.${table_name}`,
 				]) {
 					await client.query('begin');
 					await client.query(`set local role ${role}`);
