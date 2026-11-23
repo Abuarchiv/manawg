@@ -347,12 +347,12 @@ Before the dispatch:
 2. `PRODUCTION_APP_URL/api/health` answers `ok` and names the running SHA. Note it, and keep the
    image of that SHA on the host: it is the rollback target.
 3. List the migrations the release applies:
-   `git diff --name-only <running SHA> origin/main -- apps/web/drizzle`. Read each one and note
-   whether the running version still works on the migrated schema. Migrations that only add
-   tables, columns, functions or triggers keep it working; ones that drop or rename do not.
+   `git diff --name-only <running SHA> origin/main -- apps/web/drizzle`, and read each one.
 4. Take a fresh database backup: run the **Database nightly** workflow by hand
    (`gh workflow run database-nightly.yml`) and wait for `backup-production` to pass. Its
-   encrypted artifact is the restore point ([Backup and restore](database-recovery.md)).
+   encrypted artifact is the restore point. Restore it into a disposable database and apply the
+   pending migrations there ([Restore the encrypted nightly backup](database-recovery.md#restore-the-encrypted-nightly-backup)),
+   which also rehearses the migration on production data.
 5. The newest `workflow_run` run of `preview.yml` for the main tip passed `db-supabase-preview`,
    so the migrations already applied on the Preview database.
 
@@ -361,13 +361,15 @@ pending migrations in one transaction, so a failed migration leaves production u
 
 Rolling back:
 
-- **Deploy fails or the new version never turns healthy** (the workflow fails before it tags):
-  put the image of the previous SHA back on the host. When step 3 found only additive
-  migrations, that version runs on the migrated schema and nothing else is needed.
-- **The new version damages data, or a migration has to be undone**: migrations are never
-  reversed in place. Restore the backup from step 4 into a new database
-  ([Backup and restore](database-recovery.md)), point the previous version at it and switch
-  over. Writes made after the backup are lost, so decide this quickly.
+- **The migration fails**: nothing changed, production keeps running the previous version. Fix
+  the cause before the next dispatch.
+- **Deploy fails or the new version never turns healthy** (the workflow fails before it tags),
+  **or the new version damages data**: migrations only move forward, and an older version on an
+  already migrated database is not supported ([Updating](self-hosting.md#updating)). Restore the
+  backup from step 4 into a new database
+  ([Restore the encrypted nightly backup](database-recovery.md#restore-the-encrypted-nightly-backup)),
+  run the image of the previous SHA against it and switch over. Writes made after the backup are
+  lost, so decide this quickly.
 - **Nothing failed, but the release is wrong**: fix forward with a new version. A published tag
   is not moved.
 

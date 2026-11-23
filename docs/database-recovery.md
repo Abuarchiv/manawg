@@ -83,6 +83,65 @@ the S3-compatible access that Supabase Storage offers.
 Accounts live in Supabase's `auth` schema. Check that your data dump contains `auth.users`;
 otherwise members cannot sign in after a restore.
 
+### Restore the encrypted nightly backup
+
+The **Database nightly** workflow (`.github/workflows/database-nightly.yml`, also started by
+hand) keeps an artifact `production-database-<run id>` for 90 days. It holds one file,
+`manawg-<UTC time>.tar.gpg`, encrypted for the backup key (`BACKUP_GPG_PUBLIC_KEY`). Inside:
+
+- `database.dump`: `pg_dump --format=custom` of `public`, `drizzle`, `auth` and `storage`,
+  without owners and privileges,
+- `storage/<bucket>/<object>`: every Storage object listed in `storage.objects`.
+
+The backup job only proves that the file decrypts to the same archive. Prove the restore
+yourself, on a machine with the private key, into a database that serves nobody:
+
+```sh
+umask 077
+gh run download <run id> --repo Abuarchiv/manawg --dir backup
+gpg --decrypt backup/*/manawg-*.tar.gpg | tar -x    # database.dump, storage/
+pg_restore --list database.dump | grep -c 'TABLE DATA'
+```
+
+Into a disposable PostgreSQL 17 (for example `docker run --network none postgres:17`), create
+what the dump expects but does not contain, then restore:
+
+```sql
+create role anon nologin;
+create role authenticated nologin;
+create role service_role nologin bypassrls;
+create schema extensions;
+create extension pgcrypto schema extensions;
+create extension "uuid-ossp" schema extensions;
+create schema auth;
+create schema storage;
+create schema drizzle;
+```
+
+```sh
+pg_restore --no-owner --no-privileges --schema=public --schema=drizzle --schema=auth \
+  --schema=storage --dbname=<disposable url> database.dump
+```
+
+The restore must finish without `ERROR` lines. Because the dump carries no privileges, functions
+get PostgreSQL's default `EXECUTE` for `PUBLIC`; take it away again, then let the migration
+runner apply newer migrations and check schema, ledger and security:
+
+```sh
+psql <disposable url> -c 'revoke execute on all functions in schema public from public, anon, authenticated'
+MANAWG_SELF_HOSTED=true DATABASE_MIGRATION_URL=<disposable url> pnpm --filter @manawg/web db:migrate
+```
+
+Check that the counts of `public.wgs`, `public.wg_members`, `auth.users` and `storage.objects`
+match the source, that `storage.objects` has as many rows as `storage/` has files, and that
+`drizzle.__drizzle_migrations` has one row per applied migration.
+
+To recover production from it, create a new Supabase project (never restore over one that still
+serves users), restore as above as `postgres`, upload each `storage/<bucket>/<object>` to the same
+bucket and path with the service key (`POST /storage/v1/object/<bucket>/<object>`), run
+`db:migrate`, then point the app's database and Supabase variables at the new project and
+redeploy. Writes made after the backup are lost. Delete the decrypted files when you are done.
+
 ## Database roles
 
 | Role | Used by | Rights |

@@ -91,7 +91,8 @@ settled.
   still tags only after `/api/health` reports the new version. A misconfigured `PREVIEW_GATE`
   stops the release with an error that names the value it found. See the Releases section of
   `docs/development.md`, which also has the checklist, backup and rollback plan for a
-  self-hosted release.
+  self-hosted release. `docs/database-recovery.md` explains how to restore the encrypted
+  nightly backup.
 - A page nobody has used for five minutes stops refreshing its lists, the chat and the unread
   count, even while it stays in front. The first click, key press or scroll refreshes it at once.
   A tab left open all day no longer sends thousands of requests to the server.
@@ -168,8 +169,7 @@ settled.
 
 - Docker setups pull the `0.3.0` image and the new `compose.yaml` (password breach check in
   Supabase Auth) and restart; `setup` applies the migrations `0044`, `0045` and `0046` on start.
-  Take a backup first (`./docker/backup.sh`). The migrations only add a column, a table and
-  triggers and convert old activity log entries, so 0.2.0 still runs on the migrated database.
+  Take a backup first (`./docker/backup.sh`).
 
 ## [0.2.0] - 2026-11-09
 
