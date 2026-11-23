@@ -37,10 +37,19 @@ let admin: pg.Client;
 let client: pg.Client;
 let prefixDir = '';
 
-// The member rows as they were before the upgrade, without the column the upgrade adds.
-const MEMBER_ROWS = `select id, wg_id, auth_user_id, name, role, color, push_opt_in, locale,
-	notify_statement_email, deactivated_at, created_at
-	from public.wg_members order by id`;
+// Complete records, so a change to any existing column shows up. The upgrade comparison leaves
+// out only the column 0045 adds; the rerun comparison includes it.
+const WG_ROWS = 'select to_jsonb(w) as row from public.wgs as w order by id';
+const MEMBER_ROWS = 'select to_jsonb(m) as row from public.wg_members as m order by id';
+const MEMBER_ROWS_BEFORE_0045 = `select to_jsonb(m) - 'notify_onboarding_email' as row
+	from public.wg_members as m order by id`;
+
+async function snapshot() {
+	return {
+		wgs: (await client.query(WG_ROWS)).rows,
+		members: (await client.query(MEMBER_ROWS)).rows,
+	};
+}
 
 /** The production migrator CLI, exactly as `pnpm db:migrate` runs it on a self-hosted stack. */
 async function migrateEntryPoint() {
@@ -100,21 +109,65 @@ before(async () => {
 			`Upgrade WG ${index}`,
 		]);
 	}
+	// Settings vary per member (and differ from the defaults), so overwriting any column is visible.
 	const members = [
-		[wgs[0], randomUUID(), 'Ada', 'admin', 'de', true, null],
-		[wgs[0], randomUUID(), 'Ben', 'member', 'en', false, null],
-		[wgs[0], null, 'Cleo', 'member', 'es', true, null],
-		[wgs[1], randomUUID(), 'Dana', 'admin', 'en', true, null],
-		[wgs[1], randomUUID(), 'Emil', 'member', 'de', false, '2026-11-01T10:00:00Z'],
+		[wgs[0], randomUUID(), 'Ada', 'admin', 'de', '#e11d48', true, 22, 7, null],
+		[wgs[0], randomUUID(), 'Ben', 'member', 'en', null, false, null, null, null],
+		[wgs[0], null, 'Cleo', 'member', 'es', '#2563eb', true, 23, 6, null],
+		[wgs[1], randomUUID(), 'Dana', 'admin', 'en', null, false, 21, 8, null],
+		[
+			wgs[1],
+			randomUUID(),
+			'Emil',
+			'member',
+			'de',
+			'#16a34a',
+			true,
+			null,
+			null,
+			'2026-11-01T10:00Z',
+		],
 	];
-	for (const [wgId, userId, name, role, locale, statementEmail, deactivatedAt] of members) {
+	for (const [index, member] of members.entries()) {
+		const [wgId, userId, name, role, locale, color, flag, quietStart, quietEnd, deactivatedAt] =
+			member;
+		const odd = index % 2 === 1;
 		await client.query(
 			`insert into public.wg_members
-				(wg_id, auth_user_id, name, role, locale, notify_statement_email, deactivated_at)
-			values ($1, $2, $3, $4, $5, $6, $7)`,
-			[wgId, userId, name, role, locale, statementEmail, deactivatedAt],
+				(wg_id, auth_user_id, name, role, locale, color, push_opt_in,
+				 notify_announcements, notify_chores, notify_expenses, notify_shopping,
+				 notify_inventory, notify_reminders, notify_chat, notify_events,
+				 notify_statement_email, quiet_start_hour, quiet_end_hour, deactivated_at,
+				 created_at)
+			values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17,
+				$18, $19, $20)`,
+			[
+				wgId,
+				userId,
+				name,
+				role,
+				locale,
+				color,
+				flag,
+				!flag,
+				odd,
+				!odd,
+				flag,
+				odd,
+				!flag,
+				!odd,
+				flag,
+				!flag,
+				quietStart,
+				quietEnd,
+				deactivatedAt,
+				`2026-10-0${index + 1}T12:00Z`,
+			],
 		);
 	}
+	await client.query(
+		"update public.wgs set updated_at = '2026-10-15T09:30Z', created_at = '2026-09-01T08:00Z'",
+	);
 });
 
 after(async () => {
@@ -129,8 +182,10 @@ after(async () => {
 test(`upgrading a populated database through ${TARGET} keeps every membership`, {
 	skip,
 }, async () => {
-	const { rows: before } = await client.query(MEMBER_ROWS);
-	assert.equal(before.length, 5);
+	const wgsBefore = (await client.query(WG_ROWS)).rows;
+	const membersBefore = (await client.query(MEMBER_ROWS)).rows;
+	assert.equal(wgsBefore.length, 2);
+	assert.equal(membersBefore.length, 5);
 	const { rows: column } = await client.query(
 		`select 1 from information_schema.columns
 		 where table_schema = 'public' and table_name = 'wg_members' and column_name = 'notify_onboarding_email'`,
@@ -139,9 +194,8 @@ test(`upgrading a populated database through ${TARGET} keeps every membership`, 
 
 	assert.match(await migrateEntryPoint(), /\[migrate\] Up to date\./);
 
-	assert.deepEqual((await client.query(MEMBER_ROWS)).rows, before);
-	const { rows: wgCount } = await client.query('select count(*)::int as count from public.wgs');
-	assert.equal(wgCount[0].count, 2);
+	assert.deepEqual((await client.query(WG_ROWS)).rows, wgsBefore);
+	assert.deepEqual((await client.query(MEMBER_ROWS_BEFORE_0045)).rows, membersBefore);
 
 	const { rows: definition } = await client.query(
 		`select is_nullable, column_default from information_schema.columns
@@ -172,11 +226,12 @@ test(`upgrading a populated database through ${TARGET} keeps every membership`, 
 });
 
 test('migrating the upgraded database again changes nothing', { skip }, async () => {
-	const members = (await client.query(MEMBER_ROWS)).rows;
+	const upgraded = await snapshot();
+	assert.ok(upgraded.members.every(({ row }) => row.notify_onboarding_email === true));
 	const applied = await ledgerCount();
 
 	assert.match(await migrateEntryPoint(), /\[migrate\] Verified up to date\./);
 
-	assert.deepEqual((await client.query(MEMBER_ROWS)).rows, members);
+	assert.deepEqual(await snapshot(), upgraded);
 	assert.equal(await ledgerCount(), applied);
 });
