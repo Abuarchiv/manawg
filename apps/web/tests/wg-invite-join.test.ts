@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { mock, test } from 'node:test';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { NextRequest } from 'next/server';
 import pg from 'pg';
@@ -21,6 +21,9 @@ if (url) {
 		'TEST_DATABASE_URL must be a loopback database',
 	);
 }
+// The route handlers' pool connects under this name, so a test can see when they wait on a lock.
+const appName = `wg-invite-join-${process.pid}`;
+const appUrl = url && `${url}${url.includes('?') ? '&' : '?'}application_name=${appName}`;
 
 mock.module('@/core/auth/server', {
 	namedExports: {
@@ -63,8 +66,8 @@ interface Fixture {
 }
 
 async function withFixture(run: (fixture: Fixture) => Promise<void>) {
-	process.env.POSTGRES_URL = url;
-	process.env.DATABASE_URL = url;
+	process.env.POSTGRES_URL = appUrl;
+	process.env.DATABASE_URL = appUrl;
 	const membersRoute = await import('../src/app/api/wg/[code]/members/route.ts');
 	const previewRoute = await import('../src/app/api/wg/invites/[token]/route.ts');
 	const guestPreviewRoute = await import('../src/app/api/wg/invites/[token]/preview/route.ts');
@@ -498,5 +501,63 @@ test('the invite card answers the limit instead of a 21st link', { skip }, async
 		const response = await f.current(f.a.memberUserId, f.a.code);
 		assert.equal(response.status, 409);
 		assert.equal(((await response.json()) as Json).error, 'invite_limit_reached');
+	});
+});
+
+test('two invite cards opened at once share one fresh link', { skip }, async () => {
+	await withFixture(async (f) => {
+		// A second connection holds SHARE on wg_invites: reads pass, inserts wait. Both requests
+		// park on a lock before they can commit a link, then race once it is released.
+		const holder = new pg.Client({ connectionString: url });
+		await holder.connect();
+		let racing: Promise<Response[]> | undefined;
+		try {
+			await holder.query('begin');
+			await holder.query('lock table wg_invites in share mode');
+			const done = [false, false];
+			racing = Promise.all(
+				done.map((_, n) =>
+					f.current(f.a.memberUserId, f.a.code).finally(() => {
+						done[n] = true;
+					}),
+				),
+			);
+			const deadline = Date.now() + 5_000;
+			for (;;) {
+				// Polled outside the holder's transaction, which would keep one stats snapshot.
+				const { rows } = await f.database.execute<{ waiting: number }>(
+					sql`select count(*)::int as waiting from pg_stat_activity
+					    where application_name = ${appName} and wait_event_type = 'Lock'`,
+				);
+				if (rows[0]?.waiting === 2) break;
+				assert.ok(!done.includes(true), 'a request finished before both waited on the lock');
+				assert.ok(Date.now() < deadline, 'both requests did not wait on the lock within 5 s');
+			}
+			await holder.query('commit');
+			const responses = await racing;
+
+			type Current = { invite: { id: string; url: string } | null };
+			const bodies = await Promise.all(
+				responses.map(async (response) => {
+					assert.equal(response.status, 200);
+					return (await response.json()) as Current;
+				}),
+			);
+			const [one, two] = bodies.map((body) => body.invite);
+			assert.ok(one && two);
+			assert.equal(two.id, one.id, 'both tabs show the same link');
+			const rows = await f.database.select().from(wgInvites).where(eq(wgInvites.wgId, f.a.id));
+			assert.deepEqual(
+				rows.map((row) => row.id),
+				[one.id],
+				'exactly one invite row was committed',
+			);
+			const token = one.url.split('/invite/')[1] ?? '';
+			assert.equal((await f.preview(randomUUID(), token)).status, 200, 'the shared link works');
+		} finally {
+			// Closing the holder rolls its transaction back, so a parked request can finish.
+			await holder.end();
+			await Promise.allSettled([racing]);
+		}
 	});
 });
