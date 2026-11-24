@@ -125,13 +125,12 @@ function ToastItem({ toast }: { toast: Toast }) {
 		button.focus({ preventScroll: true });
 		return () => {
 			const active = document.activeElement;
-			if (
-				returnTo instanceof HTMLElement &&
-				returnTo.isConnected &&
-				(active === button || active === document.body)
-			) {
-				returnTo.focus({ preventScroll: true });
-			}
+			if (active !== button && active !== document.body) return;
+			// The element focus came from may be gone: a completed chore leaves its row, and WebKit
+			// then reports the body as active without any blur. The page's <main> is the next best place.
+			const usable =
+				returnTo instanceof HTMLElement && returnTo.isConnected && returnTo !== document.body;
+			(usable ? returnTo : document.getElementById('main'))?.focus({ preventScroll: true });
 		};
 	}, [hasAction]);
 
