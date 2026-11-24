@@ -4,6 +4,7 @@
 | --- | --- |
 | Run ManaWG for my flat with Docker, or on Vercel and Supabase | [Self-hosting](self-hosting.md) |
 | Restore a database after data loss | [Database recovery](database-recovery.md) |
+| Check why the database advisor findings are accepted | [Database advisor review](database-access-review.md) |
 | See what changed in a release, or update | [CHANGELOG.md](../CHANGELOG.md), [Updating](self-hosting.md#updating) |
 | Cut a release | [Releases](development.md#releases) |
 | Make my first pull request | [CONTRIBUTING.md](../CONTRIBUTING.md) |
