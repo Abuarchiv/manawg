@@ -26,6 +26,8 @@ settled.
 - After closing a new-expense form that a shortcut link opened (`?new=1`) by saving or by
   discarding, the system Back button no longer opens the empty form again. It goes to the page
   before the link. The same holds for links that prefill the form.
+- In Safari, keyboard focus no longer drops to the page background after you complete a chore
+  with the keyboard and the Undo notification goes away. It now moves to the page's main content.
 
 ## [0.3.0] - 2026-11-23
 
