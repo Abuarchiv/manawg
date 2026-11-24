@@ -8,11 +8,6 @@ settled.
 
 ## [Unreleased]
 
-### Fixed
-
-- In Safari, keyboard focus no longer drops to the page background after you complete a chore
-  with the keyboard and the Undo notification goes away. It now moves to the page's main content.
-
 ### Changed
 
 - Opening an invitation that has expired, been revoked or been used up now tells you to ask the
@@ -28,6 +23,8 @@ settled.
 
 - Discarding a new expense opened from a shortcut link could bring the empty form straight back
   on a slow phone. It now stays closed.
+- In Safari, keyboard focus no longer drops to the page background after you complete a chore
+  with the keyboard and the Undo notification goes away. It now moves to the page's main content.
 
 ## [0.3.0] - 2026-11-23
 
