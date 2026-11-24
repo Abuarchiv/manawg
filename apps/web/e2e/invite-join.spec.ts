@@ -296,7 +296,7 @@ test.describe('invitation link', () => {
 			[
 				'de',
 				'Einladung nicht gültig',
-				'Diese Einladung ist nicht mehr gültig. Bitte die Person, die dich eingeladen hat, um einen neuen Link.',
+				'Diese Einladung ist nicht mehr gültig. Frag die Person, die dich eingeladen hat, nach einem neuen Link.',
 			],
 			[
 				'en',

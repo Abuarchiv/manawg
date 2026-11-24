@@ -109,7 +109,7 @@ export default {
 		badInvite:
 			'Dieser Einladungslink ist unvollständig oder ungültig. Frag die WG nach einem neuen Link.',
 		inviteExpired:
-			'Diese Einladung ist nicht mehr gültig. Bitte die Person, die dich eingeladen hat, um einen neuen Link.',
+			'Diese Einladung ist nicht mehr gültig. Frag die Person, die dich eingeladen hat, nach einem neuen Link.',
 		deletionPending:
 			'Dein Konto wird gerade gelöscht. Neue WGs oder Beitritte sind nicht mehr möglich.',
 		wgNotFound: 'Diese WG gibt es nicht.',
@@ -150,7 +150,7 @@ export default {
 		inviteInvalid:
 			'Dieser Einladungslink stimmt nicht. Prüfe, ob er vollständig kopiert wurde, oder bitte die Person, die dich eingeladen hat, um einen neuen Link.',
 		inviteUnavailable:
-			'Diese Einladung ist nicht mehr gültig oder der Link stimmt nicht. Bitte die Person, die dich eingeladen hat, um einen neuen Link.',
+			'Diese Einladung ist nicht mehr gültig oder der Link stimmt nicht. Frag die Person, die dich eingeladen hat, nach einem neuen Link.',
 	},
 	start: {
 		titleSignIn: 'Anmelden',
