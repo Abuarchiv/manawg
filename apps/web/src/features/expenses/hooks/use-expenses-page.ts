@@ -1,8 +1,8 @@
 'use client';
 
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useToast } from '@/components/ui/Toast';
 import type { ActionNotice } from '@/components/wg/ActionNoticeBanner';
 import { useWg } from '@/components/wg/WgContextProvider';
@@ -29,10 +29,9 @@ import {
 	settledSharesChangedByEdit,
 	splitCandidates,
 } from '@/features/expenses/expense-split-input';
+import { useClearDeepLinkOnClose } from '@/features/expenses/hooks/use-clear-deep-link';
 import { useExpenseForm } from '@/features/expenses/hooks/use-expense-form';
-import { PREFILL_PARAMS } from '@/features/expenses/hooks/use-expense-prefill-handoff';
 import type { Message } from '@/shared/i18n/message';
-import { markOverlayNavigation } from '@/shared/lib/use-dismiss-on-back';
 import type { ActionNotifier, ExpensePageContext } from './expense-page-context';
 import { useExpenseFormSupport } from './use-expense-form-support';
 import { useExpenseRowActions } from './use-expense-row-actions';
@@ -55,8 +54,6 @@ export function useExpensesPage() {
 	const tCategories = useTranslations('expenses.categories');
 	const toast = useToast();
 	const searchParams = useSearchParams();
-	const router = useRouter();
-	const pathname = usePathname();
 	const highlightedId = searchParams.get('highlight');
 	const openNewExpense = searchParams.get('new') === '1';
 	const recurringId = searchParams.get('recurring');
@@ -143,27 +140,7 @@ export function useExpensesPage() {
 		if (openNewExpense) setShowForm(true);
 	}, [openNewExpense, setShowForm]);
 
-	// Remove the deep-link parameter only on close (cancel, save): a reload with
-	// the form open restores it again, but afterwards it does not reopen unprompted.
-	const prevShowFormRef = useRef(form.showForm);
-	useEffect(() => {
-		const wasOpen = prevShowFormRef.current;
-		prevShowFormRef.current = form.showForm;
-		if (!wasOpen || form.showForm) return;
-		const next = new URLSearchParams(searchParams.toString());
-		let changed = false;
-		for (const key of PREFILL_PARAMS) {
-			if (next.has(key)) {
-				next.delete(key);
-				changed = true;
-			}
-		}
-		if (!changed) return;
-		const query = next.toString();
-		// Keeps the closing overlays' back() from overtaking a slow commit and reopening the form.
-		markOverlayNavigation();
-		router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
-	}, [form.showForm, searchParams, router, pathname]);
+	useClearDeepLinkOnClose(form.showForm);
 
 	const expenseCount = expenses.length;
 	useEffect(() => {
