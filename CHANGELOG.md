@@ -8,6 +8,11 @@ settled.
 
 ## [Unreleased]
 
+### Fixed
+
+- In Safari, keyboard focus no longer drops to the page background after you complete a chore
+  with the keyboard and the Undo notification goes away. It now moves to the page's main content.
+
 ### Changed
 
 - The **Docker** workflow checks the new-password rule against the GoTrue image in `compose.yaml`
