@@ -37,7 +37,11 @@ session refresh against real Supabase and real PostgreSQL instead of fixtures.
     after deletion 404) and a password set before the address is confirmed (pre-registered
     directly at Supabase, then confirmed by the owner through sign-up or a code request: the old
     password must fail, a single sign-up lands on the choose-a-password page, and accounts created
-    confirmed keep their password).
+    confirmed keep their password). The choose-a-password form is filled in the browser: four emoji
+    stay in the form, a mocked `weak_password` answer shows the translated message, and 8 code
+    points with emoji are saved and accepted by GoTrue. Against the Docker stack, set
+    `GOTRUE_SMTP_MAX_FREQUENCY: 1s`, otherwise the second confirmation mail to the same address
+    is not sent.
     `signup-flows.mjs`: registration with an e-mail code (new address, wrong, reused and expired code,
     the same answer for an existing address, send frequency, an address pre-registered with a
     password by someone else, choosing a password afterwards). Start Auth with
