@@ -19,6 +19,11 @@ settled.
   passwords below and at the minimum, with emoji, into the reset form and fails when the form and
   GoTrue judge their length differently, or when GoTrue is not running.
 
+### Fixed
+
+- Discarding a new expense opened from a shortcut link could bring the empty form straight back
+  on a slow phone. It now stays closed.
+
 ## [0.3.0] - 2026-11-23
 
 ### Added
