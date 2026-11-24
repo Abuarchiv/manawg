@@ -4,7 +4,6 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useEffect, useState } from 'react';
-import { NEW_PASSWORD_MIN_LENGTH } from '@/components/auth/auth-form-shared';
 import { PasswordResetRequest } from '@/components/auth/PasswordResetRequest';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -12,11 +11,8 @@ import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '@/c
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
 import { useToast } from '@/components/ui/Toast';
-import {
-	isSamePasswordError,
-	isWeakPasswordError,
-	WEAK_PASSWORD_MESSAGE,
-} from '@/core/auth/password-errors';
+import { newPasswordFailure } from '@/core/auth/password-errors';
+import { isNewPasswordTooShort, NEW_PASSWORD_MIN_LENGTH } from '@/core/auth/password-rules';
 import { useMessage } from '@/shared/i18n/message';
 import { cn } from '@/shared/lib/cn';
 
@@ -54,12 +50,9 @@ export function PasswordResetForm({ recoveryRequested, continueTo }: PasswordRes
 	async function submit(event: React.FormEvent<HTMLFormElement>): Promise<void> {
 		event.preventDefault();
 		if (state !== 'ready') return;
-		if (password.length < NEW_PASSWORD_MIN_LENGTH || password !== confirmation) {
-			setError(
-				password.length < NEW_PASSWORD_MIN_LENGTH
-					? t('reset.tooShort', { min: NEW_PASSWORD_MIN_LENGTH })
-					: t('mismatch'),
-			);
+		const tooShort = isNewPasswordTooShort(password);
+		if (tooShort || password !== confirmation) {
+			setError(tooShort ? t('reset.tooShort', { min: NEW_PASSWORD_MIN_LENGTH }) : t('mismatch'));
 			return;
 		}
 		clearErrors();
@@ -75,13 +68,9 @@ export function PasswordResetForm({ recoveryRequested, continueTo }: PasswordRes
 			toast.success(t('reset.saved'));
 			router.replace(continueTo);
 		} catch (error) {
-			if (isWeakPasswordError(error)) setError(message(WEAK_PASSWORD_MESSAGE));
-			// Supabase rejects reusing the current password; a new link would not change that.
-			else if (isSamePasswordError(error)) {
-				setError(t('reset.same'));
-			} else {
-				setServerError(t('reset.failed'));
-			}
+			const failure = newPasswordFailure(error);
+			if (failure) setError(message(failure));
+			else setServerError(t('reset.failed'));
 			setState('ready');
 		}
 	}

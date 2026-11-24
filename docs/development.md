@@ -172,6 +172,7 @@ More scripts in `apps/web/package.json`:
 | `pnpm --filter @manawg/web test:e2e:account-delete-db` | Account deletion against a disposable loopback Postgres in `ACCOUNT_DELETE_TEST_URL` |
 | `pnpm --filter @manawg/web test:db` | Database-backed unit tests against the loopback Postgres in `TEST_DATABASE_URL` (exits 2 when it is unset) |
 | `pnpm --filter @manawg/web test:db-timeouts` | Runtime pool timeouts against a throwaway local Postgres (`RUN_DB_TIMEOUT_INTEGRATION=1` is set by the script) |
+| `pnpm --filter @manawg/web test:db-upgrade` | Populated upgrade rehearsal: seeded memberships on the schema before `0045`, upgraded and then migrated again through `scripts/db-migrate.mjs` (exits 2 when `UPGRADE_TEST_DATABASE_URL` is unset) |
 | `pnpm --filter @manawg/web test:coverage` | Every unit and database suite in one run with coverage, the pool timeout case included (needs `TEST_DATABASE_URL`, `initdb` and `pg_ctl`). Writes `coverage/lcov.info` and `coverage/tests.tap`, then `scripts/check-coverage-floor.mjs` fails on a money or invite file below its floor and on any skipped test. Run in `database.yml` |
 | `pnpm --filter @manawg/web bundle:check` | Bundle budget (`scripts/check-bundle-budget.mjs`, needs a build) |
 | `pnpm --filter @manawg/web analytics:check` | PostHog privacy contract (`scripts/check-analytics-privacy.mjs`) |
@@ -195,6 +196,7 @@ These tests skip themselves unless their variable is set. `pnpm test:unit` and `
 | --- | --- | --- | --- |
 | `TEST_DATABASE_URL` | The database-backed suites listed in the `test:db` script of `apps/web/package.json` (scope checks per feature, ledgers, locks, invites, cron writes) | `TEST_DATABASE_URL=postgresql://postgres@127.0.0.1:55432/manawg_test pnpm --filter @manawg/web test:db`. The URL must be a disposable loopback Postgres prepared with `scripts/test-db-setup.mjs` | Yes, in `database.yml` |
 | `RUN_DB_TIMEOUT_INTEGRATION` | The pool timeout case in `tests/runtime-pool.test.ts` | `pnpm --filter @manawg/web test:db-timeouts` (needs `initdb` and `pg_ctl` on the PATH and a non-root user) | Yes, in `database.yml` |
+| `UPGRADE_TEST_DATABASE_URL` | The populated upgrade rehearsal in `tests/upgrade/` | `UPGRADE_TEST_DATABASE_URL=postgresql://postgres@127.0.0.1:55432/postgres pnpm --filter @manawg/web test:db-upgrade`. A loopback Postgres server whose user may create databases; the test creates and drops its own | Yes, in `database.yml` |
 | `ACCOUNT_DELETE_TEST_URL` | `e2e/account-delete-db-*.spec.ts` (account deletion against real data) | `ACCOUNT_DELETE_TEST_URL=postgresql://postgres@127.0.0.1:55432/manawg_test pnpm --filter @manawg/web test:e2e:account-delete-db` (loopback host and explicit port required) | Yes, in `database.yml` |
 | `OCR_RUNTIME_E2E` | The real Tesseract worker proof in `e2e/expense-ui-form.spec.ts` | `OCR_RUNTIME_E2E=true pnpm --filter @manawg/web test:e2e:fixtures e2e/expense-ui-form.spec.ts` | No, run by hand. It needs no network (the worker, WASM core and models come from the app's `public/tesseract`, copied from `node_modules` by `next.config.ts`) but loads the real OCR engine, which is slow |
 
@@ -330,6 +332,55 @@ container must report the commit SHA as `version` in `/api/health`, which reads
 URL secret, because anyone who has it can start a deployment. When the deploy fails or the new
 version never turns healthy, the workflow fails before it tags, so roll back on the host and fix
 the cause before the next dispatch.
+
+With `PREVIEW_GATE=database` the release never calls Vercel: it pushes no `preview-main`, waits
+for no Vercel deployment and posts only `PRODUCTION_DEPLOY_HOOK`. Keep it that way while
+production is self-hosted. A Vercel production deployment would run the crons of
+`apps/web/vercel.json` a second time against the same database, next to the self-hosted `cron`
+service.
+
+#### Releasing a self-hosted production
+
+Before the dispatch:
+
+1. `PREVIEW_GATE` is `database` (`gh variable list`) and the environment `Production` has
+   `PRODUCTION_DEPLOY_HOOK` (`gh secret list --env Production`). A `POST` to the hook path with a
+   wrong token must answer `404`; never test it with the real token, which deploys.
+2. `PRODUCTION_APP_URL/api/health` answers `ok` and names the running SHA. Note it, and keep the
+   image of that SHA on the host: it is the rollback target.
+3. List the migrations the release applies:
+   `git diff --name-only <running SHA> origin/main -- apps/web/drizzle`, and read each one.
+4. Take a fresh database backup: run the **Database nightly** workflow by hand
+   (`gh workflow run database-nightly.yml`) and wait for `backup-production` to pass. Its
+   encrypted artifact is the restore point, taken before the migration. Restore it into a
+   disposable database
+   ([Restore the encrypted nightly backup](database-recovery.md#restore-the-encrypted-nightly-backup)):
+   `db:check` from the running SHA must pass on it (it is the rollback state), and `db:migrate`
+   from the main tip must apply the pending migrations on it (a rehearsal on production data).
+5. The newest `workflow_run` run of `preview.yml` for the main tip passed `db-supabase-preview`,
+   so the migrations already applied on the Preview database.
+
+During the release, the workflow stops at the first failing stage. `db:migrate` applies all
+pending migrations in one transaction, so a failed migration leaves production unchanged.
+
+Rolling back:
+
+- **The migration fails**: nothing changed, production keeps running the previous version. Fix
+  the cause before the next dispatch.
+- **Deploy fails or the new version never turns healthy** (the workflow fails before it tags),
+  **or the new version damages data**: migrations only move forward, and an older version on an
+  already migrated database is not supported ([Updating](self-hosting.md#updating)). Restore the
+  backup from step 4 into a new Supabase project or database
+  ([Into an initialized Supabase database](database-recovery.md#into-an-initialized-supabase-database)).
+  It holds the schema from before the migration: do not run `db:migrate` from the new version
+  on it. Check it with `db:check` from a checkout of the previous SHA, run the image of that SHA
+  against it and switch over. Writes made after the backup are
+  lost, so decide this quickly.
+- **Nothing failed, but the release is wrong**: fix forward with a new version. A published tag
+  is not moved.
+
+After the release: `/api/health` reports `status` and `database` `ok` and `version` equal to
+the tagged SHA, the GitHub release exists and `docker.yml` started for the tag.
 
 ## Cron jobs
 

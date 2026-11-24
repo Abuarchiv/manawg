@@ -39,8 +39,16 @@ export function isWeakPasswordError(error: unknown): boolean {
 	);
 }
 
-export function isSamePasswordError(error: unknown): boolean {
+function isSamePasswordError(error: unknown): boolean {
 	return (
 		error !== null && typeof error === 'object' && Reflect.get(error, 'code') === 'same_password'
 	);
+}
+
+/** The field message for a rejected new password, or null when a new link is the way out. */
+export function newPasswordFailure(error: unknown): Message | null {
+	if (isWeakPasswordError(error)) return WEAK_PASSWORD_MESSAGE;
+	// Supabase rejects reusing the current password; a new link would not change that.
+	if (isSamePasswordError(error)) return { key: 'auth.reset.same' };
+	return null;
 }

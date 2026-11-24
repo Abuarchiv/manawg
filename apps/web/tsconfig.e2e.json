@@ -9,6 +9,7 @@
 		"src/**/*.d.ts",
 		"e2e/**/*.ts",
 		"tests/*.test.ts",
+		"tests/upgrade/*.test.ts",
 		"playwright.config.ts",
 		"playwright.webkit-fixtures.config.ts"
 	],

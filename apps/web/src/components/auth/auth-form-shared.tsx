@@ -5,18 +5,6 @@ import { type Message, useMessage } from '@/shared/i18n/message';
 
 export { isValidEmail } from './email-format';
 
-/**
- * Minimum for passwords chosen now (sign-up, reset). GoTrue enforces the same value through
- * GOTRUE_PASSWORD_MIN_LENGTH (compose.yaml) and minimum_password_length (real-stack config).
- */
-export const NEW_PASSWORD_MIN_LENGTH = 8;
-
-/**
- * Minimum for signing in. Accounts created before the minimum was raised may still use
- * 6 characters, so it stays lower than NEW_PASSWORD_MIN_LENGTH.
- */
-export const SIGN_IN_PASSWORD_MIN_LENGTH = 6;
-
 /** The request in flight; one at a time across all sign-in forms. */
 export type BusyAction =
 	| 'email-sign-in'
