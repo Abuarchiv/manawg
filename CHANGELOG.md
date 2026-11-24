@@ -15,6 +15,12 @@ settled.
   passwords below and at the minimum, with emoji, into the reset form and fails when the form and
   GoTrue judge their length differently, or when GoTrue is not running.
 
+### Fixed
+
+- After closing a new-expense form that a shortcut link opened (`?new=1`) by saving or by
+  discarding, the system Back button no longer opens the empty form again. It goes to the page
+  before the link. The same holds for links that prefill the form.
+
 ## [0.3.0] - 2026-11-23
 
 ### Added

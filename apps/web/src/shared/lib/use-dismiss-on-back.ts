@@ -23,6 +23,15 @@ let nextId = 0;
 // Number of popstates caused by our own history.back() that must be ignored.
 let ownPops = 0;
 let listening = false;
+// Markers of overlays that were closed through the UI and still sit in history, innermost on
+// top. They are popped one by one (a back() settles asynchronously) by a single deferred pass,
+// so nested overlays closing together (form + discard confirmation) leave no entry behind.
+const closedMarkers = new Set<number>();
+let popTimer: ReturnType<typeof setTimeout> | undefined;
+const settledCallbacks: Array<() => void> = [];
+const POP_DELAY_MS = 50;
+// A pop that never reports back must not hold a waiting caller forever.
+const SETTLE_TIMEOUT_MS = 1000;
 // When an overlay action starts a navigation, the router replaces the marker
 // entry itself once the new route has loaded. That can take longer than any
 // fixed delay on a slow device, so the cleanup must not pop the entry in the
@@ -39,9 +48,45 @@ export function overlayNavigationPending(): boolean {
 	return Date.now() - navigationStartedAt < NAVIGATION_GRACE_MS;
 }
 
+// Pops the topmost closed marker; once none is left (or the router owns the history), the callers
+// waiting for a settled history run.
+function popClosedMarker() {
+	const id: unknown = window.history.state?.overlayId;
+	if (typeof id === 'number' && closedMarkers.delete(id) && !overlayNavigationPending()) {
+		ownPops++;
+		window.history.back();
+		return;
+	}
+	closedMarkers.clear();
+	for (const callback of settledCallbacks.splice(0)) callback();
+}
+
+/**
+ * Runs `callback` once the closing overlays have given their marker entries back to history, so
+ * the current entry is the one underneath them again. A caller that rewrites the URL after
+ * closing an overlay (dropping a `?new=1` parameter) replaces the original entry that way
+ * instead of the topmost marker, which would leave the old URL one Back press away.
+ */
+export function afterOverlayHistorySettled(callback: () => void): void {
+	if (popTimer === undefined && ownPops === 0) {
+		callback();
+		return;
+	}
+	let done = false;
+	const run = () => {
+		if (done) return;
+		done = true;
+		clearTimeout(fallback);
+		callback();
+	};
+	const fallback = setTimeout(run, SETTLE_TIMEOUT_MS);
+	settledCallbacks.push(run);
+}
+
 function onPopState() {
 	if (ownPops > 0) {
 		ownPops--;
+		if (ownPops === 0) popClosedMarker();
 		return;
 	}
 	// The browser already left the entry; the overlay only has to close.
@@ -62,7 +107,8 @@ function onPopState() {
  * replaces the marker entry once it commits; the caller announces it through
  * `markOverlayNavigation` so no back() is issued while it is pending.
  *
- * Known limit: closing an outer overlay before an inner one leaves a stale entry.
+ * Overlays that close together pop their markers one after the other. Known limit: closing an
+ * outer overlay while an inner one stays open leaves a stale entry.
  */
 export function useDismissOnBack(
 	open: boolean,
@@ -92,13 +138,12 @@ export function useDismissOnBack(
 			const i = stack.indexOf(entry);
 			if (i < 0) return; // popped by the browser already
 			stack.splice(i, 1);
+			closedMarkers.add(entry.id);
 			// Defer so a navigation started by the same click can replace the state first.
-			setTimeout(() => {
-				if (overlayNavigationPending()) return;
-				if (window.history.state?.overlayId !== entry.id) return;
-				ownPops++;
-				window.history.back();
-			}, 50);
+			popTimer ??= setTimeout(() => {
+				popTimer = undefined;
+				popClosedMarker();
+			}, POP_DELAY_MS);
 		};
 	}, [open]);
 }
