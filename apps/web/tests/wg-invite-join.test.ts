@@ -182,13 +182,22 @@ for (const [label, patch] of unusable) {
 			await f.database.update(wgInvites).set(patch).where(eq(wgInvites.id, id));
 			const visitor = randomUUID();
 
+			// The answers carry the reason only: no WG name, share code or inviter.
+			const gone = { error: 'invite_expired', code: 'invite_expired' };
 			const preview = await f.preview(visitor, token);
 			assert.equal(preview.status, 410);
-			assert.equal(await codeOf(preview), 'invite_expired');
+			assert.deepEqual(await preview.json(), gone);
+
+			const guest = await f.guestPreview(token);
+			assert.equal(guest.status, 404);
+			assert.deepEqual(await guest.json(), {
+				error: 'invite_unavailable',
+				code: 'invite_unavailable',
+			});
 
 			const joined = await f.join(visitor, f.a.code, token);
 			assert.equal(joined.status, 410);
-			assert.equal(await codeOf(joined), 'invite_expired');
+			assert.deepEqual(await joined.json(), gone);
 			assert.equal(await f.memberCount(f.a.id), 1);
 		});
 	});

@@ -50,6 +50,9 @@ session refresh against real Supabase and real PostgreSQL instead of fixtures.
     `signup-disabled.mjs` runs against an Auth service started with `GOTRUE_DISABLE_SIGNUP=true` and
     checks that a new and an existing address get the same answer.
     `journey.mjs` registers with the code and returns to the invitation.
+    `password-contract.mjs` runs against the Docker stack instead (`./docker/smoke.sh
+    password-contract`): new passwords below and at the minimum, with emoji, in the reset form,
+    each outcome compared with what the running GoTrue image says.
 11. Production rate limits: locally the limiter is open (`VERCEL_ENV=development`). For a run with
     real limits start an Upstash-compatible Redis
     (`docker run -d --name srh-redis redis:7-alpine` and

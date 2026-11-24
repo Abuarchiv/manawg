@@ -47,6 +47,11 @@ default Mailpit setup. It signs up a test account, creates a WG, uploads a pictu
 scheduled jobs and backs up and restores the data. It leaves the test data and a backup in
 `backups/` behind, so run it on a local instance, not on one people use.
 
+Before you change the GoTrue image in `compose.yaml`, also run `./docker/smoke.sh password-contract`
+from a checkout with `pnpm install` and `pnpm --filter @manawg/web exec playwright install chromium`.
+It types new passwords below and at the minimum, with emoji, into the reset form in Chromium and
+fails when the form and the running GoTrue judge their length differently.
+
 ### What runs
 
 | Service | Image | Does |

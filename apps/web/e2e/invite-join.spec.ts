@@ -273,6 +273,114 @@ test.describe('invitation link', () => {
 		});
 	});
 
+	// Expired, revoked and used-up links all get the same 410 `invite_expired` from the API (see
+	// tests/wg-invite-join.test.ts), so one answer covers all three here.
+	test.describe('signed-in link that cannot be used', () => {
+		const TOKEN = 'fixture-invite-token01';
+		const WG = 'Altbau';
+		const valid = { status: 200, json: { wg: { name: WG, shareCode: FIXTURE_WG.shareCode } } };
+		const gone = { status: 410, json: { error: 'invite_expired', code: 'invite_expired' } };
+
+		async function openSignedIn(
+			page: Page,
+			lookup: (route: import('@playwright/test').Route) => Promise<void>,
+		): Promise<void> {
+			await setupMember(page);
+			await mockNoWgs(page);
+			await page.setViewportSize({ width: 320, height: 780 });
+			await page.route(`**/api/wg/invites/${TOKEN}`, lookup);
+			await page.goto(`/invite/${TOKEN}`);
+		}
+
+		for (const [locale, title, message] of [
+			[
+				'de',
+				'Einladung nicht gültig',
+				'Diese Einladung ist nicht mehr gültig. Frag die Person, die dich eingeladen hat, nach einem neuen Link.',
+			],
+			[
+				'en',
+				'Invitation not valid',
+				'This invitation is no longer valid. Ask the person who invited you to send you a new link.',
+			],
+			[
+				'es',
+				'Invitación no válida',
+				'Esta invitación ya no es válida. Pide a la persona que te invitó que te envíe un enlace nuevo.',
+			],
+		] as const) {
+			test(`asks for a fresh link from the sender and names no WG (${locale})`, async ({
+				page,
+				context,
+				baseURL,
+			}) => {
+				await setLocale(context, baseURL ?? '', locale);
+				await openSignedIn(page, (route) => route.fulfill(gone));
+				await expect(page.getByRole('heading', { name: title, level: 1 })).toBeVisible({
+					timeout: 60_000,
+				});
+				await expect(page.getByRole('alert').filter({ hasText: message })).toBeVisible();
+				await expect(page.getByText(WG)).toHaveCount(0);
+				await expect(page.locator('#join-name')).toHaveCount(0);
+				const overflow = await page.evaluate(
+					() => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+				);
+				expect(overflow).toBeLessThanOrEqual(0);
+			});
+		}
+
+		for (const [label, fail] of [
+			['a server error', (route) => route.fulfill({ status: 503, json: { error: 'db_error' } })],
+			['a lost connection', (route) => route.abort('internetdisconnected')],
+		] as const satisfies ReadonlyArray<
+			readonly [string, (route: import('@playwright/test').Route) => Promise<void>]
+		>) {
+			test(`${label} offers a retry, not the expired message, and the retry joins`, async ({
+				page,
+			}) => {
+				let failing = true;
+				await openSignedIn(page, (route) => (failing ? fail(route) : route.fulfill(valid)));
+				await expect(
+					page.getByText('Die Einladung konnte gerade nicht geprüft werden.'),
+				).toBeVisible({ timeout: 60_000 });
+				await expect(page.getByText('nicht mehr gültig')).toHaveCount(0);
+				await expect(page.getByRole('button', { name: 'Nachricht kopieren' })).toHaveCount(0);
+
+				failing = false;
+				await page.getByRole('button', { name: 'Erneut prüfen', exact: true }).click();
+				await expect(
+					page.getByRole('heading', { name: `Tritt der WG „${WG}“ bei`, level: 1 }),
+				).toBeVisible();
+				await page.route('**/api/wg/*/members', (route) =>
+					route.request().method() === 'POST'
+						? route.fulfill({ json: { member: { id: 'm1', name: 'Lea', role: 'member' } } })
+						: route.fallback(),
+				);
+				await page.getByLabel('Dein Anzeigename').fill('Lea');
+				await page.getByRole('button', { name: 'Beitreten', exact: true }).click();
+				await expect(page).toHaveURL(new RegExp(`/wg/${FIXTURE_WG.shareCode}$`), {
+					timeout: 60_000,
+				});
+			});
+		}
+
+		test('a server error while joining keeps the form and is not shown as expired', async ({
+			page,
+		}) => {
+			await openSignedIn(page, (route) => route.fulfill(valid));
+			await page.route('**/api/wg/*/members', (route) =>
+				route.fulfill({ status: 503, json: { error: 'db_error', code: 'db_error' } }),
+			);
+			await page.getByLabel('Dein Anzeigename').fill('Lea', { timeout: 60_000 });
+			await page.getByRole('button', { name: 'Beitreten', exact: true }).click();
+			await expect(
+				page.getByText('Beitritt konnte nicht abgeschlossen werden', { exact: false }),
+			).toBeVisible();
+			await expect(page.getByText('nicht mehr gültig')).toHaveCount(0);
+			await expect(page.getByLabel('Dein Anzeigename')).toBeVisible();
+		});
+	});
+
 	test.describe('guest entry', () => {
 		const TOKEN = 'fixture-invite-token01';
 		const LONG_NAME = 'Gemeinschaftswohnung Kastanienallee Hinterhaus Dachgeschoss links';
