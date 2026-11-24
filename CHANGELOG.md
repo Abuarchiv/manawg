@@ -68,6 +68,10 @@ settled.
 
 ### Changed
 
+- Opening an invitation that has expired, been revoked or been used up now tells you to ask the
+  person who invited you for a new link, in German, English and Spanish, and still shows no flat or
+  inviter details. A connection or server problem while checking the invitation keeps offering
+  "Check again" instead of calling the link invalid.
 - An open flat tab sends one small "what changed" request every 30 seconds instead of one
   request per list, member roster and unread badge, and reloads only what changed. A list page
   that nobody else changes now costs at most two requests a minute. The chat checks every 8
