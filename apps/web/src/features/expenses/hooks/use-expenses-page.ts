@@ -32,6 +32,7 @@ import {
 import { useExpenseForm } from '@/features/expenses/hooks/use-expense-form';
 import { PREFILL_PARAMS } from '@/features/expenses/hooks/use-expense-prefill-handoff';
 import type { Message } from '@/shared/i18n/message';
+import { markOverlayNavigation } from '@/shared/lib/use-dismiss-on-back';
 import type { ActionNotifier, ExpensePageContext } from './expense-page-context';
 import { useExpenseFormSupport } from './use-expense-form-support';
 import { useExpenseRowActions } from './use-expense-row-actions';
@@ -159,6 +160,8 @@ export function useExpensesPage() {
 		}
 		if (!changed) return;
 		const query = next.toString();
+		// Keeps the closing overlays' back() from overtaking a slow commit and reopening the form.
+		markOverlayNavigation();
 		router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
 	}, [form.showForm, searchParams, router, pathname]);
 
