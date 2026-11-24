@@ -54,6 +54,15 @@ async function strictBrowser(page: Page): Promise<() => Promise<StrictCall[]>> {
 		(window as unknown as { __strict: StrictCall[] }).__strict = calls;
 		window.addEventListener('click', () => (inClick = true), true);
 		window.addEventListener('click', () => setTimeout(() => (inClick = false)));
+		// The timer alone races a mocked answer, which can arrive first on a busy runner.
+		const nativeFetch = window.fetch.bind(window);
+		window.fetch = async (...args) => {
+			try {
+				return await nativeFetch(...args);
+			} finally {
+				inClick = false;
+			}
+		};
 		Object.defineProperty(navigator, 'userActivation', {
 			value: {
 				get isActive() {
@@ -646,7 +655,14 @@ test.describe('Start card', () => {
 		await expect(page.getByRole('button', { name: /^Link teilen: Einladung in / })).toHaveCount(0);
 	});
 
-	test('a join pushed to the solo member removes the card without a reload', async ({ page }) => {
+	test('a join pushed to the solo member removes the card without a reload', async ({
+		page,
+		browserName,
+	}) => {
+		test.skip(
+			browserName !== 'chromium',
+			'Delivers the push through a CDP session, which only Chromium offers.',
+		);
 		await page.context().grantPermissions(['notifications']);
 		await mockEmptyLists(page, SOLO_BASE);
 		let joined = false;

@@ -121,7 +121,8 @@ export default {
 	errors: {
 		badInvite:
 			'Este enlace de invitación está incompleto o no es válido. Pide uno nuevo a un compañero de piso.',
-		inviteExpired: 'Esta invitación ya no es válida. Pide una nueva a un miembro.',
+		inviteExpired:
+			'Esta invitación ya no es válida. Pide a la persona que te invitó que te envíe un enlace nuevo.',
 		deletionPending: 'Tu cuenta se está eliminando. Ya no puedes crear pisos ni unirte a ninguno.',
 		wgNotFound: 'Este piso no existe.',
 		nameTaken: 'Ese nombre ya está en uso en este piso.',
@@ -157,9 +158,9 @@ export default {
 		wgNameMissing: 'Falta el nombre del piso.',
 		displayNameMissing: 'Falta tu nombre visible.',
 		inviteInvalid:
-			'Este enlace de invitación no es correcto. Comprueba que se haya copiado entero o pide uno nuevo a un miembro.',
+			'Este enlace de invitación no es correcto. Comprueba que se haya copiado entero o pide a la persona que te invitó que te envíe un enlace nuevo.',
 		inviteUnavailable:
-			'Esta invitación ya no es válida o el enlace no es correcto. Pide una nueva a un miembro.',
+			'Esta invitación ya no es válida o el enlace no es correcto. Pide a la persona que te invitó que te envíe un enlace nuevo.',
 	},
 	start: {
 		titleSignIn: 'Iniciar sesión',
