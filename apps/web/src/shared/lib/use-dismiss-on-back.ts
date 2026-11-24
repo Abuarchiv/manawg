@@ -142,7 +142,8 @@ export function useDismissOnBack(
 			// Defer so a navigation started by the same click can replace the state first.
 			popTimer ??= setTimeout(() => {
 				popTimer = undefined;
-				popClosedMarker();
+				// A pop still in flight continues the chain from its popstate.
+				if (ownPops === 0) popClosedMarker();
 			}, POP_DELAY_MS);
 		};
 	}, [open]);

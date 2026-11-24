@@ -111,7 +111,8 @@ export default {
 	},
 	errors: {
 		badInvite: 'This invite link is incomplete or not valid. Ask a flatmate for a new invite link.',
-		inviteExpired: 'This invitation is no longer valid. Ask a member for a new one.',
+		inviteExpired:
+			'This invitation is no longer valid. Ask the person who invited you to send you a new link.',
 		deletionPending: 'Your account is being deleted. You can no longer create or join flats.',
 		wgNotFound: 'This flat does not exist.',
 		nameTaken: 'That name is already taken in this flat.',
@@ -141,9 +142,9 @@ export default {
 		wgNameMissing: 'The flat name is missing.',
 		displayNameMissing: 'Your display name is missing.',
 		inviteInvalid:
-			'This invite link is not correct. Check that it was copied completely, or ask a member for a new one.',
+			'This invite link is not correct. Check that it was copied completely, or ask the person who invited you to send you a new link.',
 		inviteUnavailable:
-			'This invitation is no longer valid or the link is not correct. Ask a member for a new one.',
+			'This invitation is no longer valid or the link is not correct. Ask the person who invited you to send you a new link.',
 	},
 	start: {
 		titleSignIn: 'Sign in',

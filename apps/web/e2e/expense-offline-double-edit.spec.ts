@@ -54,6 +54,10 @@ test('a second offline edit replaces the queued update and replays once', async 
 	);
 	await navigateToFeature(page, `/wg/${shareCode}/expenses`);
 	await dismissOnboarding(page);
+	// Going offline before the first list load lands leaves no row to edit.
+	await expect(
+		page.getByRole('button', { name: `Aktionen für ${original.description}` }),
+	).toBeVisible();
 
 	offline = true;
 	await context.setOffline(true);

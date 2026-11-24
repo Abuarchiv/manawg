@@ -181,6 +181,14 @@ test('discarding an ambiguous expense starts a new request key for identical for
 
 	await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/expenses?new=1`);
 	await dismissOnboarding(page);
+	// A slow device commits the router's URL change late. Closing the form must not let a history
+	// back() overtake it and land on the stale `?new=1` entry, which would reopen the form.
+	await page.evaluate(() => {
+		const replaceState = history.replaceState.bind(history);
+		history.replaceState = (...args) => {
+			setTimeout(() => replaceState(...args), 150);
+		};
+	});
 	const form = page.getByRole('dialog');
 	await form.getByLabel('Beschreibung').fill('Wocheneinkauf');
 	await form.getByLabel('Betrag').fill('12,35');

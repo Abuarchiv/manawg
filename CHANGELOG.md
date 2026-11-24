@@ -10,6 +10,10 @@ settled.
 
 ### Changed
 
+- Opening an invitation that has expired, been revoked or been used up now tells you to ask the
+  person who invited you for a new link, in German, English and Spanish, and still shows no flat or
+  inviter details. A connection or server problem while checking the invitation keeps offering
+  "Check again" instead of calling the link invalid.
 - The **Docker** workflow checks the new-password rule against the GoTrue image in `compose.yaml`
   as its own step, "GoTrue password contract" (`./docker/smoke.sh password-contract`). It types
   passwords below and at the minimum, with emoji, into the reset form and fails when the form and
@@ -17,6 +21,8 @@ settled.
 
 ### Fixed
 
+- Discarding a new expense opened from a shortcut link could bring the empty form straight back
+  on a slow phone. It now stays closed.
 - After closing a new-expense form that a shortcut link opened (`?new=1`) by saving or by
   discarding, the system Back button no longer opens the empty form again. It goes to the page
   before the link. The same holds for links that prefill the form.
