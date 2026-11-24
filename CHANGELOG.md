@@ -8,6 +8,13 @@ settled.
 
 ## [Unreleased]
 
+### Changed
+
+- The **Docker** workflow checks the new-password rule against the GoTrue image in `compose.yaml`
+  as its own step, "GoTrue password contract" (`./docker/smoke.sh password-contract`). It types
+  passwords below and at the minimum, with emoji, into the reset form and fails when the form and
+  GoTrue judge their length differently, or when GoTrue is not running.
+
 ## [0.3.0] - 2026-11-23
 
 ### Added
