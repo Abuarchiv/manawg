@@ -8,6 +8,8 @@ settled.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-23
+
 ### Added
 
 - Settings → Profile → Help links the frequently asked questions on manawg.com first, in German
@@ -86,8 +88,11 @@ settled.
   `PREVIEW_GATE` set to `database`, its Preview gate is the Preview database migration check and
   the new `PRODUCTION_DEPLOY_HOOK` secret deploys a self-hosted instance; `PREVIEW_GATE=on` keeps
   the Vercel Preview gate. The workflow checks gate and hook before it migrates anything, and
-  still tags only after `/api/health` reports the new version. See the Releases section of
-  `docs/development.md`.
+  still tags only after `/api/health` reports the new version. A misconfigured `PREVIEW_GATE`
+  stops the release with an error that names the value it found. See the Releases section of
+  `docs/development.md`, which also has the checklist, backup and rollback plan for a
+  self-hosted release. `docs/database-recovery.md` explains how to restore the encrypted
+  nightly backup.
 - A page nobody has used for five minutes stops refreshing its lists, the chat and the unread
   count, even while it stays in front. The first click, key press or scroll refreshes it at once.
   A tab left open all day no longer sends thousands of requests to the server.
@@ -162,6 +167,12 @@ settled.
   payment in the app.
 - Failed post-commit steps when adding a shopping item, failed chore reminder dispatches and failed
   receipt scans are now reported with their cause instead of being dropped.
+
+### Self-hosting
+
+- Docker setups pull the `0.3.0` image and the new `compose.yaml` (password breach check in
+  Supabase Auth) and restart; `setup` applies the migrations `0044`, `0045` and `0046` on start.
+  Take a backup first (`./docker/backup.sh`).
 
 ## [0.2.0] - 2026-11-09
 
@@ -268,6 +279,7 @@ image is listed in this file.
 
 - No manual step. The `setup` service applies all database migrations on start.
 
+[0.3.0]: https://github.com/Abuarchiv/manawg/releases/tag/v0.3.0
 [0.2.0]: https://github.com/Abuarchiv/manawg/releases/tag/v0.2.0
 [0.1.1]: https://github.com/Abuarchiv/manawg/releases/tag/v0.1.1
 [0.1.0]: https://github.com/Abuarchiv/manawg/releases/tag/v0.1.0

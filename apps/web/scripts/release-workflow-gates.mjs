@@ -168,12 +168,17 @@ export function assertMainCiEvidence({ candidateSha, run, jobs }) {
  * @returns {'vercel' | 'database'}
  */
 export function selectPreviewGate(env) {
-	if (env?.PREVIEW_GATE === 'database') return 'database';
-	if (env?.PREVIEW_GATE === 'on' && env.VERCEL_PROJECT_NAME && env.VERCEL_TEAM_SLUG) {
-		return 'vercel';
+	const value = env?.PREVIEW_GATE;
+	if (value === 'database') return 'database';
+	if (value === 'on') {
+		if (env.VERCEL_PROJECT_NAME && env.VERCEL_TEAM_SLUG) return 'vercel';
+		throw new Error(
+			'PREVIEW_GATE=on needs the repository variables VERCEL_PROJECT_NAME and VERCEL_TEAM_SLUG. Without a Vercel Preview, set PREVIEW_GATE=database.',
+		);
 	}
+	const got = value ? `is "${value}"` : 'is not set';
 	throw new Error(
-		'Set the repository variable PREVIEW_GATE to on (Vercel Preview, with VERCEL_PROJECT_NAME and VERCEL_TEAM_SLUG) or database (no Vercel Preview).',
+		`The repository variable PREVIEW_GATE ${got}. Set it to on (Vercel Preview) or database (no Vercel Preview, self-hosted production).`,
 	);
 }
 

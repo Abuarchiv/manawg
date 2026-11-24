@@ -206,6 +206,22 @@ test('preview gate is chosen explicitly by PREVIEW_GATE and fails closed', () =>
 	assert.throws(() => selectPreviewGate({}));
 });
 
+test('a misconfigured PREVIEW_GATE names the value it got and how to fix it', () => {
+	// The error is all a failed release run shows, so it names the value and the fix.
+	assert.throws(
+		() => selectPreviewGate({ PREVIEW_GATE: 'on' }),
+		/PREVIEW_GATE=on needs .*VERCEL_PROJECT_NAME.*VERCEL_TEAM_SLUG.*PREVIEW_GATE=database/,
+	);
+	// Case and stray spaces are not guessed at: a near miss fails and shows the exact value.
+	for (const value of ['Database', ' database', 'database ', 'off', 'true']) {
+		assert.throws(
+			() => selectPreviewGate({ PREVIEW_GATE: value }),
+			new RegExp(`PREVIEW_GATE is "${value}".*on.*database`),
+		);
+	}
+	assert.throws(() => selectPreviewGate({}), /PREVIEW_GATE is not set.*on.*database/);
+});
+
 test('deploy hook: the database gate needs PRODUCTION_DEPLOY_HOOK, Vercel may fall back', () => {
 	const both = { PRODUCTION_DEPLOY_HOOK: 'https://a', VERCEL_PRODUCTION_DEPLOY_HOOK: 'https://b' };
 	assert.equal(selectDeployHook('database', both), 'PRODUCTION_DEPLOY_HOOK');

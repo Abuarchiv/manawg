@@ -333,6 +333,55 @@ URL secret, because anyone who has it can start a deployment. When the deploy fa
 version never turns healthy, the workflow fails before it tags, so roll back on the host and fix
 the cause before the next dispatch.
 
+With `PREVIEW_GATE=database` the release never calls Vercel: it pushes no `preview-main`, waits
+for no Vercel deployment and posts only `PRODUCTION_DEPLOY_HOOK`. Keep it that way while
+production is self-hosted. A Vercel production deployment would run the crons of
+`apps/web/vercel.json` a second time against the same database, next to the self-hosted `cron`
+service.
+
+#### Releasing a self-hosted production
+
+Before the dispatch:
+
+1. `PREVIEW_GATE` is `database` (`gh variable list`) and the environment `Production` has
+   `PRODUCTION_DEPLOY_HOOK` (`gh secret list --env Production`). A `POST` to the hook path with a
+   wrong token must answer `404`; never test it with the real token, which deploys.
+2. `PRODUCTION_APP_URL/api/health` answers `ok` and names the running SHA. Note it, and keep the
+   image of that SHA on the host: it is the rollback target.
+3. List the migrations the release applies:
+   `git diff --name-only <running SHA> origin/main -- apps/web/drizzle`, and read each one.
+4. Take a fresh database backup: run the **Database nightly** workflow by hand
+   (`gh workflow run database-nightly.yml`) and wait for `backup-production` to pass. Its
+   encrypted artifact is the restore point, taken before the migration. Restore it into a
+   disposable database
+   ([Restore the encrypted nightly backup](database-recovery.md#restore-the-encrypted-nightly-backup)):
+   `db:check` from the running SHA must pass on it (it is the rollback state), and `db:migrate`
+   from the main tip must apply the pending migrations on it (a rehearsal on production data).
+5. The newest `workflow_run` run of `preview.yml` for the main tip passed `db-supabase-preview`,
+   so the migrations already applied on the Preview database.
+
+During the release, the workflow stops at the first failing stage. `db:migrate` applies all
+pending migrations in one transaction, so a failed migration leaves production unchanged.
+
+Rolling back:
+
+- **The migration fails**: nothing changed, production keeps running the previous version. Fix
+  the cause before the next dispatch.
+- **Deploy fails or the new version never turns healthy** (the workflow fails before it tags),
+  **or the new version damages data**: migrations only move forward, and an older version on an
+  already migrated database is not supported ([Updating](self-hosting.md#updating)). Restore the
+  backup from step 4 into a new Supabase project or database
+  ([Into an initialized Supabase database](database-recovery.md#into-an-initialized-supabase-database)).
+  It holds the schema from before the migration: do not run `db:migrate` from the new version
+  on it. Check it with `db:check` from a checkout of the previous SHA, run the image of that SHA
+  against it and switch over. Writes made after the backup are
+  lost, so decide this quickly.
+- **Nothing failed, but the release is wrong**: fix forward with a new version. A published tag
+  is not moved.
+
+After the release: `/api/health` reports `status` and `database` `ok` and `version` equal to
+the tagged SHA, the GitHub release exists and `docker.yml` started for the tag.
+
 ## Cron jobs
 
 Defined in `apps/web/vercel.json` (UTC schedules), which Vercel reads and the `cron` container of
