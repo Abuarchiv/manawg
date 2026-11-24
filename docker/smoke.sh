@@ -4,12 +4,20 @@
 # cron routes, then backup and restore with the data checked again. CI runs it on every change to
 # the image; run it locally before you change compose.yaml or docker/.
 #
-#   ./docker/smoke.sh
+#   ./docker/smoke.sh                     the whole check
+#   ./docker/smoke.sh password-contract   only the new-password contract (after pnpm install and
+#                                         pnpm --filter @manawg/web exec playwright install chromium)
+#
+# The password contract (apps/web/scripts/real-stack/password-contract.mjs) chooses new passwords
+# below and at the minimum, with emoji, in the real reset form and checks each outcome against
+# what the running GoTrue image says, so a form that counts characters differently fails here.
 #
 # Creates a test account and WG in this instance and leaves a backup in backups/.
 set -eu
 
 cd "$(dirname "$0")/.."
+mode=${1:-all}
+case $mode in all | password-contract) ;; *) echo "usage: $0 [password-contract]" >&2; exit 2 ;; esac
 for tool in curl jq openssl; do
 	command -v "$tool" >/dev/null || { echo "$tool is required." >&2; exit 1; }
 done
@@ -31,6 +39,18 @@ api() {
 		"$@" "$app$path"
 }
 
+if [ "$mode" = password-contract ]; then
+	command -v node >/dev/null || fail "node is required for the password contract."
+	# The contract is about the GoTrue image compose.yaml names; a stack without it proves nothing.
+	configured=$(docker compose config --format json | jq -r '.services.auth.image // empty')
+	[ -n "$configured" ] || fail "compose.yaml has no auth service"
+	case $configured in */gotrue:* | */auth:*) ;; *) fail "auth service is not GoTrue: $configured" ;; esac
+	running=$(docker compose ps --status running --format '{{.Image}}' auth 2>/dev/null)
+	[ -n "$running" ] || fail "GoTrue (auth service) is not running"
+	[ "$running" = "$configured" ] || fail "GoTrue runs $running, compose.yaml names $configured"
+	[ -d apps/web/node_modules/@playwright/test ] || fail "run pnpm install first (Playwright)"
+fi
+
 step "health"
 i=0
 # A healthy answer may be cached by a proxy; a unique query always reaches the app.
@@ -40,6 +60,12 @@ until [ "$(health | jq -r .status 2>/dev/null)" = ok ]; do
 	[ "$i" -lt 60 ] || fail "/api/health is not ok: $(health)"
 	sleep 2
 done
+
+if [ "$mode" = password-contract ]; then
+	step "password contract with $configured"
+	APP_URL="$app" MAILPIT_URL="$mailpit" node apps/web/scripts/real-stack/password-contract.mjs
+	exit
+fi
 
 step "sign-up and confirmation mail"
 email="smoke-$(openssl rand -hex 4)@example.test"
