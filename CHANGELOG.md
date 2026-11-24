@@ -10,6 +10,10 @@ settled.
 
 ### Changed
 
+- Opening an invitation that has expired, been revoked or been used up now tells you to ask the
+  person who invited you for a new link, in German, English and Spanish, and still shows no flat or
+  inviter details. A connection or server problem while checking the invitation keeps offering
+  "Check again" instead of calling the link invalid.
 - The **Docker** workflow checks the new-password rule against the GoTrue image in `compose.yaml`
   as its own step, "GoTrue password contract" (`./docker/smoke.sh password-contract`). It types
   passwords below and at the minimum, with emoji, into the reset form and fails when the form and
