@@ -47,7 +47,7 @@ function gotrue(password) {
 			'-e',
 			probe,
 		],
-		{ encoding: 'utf8' },
+		{ encoding: 'utf8', timeout: 30_000 },
 	);
 	const { status, body } = JSON.parse(out);
 	if (status === 200) return 'accepted';
@@ -107,7 +107,7 @@ async function choose(account, label, expected, password) {
 	await page.locator('#reset-password').fill(password);
 	await page.locator('#reset-password-confirmation').fill(password);
 	const sent = page
-		.waitForRequest((r) => r.url().endsWith('/api/auth/password'), { timeout: 3000 })
+		.waitForRequest((r) => r.url().endsWith('/api/auth/password'), { timeout: 10_000 })
 		.catch(() => null);
 	await page.locator('form button[type="submit"]').click();
 	const requestSent = await sent;
