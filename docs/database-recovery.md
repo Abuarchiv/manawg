@@ -193,8 +193,11 @@ grep -q '^COPY auth.users ' auth-storage.sql
 # public, so dropping public below drops them too. Recreate them from the backup.
 awk '$4 == "TRIGGER" && ($5 == "auth" || $5 == "storage")' toc.list > auth-storage-triggers.list
 pg_restore -L auth-storage-triggers.list -f auth-storage-triggers-all.sql database.dump
-sed -n '/^CREATE TRIGGER .* EXECUTE FUNCTION public\./p' auth-storage-triggers-all.sql \
-  > auth-storage-triggers.sql
+sed -n -E '/^CREATE (CONSTRAINT )?TRIGGER .* EXECUTE FUNCTION public\./p' \
+  auth-storage-triggers-all.sql > auth-storage-triggers.sql
+# Every statement of the backup that calls a public function must be in the file.
+triggers=$(grep -c 'EXECUTE FUNCTION public\.' auth-storage-triggers-all.sql || true)
+[ "$(wc -l < auth-storage-triggers.sql)" -eq "$triggers" ]
 # A backup with the 0041 function must bring its trigger.
 if grep -q ' FUNCTION public manawg_drop_pre_confirm_password' toc.list; then
   grep -q '^CREATE TRIGGER manawg_drop_pre_confirm_password ' auth-storage-triggers.sql
@@ -205,7 +208,7 @@ do \$\$ begin
   if (select count(*) from pg_trigger t
       join pg_class c on c.oid = t.tgrelid join pg_proc p on p.oid = t.tgfoid
       where c.relnamespace::regnamespace::text in ('auth', 'storage')
-        and p.pronamespace = 'public'::regnamespace) <> $(wc -l < auth-storage-triggers.sql) then
+        and p.pronamespace = 'public'::regnamespace) <> $triggers then
     raise exception 'app triggers on Auth and Storage do not match the backup';
   end if;
 end \$\$;
