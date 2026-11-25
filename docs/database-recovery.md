@@ -192,8 +192,24 @@ grep -q '^COPY auth.users ' auth-storage.sql
 # App triggers on Auth and Storage tables (0041 puts one on auth.users) call functions in
 # public, so dropping public below drops them too. Recreate them from the backup.
 awk '$4 == "TRIGGER" && ($5 == "auth" || $5 == "storage")' toc.list > auth-storage-triggers.list
-pg_restore -L auth-storage-triggers.list -f - database.dump |
-  sed -n '/^CREATE TRIGGER .* EXECUTE FUNCTION public\./p' > auth-storage-triggers.sql
+pg_restore -L auth-storage-triggers.list -f auth-storage-triggers-all.sql database.dump
+sed -n '/^CREATE TRIGGER .* EXECUTE FUNCTION public\./p' auth-storage-triggers-all.sql \
+  > auth-storage-triggers.sql
+# A backup with the 0041 function must bring its trigger.
+if grep -q ' FUNCTION public manawg_drop_pre_confirm_password' toc.list; then
+  grep -q '^CREATE TRIGGER manawg_drop_pre_confirm_password ' auth-storage-triggers.sql
+fi
+# Inside the transaction: as many such triggers as the backup had, or nothing is committed.
+cat > auth-storage-triggers-check.sql <<SQL
+do \$\$ begin
+  if (select count(*) from pg_trigger t
+      join pg_class c on c.oid = t.tgrelid join pg_proc p on p.oid = t.tgfoid
+      where c.relnamespace::regnamespace::text in ('auth', 'storage')
+        and p.pronamespace = 'public'::regnamespace) <> $(wc -l < auth-storage-triggers.sql) then
+    raise exception 'app triggers on Auth and Storage do not match the backup';
+  end if;
+end \$\$;
+SQL
 
 # Only now change the target.
 psql -v ON_ERROR_STOP=1 -q <<'SQL'
@@ -230,21 +246,17 @@ do $$ declare r record; has_rows boolean; begin
 end $$;
 SQL
 psql -v ON_ERROR_STOP=1 --single-transaction -q -o /dev/null \
-  -f auth-storage-empty.sql -f auth-storage.sql -f auth-storage-triggers.sql
+  -f auth-storage-empty.sql -f auth-storage.sql -f auth-storage-triggers.sql \
+  -f auth-storage-triggers-check.sql
 ```
 
-Then put the privileges back, run `db:check` and the counts as above, and check that the app
-triggers on Auth and Storage are back: the count of `auth-storage-triggers.sql` lines must match
+The script recreates the backup's app triggers on Auth and Storage tables (the one from `0041`
+on `auth.users` drops a password chosen before the email was confirmed) and checks their count
+inside the transaction, so a restore without them commits nothing.
 
-```sql
-select count(*) from pg_trigger t
-  join pg_class c on c.oid = t.tgrelid join pg_proc p on p.oid = t.tgfoid
-where c.relnamespace::regnamespace::text in ('auth', 'storage')
-  and p.pronamespace = 'public'::regnamespace;
-```
-
-Start Auth and Storage again. The backup's Auth and Storage rows must fit the target's Auth and Storage versions; use the
-versions of the backed-up instance. Delete `auth-storage*` with the other decrypted files.
+Then put the privileges back, run `db:check` and the counts as above, and start Auth and Storage
+again. The backup's Auth and Storage rows must fit the target's Auth and Storage versions; use
+the versions of the backed-up instance. Delete `auth-storage*` with the other decrypted files.
 
 This path is rehearsed on the Docker stack's `supabase/postgres` image as the non-superuser
 `postgres` role. On a hosted project, first check that `postgres` may run
