@@ -72,6 +72,7 @@ export default {
 		copied: 'Einladung kopiert',
 		failedStatus: 'Teilen fehlgeschlagen',
 		sharing: 'Einladung wird geteilt…',
+		createdTapAgain: 'Link erstellt. Tippe nochmal zum Teilen.',
 		shareAgain: 'Erneut teilen',
 		invite: 'Mitbewohner einladen',
 	},

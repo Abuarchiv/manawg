@@ -78,6 +78,7 @@ const PRODUCT_EVENTS = [
 	'first_expense_created',
 	'invite_card_shown',
 	'invite_card_shared',
+	'solo_invite_shared',
 	'invite_card_dismissed',
 ];
 const env = {
@@ -152,7 +153,9 @@ for (const event of ['$pageview', ...PRODUCT_EVENTS]) {
 			$pathname: '/wg/[code]/expenses',
 			$raw_user_agent: 'ManaWG-privacy-check',
 			...(event === 'invite_join_failed' ? { code: 'other' } : {}),
-			...(event === 'invite_card_shared' ? { method: 'copy' } : {}),
+			...(event === 'invite_card_shared' || event === 'solo_invite_shared'
+				? { method: 'copy' }
+				: {}),
 		},
 	});
 }
@@ -187,20 +190,22 @@ for (const [code, expected] of [
 	]);
 }
 // The share method is one of two words; anything else counts as a copy.
-for (const [method, expected] of [
-	['share', 'share'],
-	['copy', 'copy'],
-	[secret, 'copy'],
-	[undefined, 'copy'],
-]) {
-	const cleaned = config.before_send({
-		uuid,
-		event: 'invite_card_shared',
-		timestamp,
-		properties: { method, url: secret },
-	});
-	assert.deepEqual(cleaned.properties.method, expected, String(method));
-	assert.equal('url' in cleaned.properties, false);
+for (const event of ['invite_card_shared', 'solo_invite_shared']) {
+	for (const [method, expected] of [
+		['share', 'share'],
+		['copy', 'copy'],
+		[secret, 'copy'],
+		[undefined, 'copy'],
+	]) {
+		const cleaned = config.before_send({
+			uuid,
+			event,
+			timestamp,
+			properties: { method, url: secret },
+		});
+		assert.deepEqual(cleaned.properties.method, expected, String(method));
+		assert.equal('url' in cleaned.properties, false);
+	}
 }
 assert.equal(
 	'method' in

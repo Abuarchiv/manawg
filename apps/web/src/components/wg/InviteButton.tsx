@@ -6,7 +6,12 @@ import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { useToast } from '@/components/ui/Toast';
-import { createInvite, inviteShareMessage, shareInvite } from '@/components/wg/invite-share';
+import {
+	type CreatedInvite,
+	createInvite,
+	inviteShareMessage,
+	shareInvite,
+} from '@/components/wg/invite-share';
 import { useMessage } from '@/shared/i18n/message';
 import { cn } from '@/shared/lib/cn';
 
@@ -34,6 +39,7 @@ export function InviteButton({
 	const t = useTranslations('home.invite');
 	const [state, setState] = useState<ShareState>('idle');
 	const [sharing, setSharing] = useState(false);
+	const [pending, setPending] = useState<CreatedInvite | null>(null);
 	const timerRef = useRef<number | null>(null);
 	const sharingRef = useRef(false);
 	const toast = useToast();
@@ -62,12 +68,19 @@ export function InviteButton({
 		sharingRef.current = true;
 		setSharing(true);
 		try {
-			const created = await createInvite(code, memberId);
+			const created = pending
+				? { ok: true as const, invite: pending }
+				: await createInvite(code, memberId);
 			if (!created.ok) {
 				toast.error(render(created.message));
 				flash('failed');
 				return;
 			}
+			if (!pending && !navigator.userActivation?.isActive) {
+				setPending(created.invite);
+				return;
+			}
+			setPending(null);
 			const outcome = await shareInvite(render(inviteShareMessage(wgName, created.invite.url)));
 			if (outcome === 'cancelled') return;
 			if (outcome === 'failed') toast.error(t('shareFailed'));
@@ -89,8 +102,8 @@ export function InviteButton({
 
 	return (
 		<>
-			<output aria-live="polite" className="sr-only">
-				{statusMessage}
+			<output aria-live="polite" className={pending ? 'text-muted-foreground text-xs' : 'sr-only'}>
+				{pending ? t('createdTapAgain') : statusMessage}
 			</output>
 			<Button
 				type="button"

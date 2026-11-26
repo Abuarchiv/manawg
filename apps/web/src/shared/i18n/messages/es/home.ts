@@ -77,6 +77,7 @@ export default {
 		copied: 'Invitación copiada',
 		failedStatus: 'No se pudo compartir',
 		sharing: 'Compartiendo invitación…',
+		createdTapAgain: 'Enlace creado. Toca de nuevo para compartir.',
 		shareAgain: 'Compartir de nuevo',
 		invite: 'Invitar a compañeros de piso',
 	},

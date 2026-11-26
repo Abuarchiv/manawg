@@ -8,6 +8,8 @@ settled.
 
 ## [Unreleased]
 
+- Fix invitation sharing from solo lists and the welcome card on browsers that require a tap.
+
 ## [0.3.1] - 2026-11-26
 
 ### Changed

@@ -71,6 +71,7 @@ const PRODUCT_EVENTS: readonly string[] = [
 	'first_expense_created',
 	'invite_card_shown',
 	'invite_card_shared',
+	'solo_invite_shared',
 	'invite_card_dismissed',
 ];
 
@@ -128,7 +129,7 @@ function loadAnalytics(key: string, host: string): void {
 							...(event.event === 'invite_join_failed'
 								? { code: failureCode(event.properties) }
 								: {}),
-							...(event.event === 'invite_card_shared'
+							...(event.event === 'invite_card_shared' || event.event === 'solo_invite_shared'
 								? { method: shareMethod(event.properties) }
 								: {}),
 						},
