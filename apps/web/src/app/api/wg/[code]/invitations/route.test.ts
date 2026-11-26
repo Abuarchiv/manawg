@@ -12,6 +12,7 @@ const state = {
 	revoked: [] as unknown[],
 	logged: [] as unknown[][],
 	order: [] as string[],
+	created: 0,
 };
 
 const db = {
@@ -31,7 +32,12 @@ const db = {
 mock.module('@/core/audit', { namedExports: { recordAuditEvent: async () => undefined } });
 mock.module('@/core/db', { namedExports: { db, wgInvites, wgMembers: {} } });
 mock.module('@/core/db/wg-invites', {
-	namedExports: { createWgInvite: async () => ({ id: inviteId, token: 'token' }) },
+	namedExports: {
+		createWgInvite: async () => {
+			state.created++;
+			return { id: inviteId, token: 'token' };
+		},
+	},
 });
 mock.module('@/core/guards/require-wg-member', {
 	namedExports: {
@@ -95,4 +101,41 @@ test('a mail provider failure is logged, then the invite is revoked and the call
 	assert.equal(state.logged.length, 1);
 	assert.equal(state.logged[0]?.[1], mailError);
 	assert.deepEqual(state.order, ['log', 'revoke']);
+});
+
+test('unavailable mail returns 503 without creating an invite', async () => {
+	const before = state.created;
+	const previous = { ...process.env };
+	Object.assign(process.env, {
+		NODE_ENV: 'production',
+		VERCEL_ENV: '',
+		SMTP_HOST: '',
+		RESEND_API_KEY: '',
+		STATEMENT_EMAIL_ALLOWLIST: '',
+	});
+	try {
+		const request = new NextRequest('https://example.test/api/wg/MTE8PZAT/invitations', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({ email: 'new@example.test' }),
+		});
+		const response = await POST(request, { params: Promise.resolve({ code: 'MTE8PZAT' }) });
+		assert.equal(response.status, 503);
+		assert.deepEqual(await response.json(), {
+			error: 'mail_unavailable',
+			code: 'mail_unavailable',
+		});
+		assert.equal(state.created, before);
+	} finally {
+		for (const key of [
+			'NODE_ENV',
+			'VERCEL_ENV',
+			'SMTP_HOST',
+			'RESEND_API_KEY',
+			'STATEMENT_EMAIL_ALLOWLIST',
+		]) {
+			if (previous[key] === undefined) delete process.env[key];
+			else process.env[key] = previous[key];
+		}
+	}
 });

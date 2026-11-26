@@ -39,3 +39,40 @@ describe('runtimeEnv', () => {
 		assert.ok(features.includes('error-reporting'));
 	});
 });
+
+describe('mail availability', () => {
+	for (const [name, env, available] of [
+		['no transport', { NODE_ENV: 'production' }, false],
+		[
+			'preview Resend without allowlist',
+			{ NODE_ENV: 'production', VERCEL_ENV: 'preview', RESEND_API_KEY: 'key' },
+			false,
+		],
+		[
+			'preview Resend with allowlist',
+			{
+				NODE_ENV: 'production',
+				VERCEL_ENV: 'preview',
+				RESEND_API_KEY: 'key',
+				STATEMENT_EMAIL_ALLOWLIST: 'a@example.test',
+			},
+			true,
+		],
+		['fixture', { NODE_ENV: 'production', VERCEL_ENV: 'preview', E2E_FIXTURE_MODE: 'true' }, true],
+		['SMTP', { NODE_ENV: 'production', SMTP_HOST: 'smtp.example.test' }, true],
+		[
+			'production Resend',
+			{ NODE_ENV: 'production', VERCEL_ENV: 'production', RESEND_API_KEY: 'key' },
+			true,
+		],
+	] as const) {
+		test(name, async () => {
+			const { mailAvailable } = await import('../src/core/mail/transport.ts');
+			assert.equal(mailAvailable(env), available);
+			assert.equal(
+				checkEnv(env).degraded.some((entry) => entry.feature === 'email'),
+				!available,
+			);
+		});
+	}
+});

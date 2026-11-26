@@ -338,6 +338,19 @@ function senderAddress(env: Readonly<Record<string, string | undefined>>): strin
 	return from;
 }
 
+/** Whether a configured transport can send, including development and fixture dry runs. */
+export function mailAvailable(
+	env: Readonly<Record<string, string | undefined>> = process.env,
+): boolean {
+	return (
+		env.NODE_ENV !== 'production' ||
+		(env.E2E_FIXTURE_MODE === 'true' && env.VERCEL_ENV !== 'production') ||
+		Boolean(env.SMTP_HOST?.trim()) ||
+		(Boolean(env.RESEND_API_KEY?.trim()) &&
+			(env.VERCEL_ENV === 'production' || readAllowlist(env) !== null))
+	);
+}
+
 /**
  * SMTP whenever `SMTP_HOST` is set (self-hosted instances). Otherwise Resend in production (a
  * missing key throws instead of degrading to a dry run); elsewhere only when an allow-list limits

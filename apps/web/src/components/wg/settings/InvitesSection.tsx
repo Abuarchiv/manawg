@@ -49,7 +49,9 @@ export function InvitesSection({ wg, identity }: { wg: WgSummary; identity: Sess
 		data,
 		error: loadError,
 		refresh,
-	} = useCachedFetch<{ invites: InviteListItem[] }>(listUrl, { memberId: identity.memberId });
+	} = useCachedFetch<{ invites: InviteListItem[]; mailConfigured: boolean }>(listUrl, {
+		memberId: identity.memberId,
+	});
 	const [creating, setCreating] = useState(false);
 	const [revokingId, setRevokingId] = useState<string | null>(null);
 	const [fresh, setFresh] = useState<{ id: string; url: string } | null>(null);
@@ -214,11 +216,13 @@ export function InvitesSection({ wg, identity }: { wg: WgSummary; identity: Sess
 					{data && invites.length === 0 && (
 						<p className="text-muted-foreground text-sm">{t('empty')}</p>
 					)}
-					<InviteByMailForm
-						shareCode={wg.shareCode}
-						memberId={identity.memberId}
-						onSent={() => void refresh({ afterMutation: true })}
-					/>
+					{data?.mailConfigured && (
+						<InviteByMailForm
+							shareCode={wg.shareCode}
+							memberId={identity.memberId}
+							onSent={() => void refresh({ afterMutation: true })}
+						/>
+					)}
 				</div>
 			</Section>
 

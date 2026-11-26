@@ -8,6 +8,10 @@ settled.
 
 ## [Unreleased]
 
+### Fixed
+
+- Hide email invitations when mail is unavailable and report the degraded email feature in health checks.
+
 ## [0.3.1] - 2026-11-26
 
 ### Changed

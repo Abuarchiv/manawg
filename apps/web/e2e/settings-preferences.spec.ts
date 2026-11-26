@@ -617,6 +617,22 @@ test.describe('invitations', () => {
 		await expect(leave).toBeFocused();
 	});
 
+	test('hides email invitations when mail is unavailable while keeping link sharing', async ({
+		page,
+	}) => {
+		await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/invites`, (route) =>
+			route.request().method() === 'GET'
+				? route.fulfill({ json: { invites: [], mailConfigured: false } })
+				: route.fallback(),
+		);
+		await setupMember(page);
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/settings#access`);
+		await expect(page.getByLabel('Per E-Mail einladen')).toHaveCount(0);
+		await page.getByRole('button', { name: 'Neue Einladung', exact: true }).click();
+		await expect(page.getByRole('button', { name: 'Einladungslink kopieren' })).toBeVisible();
+		await expect(page.getByRole('button', { name: 'Teilen', exact: true })).toBeVisible();
+	});
+
 	test('an invitation sent by email shows up in the list of active invitations', async ({
 		page,
 	}) => {
@@ -630,7 +646,9 @@ test.describe('invitations', () => {
 		});
 		const invites = [invite('11111111-1111-4111-8111-111111111111')];
 		await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/invites`, (route) =>
-			route.request().method() === 'GET' ? route.fulfill({ json: { invites } }) : route.fallback(),
+			route.request().method() === 'GET'
+				? route.fulfill({ json: { invites, mailConfigured: true } })
+				: route.fallback(),
 		);
 		await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/invitations`, (route) => {
 			invites.unshift(invite('22222222-2222-4222-8222-222222222222'));

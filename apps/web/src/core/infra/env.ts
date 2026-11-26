@@ -1,3 +1,5 @@
+import { mailAvailable } from '@/core/mail/transport';
+
 /**
  * Startup environment validation.
  *
@@ -32,7 +34,8 @@ interface DegradedFeature {
 		| 'push-notifications'
 		| 'image-uploads'
 		| 'account-deletion'
-		| 'error-reporting';
+		| 'error-reporting'
+		| 'email';
 	missing: string[];
 	impact: string;
 }
@@ -207,6 +210,13 @@ export function checkEnv(env: EnvSource): EnvCheckResult {
 		if (missing.length > 0) {
 			degraded.push({ feature: spec.feature, missing, impact: spec.impact });
 		}
+	}
+	if (!mailAvailable(env)) {
+		degraded.push({
+			feature: 'email',
+			missing: ['SMTP_HOST or usable RESEND_API_KEY'],
+			impact: 'Invitation, welcome, reminder, solo invite and statement emails cannot be sent.',
+		});
 	}
 	if (imageStorage.missing.length > 0 && !isProduction) {
 		degraded.push({ feature: 'image-uploads', ...imageStorage });
