@@ -732,9 +732,54 @@ test.describe('Start card', () => {
 		await invite.click();
 		await expect.poll(async () => (await readCalls()).length).toBe(1);
 		const [call] = await readCalls();
-		expect(call).toMatchObject({ via: 'share', inClick: true });
+		expect(call).toMatchObject({ via: 'copy', inClick: true });
 		expect(call?.text).toContain('/invite/fixture-invite-token01');
 		// The second tap shared the kept link instead of asking for another one.
 		expect(created).toHaveLength(1);
+	});
+
+	test('a welcome invitation revoked between taps is never shared', async ({ page }) => {
+		const readCalls = await strictBrowser(page);
+		await mockEmptyLists(page, DUO_BASE);
+		const created = createdLinks(page, DUO_BASE);
+		await page.route(`**${DUO_BASE}/invites`, (route) =>
+			route.request().method() === 'GET'
+				? route.fulfill({ json: { invites: [] } })
+				: route.fallback(),
+		);
+		await open(page, FIXTURE_WG.shareCode);
+		const invite = page.getByRole('button', { name: 'Mitbewohner einladen', exact: true });
+		await invite.click();
+		await expect(page.getByText('Link erstellt. Tippe nochmal zum Teilen.')).toBeVisible();
+		await invite.click();
+		await expect(page.getByText('Einladung konnte nicht geteilt werden.')).toBeVisible();
+		expect(await readCalls()).toEqual([]);
+		expect(created).toHaveLength(1);
+	});
+
+	test('an expired welcome invitation is never shared even if it appears in the list', async ({
+		page,
+	}) => {
+		const readCalls = await strictBrowser(page);
+		await mockEmptyLists(page, DUO_BASE);
+		await page.route(`**${DUO_BASE}/invites`, (route) => {
+			if (route.request().method() === 'POST') {
+				return route.fulfill({
+					json: {
+						id: OLD_INVITE_ID,
+						url: 'https://example.test/invite/old',
+						expiresAt: new Date(Date.now() - 1000).toISOString(),
+					},
+				});
+			}
+			return route.fulfill({ json: { invites: [{ id: OLD_INVITE_ID }] } });
+		});
+		await open(page, FIXTURE_WG.shareCode);
+		const invite = page.getByRole('button', { name: 'Mitbewohner einladen', exact: true });
+		await invite.click();
+		await expect(page.getByText('Link erstellt. Tippe nochmal zum Teilen.')).toBeVisible();
+		await invite.click();
+		await expect(page.getByText('Einladung konnte nicht geteilt werden.')).toBeVisible();
+		expect(await readCalls()).toEqual([]);
 	});
 });
