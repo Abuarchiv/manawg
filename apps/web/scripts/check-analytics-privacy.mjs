@@ -65,8 +65,8 @@ async function initialize(
 }
 
 const secret = 'private-household-content';
-// Activation and funnel steps beyond $pageview. Only invite_join_failed (a code) and
-// invite_card_shared (a share method) carry a property.
+// Activation and funnel steps beyond $pageview. Only invite_join_failed (a code),
+// invite_card_shared and invite_step_shared (a share method) carry a property.
 const PRODUCT_EVENTS = [
 	'wg_created',
 	'wg_joined',
@@ -80,7 +80,16 @@ const PRODUCT_EVENTS = [
 	'invite_card_shared',
 	'solo_invite_shared',
 	'invite_card_dismissed',
+	'invite_step_shown',
+	'invite_step_shared',
+	'invite_step_skipped',
 ];
+// The share methods each share event may report.
+const SHARE_METHODS = {
+	invite_card_shared: ['share', 'copy'],
+	solo_invite_shared: ['share', 'copy'],
+	invite_step_shared: ['share', 'copy', 'whatsapp'],
+};
 const env = {
 	NODE_ENV: 'production',
 	NEXT_PUBLIC_POSTHOG_KEY: 'phc_privacy_test',
@@ -153,9 +162,7 @@ for (const event of ['$pageview', ...PRODUCT_EVENTS]) {
 			$pathname: '/wg/[code]/expenses',
 			$raw_user_agent: 'ManaWG-privacy-check',
 			...(event === 'invite_join_failed' ? { code: 'other' } : {}),
-			...(event === 'invite_card_shared' || event === 'solo_invite_shared'
-				? { method: 'copy' }
-				: {}),
+			...(event in SHARE_METHODS ? { method: 'copy' } : {}),
 		},
 	});
 }
@@ -189,34 +196,28 @@ for (const [code, expected] of [
 		'token',
 	]);
 }
-// The share method is one of two words; anything else counts as a copy.
-for (const event of ['invite_card_shared', 'solo_invite_shared']) {
-	for (const [method, expected] of [
-		['share', 'share'],
-		['copy', 'copy'],
-		[secret, 'copy'],
-		[undefined, 'copy'],
-	]) {
+// The share method is one of the event's own words; anything else counts as a copy.
+for (const [event, methods] of Object.entries(SHARE_METHODS)) {
+	for (const method of ['share', 'copy', 'whatsapp', 'email', secret, undefined]) {
 		const cleaned = config.before_send({
 			uuid,
 			event,
 			timestamp,
 			properties: { method, url: secret },
 		});
-		assert.deepEqual(cleaned.properties.method, expected, String(method));
+		const expected = methods.includes(method) ? method : 'copy';
+		assert.equal(cleaned.properties.method, expected, `${event} ${method}`);
 		assert.equal('url' in cleaned.properties, false);
 	}
 }
-assert.equal(
-	'method' in
-		config.before_send({
-			uuid,
-			event: 'invite_card_shown',
-			timestamp,
-			properties: { method: 'share' },
-		}).properties,
-	false,
-);
+for (const event of PRODUCT_EVENTS.filter((name) => !(name in SHARE_METHODS))) {
+	assert.equal(
+		'method' in
+			config.before_send({ uuid, event, timestamp, properties: { method: 'share' } }).properties,
+		false,
+		event,
+	);
+}
 // No other event takes the code along.
 assert.equal(
 	'code' in

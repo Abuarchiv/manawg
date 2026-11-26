@@ -299,10 +299,16 @@ Mutation error copy goes through `mutationError` (`core/http/error-codes.ts`); f
   or session recording. `before_send` allows only `$pageview` and the activation and funnel steps
   (`signup_submitted`, `signup_confirmed`, `login_completed`, `invite_opened`, `invite_join_failed`,
   `wg_created`, `wg_joined`, `first_expense_created`, `invite_card_shown`, `invite_card_shared`,
-  `invite_card_dismissed`) and rebuilds the event without URL or caller
+  `invite_card_dismissed`, `invite_step_shown`, `invite_step_shared`, `invite_step_skipped`) and
+  rebuilds the event without URL or caller
   properties; only the page path goes along, with WG codes and invite tokens replaced by `[code]` /
   `[token]`. The extra properties are the API error code of `invite_join_failed` (lowercase snake
-  case, otherwise `other`) and the `method` of `invite_card_shared` (`share` or `copy`). The server-side `/auth/callback` leaves a two-minute `manawg_funnel`
+  case, otherwise `other`), the `method` of `invite_card_shared` (`share` or `copy`) and the
+  `method` of `invite_step_shared` (`share`, `copy` or `whatsapp`); any other method is sent as
+  `copy`. The invite step after creating a WG (`app/login/InviteStep.tsx`) sends `invite_step_shown`
+  once its link is ready, `invite_step_shared` for each completed share sheet, copy (also the share
+  sheet's clipboard fallback) or WhatsApp tap, and `invite_step_skipped` when the creator goes to
+  the flat without one; a cancelled share sheet or failed copy sends nothing. The server-side `/auth/callback` leaves a two-minute `manawg_funnel`
   cookie that holds only the step name; `FunnelBeacon` reads it once, deletes it and sends the
   event. Events wait for the SDK's idle-time init instead of being dropped, so the path of an event sent early can be the page the visitor has moved on to (fine for step counts, not for per-path breakdowns). `first_expense_created` means the first expense this device sees (empty list); it can repeat per device and misses expenses queued offline. Preview deployments,
   loopback hosts and automated browsers (`navigator.webdriver`) send nothing.

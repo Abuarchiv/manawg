@@ -34,6 +34,17 @@ The app SHALL capture the funnel steps `signup_submitted`, `signup_confirmed`, `
 - **WHEN** `/auth/callback` establishes a session
 - **THEN** the page it redirects to sends `signup_confirmed` or `login_completed` exactly once and the one-shot marker cookie is deleted. The cookie `manawg_funnel` lives two minutes, holds only the step name and carries no identifier
 
+### Requirement: Invite step events
+The invite step shown right after creating a WG SHALL capture `invite_step_shown` once its invite link is ready, `invite_step_shared` for every successful hand-on of the link, and `invite_step_skipped` when the creator goes to the flat without one. The only property is the `method` of `invite_step_shared`: `share` (share sheet completed), `copy` (link copied, also when the share button falls back to the clipboard) or `whatsapp` (WhatsApp link tapped); any other value is sent as `copy`.
+
+#### Scenario: The share sheet is cancelled
+- **WHEN** the creator closes the share sheet without sharing, or copying the link fails
+- **THEN** no `invite_step_shared` event is captured
+
+#### Scenario: The creator goes to the flat after sharing
+- **WHEN** the creator taps "to the flat" after a successful share in the same step
+- **THEN** `invite_step_skipped` is not captured
+
 ### Requirement: Honest disclosure
 Public metadata and a reachable privacy page SHALL accurately describe the anonymous analytics provider, region, collected data, disabled features, purpose, and blocking behavior.
 
