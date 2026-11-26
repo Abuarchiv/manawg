@@ -7,6 +7,7 @@ import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import { conflict, rateLimitResponse } from '@/core/http/api-errors';
 import { requestOrigin } from '@/core/http/request-origin';
+import { mailAvailable } from '@/core/mail/availability';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { invitePath } from '@/core/utils/invite-token';
 /** Active invitations of the WG, newest first. The token itself is never listed. */
@@ -26,7 +27,7 @@ export const GET = withWgRoute('invites GET', async (req, { code }) => {
 		.leftJoin(wgMembers, eq(wgMembers.id, wgInvites.createdByMemberId))
 		.where(activeInvitesOf(auth.wg.id))
 		.orderBy(desc(wgInvites.createdAt));
-	return NextResponse.json({ invites: rows });
+	return NextResponse.json({ invites: rows, mailConfigured: mailAvailable() });
 });
 
 /** A member creates an invitation link that works for 14 days. */

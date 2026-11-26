@@ -39,3 +39,64 @@ describe('runtimeEnv', () => {
 		assert.ok(features.includes('error-reporting'));
 	});
 });
+
+describe('mail availability', () => {
+	for (const [name, env, available] of [
+		['no transport', { NODE_ENV: 'production' }, false],
+		[
+			'preview Resend without allowlist',
+			{ NODE_ENV: 'production', VERCEL_ENV: 'preview', RESEND_API_KEY: 'key' },
+			false,
+		],
+		[
+			'preview Resend with allowlist',
+			{
+				NODE_ENV: 'production',
+				VERCEL_ENV: 'preview',
+				RESEND_API_KEY: 'key',
+				STATEMENT_EMAIL_ALLOWLIST: 'a@example.test',
+				STATEMENT_EMAIL_FROM: 'test@example.test',
+			},
+			true,
+		],
+		['fixture', { NODE_ENV: 'production', VERCEL_ENV: 'preview', E2E_FIXTURE_MODE: 'true' }, true],
+		['SMTP without sender', { NODE_ENV: 'production', SMTP_HOST: 'smtp.example.test' }, false],
+		[
+			'SMTP',
+			{
+				NODE_ENV: 'production',
+				SMTP_HOST: 'smtp.example.test',
+				STATEMENT_EMAIL_FROM: 'test@example.test',
+			},
+			true,
+		],
+		[
+			'official SMTP sender',
+			{
+				NODE_ENV: 'production',
+				SMTP_HOST: 'smtp.example.test',
+				NEXT_PUBLIC_APP_URL: 'https://app.manawg.com',
+			},
+			true,
+		],
+		[
+			'production Resend',
+			{
+				NODE_ENV: 'production',
+				VERCEL_ENV: 'production',
+				RESEND_API_KEY: 'key',
+				NEXT_PUBLIC_APP_URL: 'https://app.manawg.com',
+			},
+			true,
+		],
+	] as const) {
+		test(name, async () => {
+			const { mailAvailable } = await import('../src/core/mail/availability.ts');
+			assert.equal(mailAvailable(env), available);
+			assert.equal(
+				checkEnv(env).degraded.some((entry) => entry.feature === 'email'),
+				!available,
+			);
+		});
+	}
+});

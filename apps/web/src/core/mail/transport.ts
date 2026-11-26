@@ -2,6 +2,9 @@ import 'server-only';
 import { createHash } from 'node:crypto';
 import nodemailer from 'nodemailer';
 import { isOfficialInstance } from '@/shared/lib/landing-url';
+import { readAllowlist } from './availability';
+
+export { readAllowlist } from './availability';
 
 const RESEND_BATCH_URL = 'https://api.resend.com/emails/batch';
 // The batch endpoint cannot carry attachments, so those mails go one request each.
@@ -47,17 +50,6 @@ export function maskEmail(email: string): string {
 	const at = email.lastIndexOf('@');
 	if (at < 1) return '***';
 	return `${email.slice(0, 1)}***${email.slice(at)}`;
-}
-
-/** Comma-separated `STATEMENT_EMAIL_ALLOWLIST`, lower-cased; `null` when unset. */
-export function readAllowlist(
-	env: Readonly<Record<string, string | undefined>> = process.env,
-): Set<string> | null {
-	const entries = (env.STATEMENT_EMAIL_ALLOWLIST ?? '')
-		.split(',')
-		.map((entry) => entry.trim().toLowerCase())
-		.filter(Boolean);
-	return entries.length > 0 ? new Set(entries) : null;
 }
 
 function idempotencyKey(prefix: string, mails: readonly OutgoingMail[]): string {

@@ -727,3 +727,5 @@ Questions go to [Discussions](https://github.com/Abuarchiv/manawg/discussions), 
 starting with `[env]`. For a Docker instance, add the output of `docker compose ps -a` and the logs
 of the failing service (`docker compose logs <service>`). Remove secrets, connection strings and
 keys first, and never post them.
+
+Without SMTP or a usable Resend configuration and sender address, email invitations are hidden and `/api/health` reports `email` as degraded. Invitation links can still be shared.
