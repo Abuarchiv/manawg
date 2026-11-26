@@ -1,8 +1,10 @@
 // Module resolution for unit tests, matching tsconfig `paths` and the bundler's resolution:
 // `@/x` maps to `src/x`, and extensionless or directory specifiers try .ts, .tsx and index files.
-// Node strips TypeScript types natively (`--experimental-strip-types`).
+// Node strips TypeScript types natively (`--experimental-strip-types`); JSX goes through esbuild.
 import { existsSync, statSync } from 'node:fs';
+import { readFile } from 'node:fs/promises';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { transform } from 'esbuild';
 
 const SRC = new URL('../../src/', import.meta.url);
 const CANDIDATE_SUFFIXES = ['', '.ts', '.tsx', '.mjs', '.js', '/index.ts', '/index.tsx'];
@@ -56,6 +58,17 @@ export async function resolve(specifier, context, nextResolve) {
 // detected as CommonJS, and a dynamic `import()` inside a second evaluation of such a file
 // (`./entry.ts?run=2`) never settles. Query-suffixed URLs are therefore always loaded as ESM.
 export async function load(url, context, nextLoad) {
+	// Node cannot strip JSX, so a component is compiled with the app's automatic JSX runtime.
+	if (url.startsWith('file:') && new URL(url).pathname.endsWith('.tsx')) {
+		const file = fileURLToPath(url);
+		const { code } = await transform(await readFile(file, 'utf8'), {
+			loader: 'tsx',
+			jsx: 'automatic',
+			format: 'esm',
+			sourcefile: file,
+		});
+		return { format: 'module', source: code, shortCircuit: true };
+	}
 	const result = await nextLoad(url, context);
 	if (url.includes('?') && result.format === 'commonjs-typescript') {
 		return { ...result, format: 'module-typescript' };
