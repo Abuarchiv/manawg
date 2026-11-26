@@ -100,6 +100,7 @@ const MEMBER_READS: Record<string, MemberRead> = {
 	},
 	invites: (_req, fixture) =>
 		NextResponse.json({
+			mailConfigured: true,
 			invites: [
 				{
 					id: E2E_INVITE_ID,

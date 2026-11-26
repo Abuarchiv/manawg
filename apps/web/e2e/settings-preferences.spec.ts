@@ -469,6 +469,7 @@ test.describe('invitations', () => {
 		});
 		await setupMember(page);
 		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/settings#access`);
+		await expect(page.getByLabel('Per E-Mail einladen')).toBeVisible();
 
 		await page.getByRole('button', { name: 'Neue Einladung', exact: true }).click();
 		await expect(page.getByText('Neuer Einladungslink')).toBeVisible();
