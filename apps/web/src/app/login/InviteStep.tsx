@@ -17,11 +17,15 @@ import {
 import { copyText } from '@/core/utils/clipboard';
 import { INVITE_VALID_DAYS } from '@/core/utils/invite-token';
 import { useMessage } from '@/shared/i18n/message';
+import posthog from '@/shared/lib/analytics';
 import { cn } from '@/shared/lib/cn';
 
 const SHARE_RESET_MS = 1500;
 
 type ShareState = 'idle' | 'copied' | 'linkCopied' | 'shared' | 'failed';
+
+/** How the creator handed the link on: share sheet, clipboard (also the sheet's fallback), WhatsApp. */
+type ShareMethod = 'share' | 'copy' | 'whatsapp';
 
 interface InviteStepProps {
 	code: string;
@@ -41,6 +45,7 @@ export function InviteStep({ code, wgName, memberId, onSkip }: InviteStepProps) 
 	const [sharing, setSharing] = useState(false);
 	const timerRef = useRef<number | null>(null);
 	const sharingRef = useRef(false);
+	const sharedRef = useRef(false);
 	// Visually hidden live region so screen readers announce share state changes
 	// without re-reading the entire button label each time.
 	const liveId = 'share-status-live';
@@ -51,8 +56,13 @@ export function InviteStep({ code, wgName, memberId, onSkip }: InviteStepProps) 
 		setLoadError(null);
 		void createInvite(code, memberId).then((result) => {
 			if (!active) return;
-			if (result.ok) setInvite(result.invite);
-			else setLoadError(render(result.message));
+			if (!result.ok) {
+				setLoadError(render(result.message));
+				return;
+			}
+			setInvite(result.invite);
+			// One link per step: a retry only follows a failed request, so this runs once.
+			posthog.capture('invite_step_shown');
 		});
 		return () => {
 			active = false;
@@ -87,19 +97,34 @@ export function InviteStep({ code, wgName, memberId, onSkip }: InviteStepProps) 
 		}
 	}
 
+	/** Only a link that left the step counts: a cancelled share sheet or a failed copy sends nothing. */
+	function reportShared(method: ShareMethod): void {
+		sharedRef.current = true;
+		posthog.capture('invite_step_shared', { method });
+	}
+
 	const onShare = () =>
 		run(async () => {
 			if (!invite) return;
 			const outcome = await shareInvite(render(inviteShareMessage(wgName, invite.url)));
 			if (outcome === 'cancelled') setState('idle');
 			else flash(outcome);
+			if (outcome === 'shared') reportShared('share');
+			if (outcome === 'copied') reportShared('copy');
 		});
 
 	const onCopyLink = () =>
 		run(async () => {
 			if (!invite) return;
-			flash((await copyText(invite.url)) ? 'linkCopied' : 'failed');
+			const copied = await copyText(invite.url);
+			flash(copied ? 'linkCopied' : 'failed');
+			if (copied) reportShared('copy');
 		});
+
+	const onToFlat = () => {
+		if (!sharedRef.current) posthog.capture('invite_step_skipped');
+		onSkip();
+	};
 
 	const whatsappHref = invite
 		? `https://wa.me/?text=${encodeURIComponent(render(inviteShareMessage(wgName, invite.url)))}`
@@ -207,7 +232,8 @@ export function InviteStep({ code, wgName, memberId, onSkip }: InviteStepProps) 
 						aria-disabled={!ready}
 						tabIndex={ready ? undefined : -1}
 						onClick={(event) => {
-							if (!ready) event.preventDefault();
+							if (ready) reportShared('whatsapp');
+							else event.preventDefault();
 						}}
 						className={cn(
 							buttonVariants({ variant: 'outline', size: 'lg' }),
@@ -231,7 +257,7 @@ export function InviteStep({ code, wgName, memberId, onSkip }: InviteStepProps) 
 			<Button
 				type="button"
 				variant="outline"
-				onClick={onSkip}
+				onClick={onToFlat}
 				disabled={sharing}
 				className="w-full"
 			>
