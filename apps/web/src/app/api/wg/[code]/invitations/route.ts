@@ -12,9 +12,9 @@ import { parseBody } from '@/core/http/parse-body';
 import { requestLocale } from '@/core/i18n/request-locale';
 import { logApiError } from '@/core/infra/observability';
 import { currentSigningSecret } from '@/core/infra/signing-secrets';
+import { mailAvailable } from '@/core/mail/availability';
 import { sendMail } from '@/core/mail/send-mail';
 import { renderInvitationMail } from '@/core/mail/templates';
-import { mailAvailable } from '@/core/mail/transport';
 import {
 	checkRateLimit,
 	inviteMailAccountLimiter,

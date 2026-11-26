@@ -103,39 +103,45 @@ test('a mail provider failure is logged, then the invite is revoked and the call
 	assert.deepEqual(state.order, ['log', 'revoke']);
 });
 
-test('unavailable mail returns 503 without creating an invite', async () => {
-	const before = state.created;
-	const previous = { ...process.env };
-	Object.assign(process.env, {
-		NODE_ENV: 'production',
-		VERCEL_ENV: '',
-		SMTP_HOST: '',
-		RESEND_API_KEY: '',
-		STATEMENT_EMAIL_ALLOWLIST: '',
-	});
-	try {
-		const request = new NextRequest('https://example.test/api/wg/MTE8PZAT/invitations', {
-			method: 'POST',
-			headers: { 'content-type': 'application/json' },
-			body: JSON.stringify({ email: 'new@example.test' }),
+for (const smtpHost of ['', 'smtp.example.test']) {
+	test(`unavailable mail (${smtpHost || 'no transport'}) returns 503 without creating an invite`, async () => {
+		const before = state.created;
+		const previous = { ...process.env };
+		Object.assign(process.env, {
+			NODE_ENV: 'production',
+			VERCEL_ENV: '',
+			SMTP_HOST: smtpHost,
+			STATEMENT_EMAIL_FROM: '',
+			NEXT_PUBLIC_APP_URL: '',
+			RESEND_API_KEY: '',
+			STATEMENT_EMAIL_ALLOWLIST: '',
 		});
-		const response = await POST(request, { params: Promise.resolve({ code: 'MTE8PZAT' }) });
-		assert.equal(response.status, 503);
-		assert.deepEqual(await response.json(), {
-			error: 'mail_unavailable',
-			code: 'mail_unavailable',
-		});
-		assert.equal(state.created, before);
-	} finally {
-		for (const key of [
-			'NODE_ENV',
-			'VERCEL_ENV',
-			'SMTP_HOST',
-			'RESEND_API_KEY',
-			'STATEMENT_EMAIL_ALLOWLIST',
-		]) {
-			if (previous[key] === undefined) delete process.env[key];
-			else process.env[key] = previous[key];
+		try {
+			const request = new NextRequest('https://example.test/api/wg/MTE8PZAT/invitations', {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({ email: 'new@example.test' }),
+			});
+			const response = await POST(request, { params: Promise.resolve({ code: 'MTE8PZAT' }) });
+			assert.equal(response.status, 503);
+			assert.deepEqual(await response.json(), {
+				error: 'mail_unavailable',
+				code: 'mail_unavailable',
+			});
+			assert.equal(state.created, before);
+		} finally {
+			for (const key of [
+				'NODE_ENV',
+				'VERCEL_ENV',
+				'SMTP_HOST',
+				'STATEMENT_EMAIL_FROM',
+				'NEXT_PUBLIC_APP_URL',
+				'RESEND_API_KEY',
+				'STATEMENT_EMAIL_ALLOWLIST',
+			]) {
+				if (previous[key] === undefined) delete process.env[key];
+				else process.env[key] = previous[key];
+			}
 		}
-	}
-});
+	});
+}

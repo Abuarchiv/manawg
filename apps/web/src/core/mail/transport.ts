@@ -2,6 +2,9 @@ import 'server-only';
 import { createHash } from 'node:crypto';
 import nodemailer from 'nodemailer';
 import { isOfficialInstance } from '@/shared/lib/landing-url';
+import { readAllowlist } from './availability';
+
+export { readAllowlist } from './availability';
 
 const RESEND_BATCH_URL = 'https://api.resend.com/emails/batch';
 // The batch endpoint cannot carry attachments, so those mails go one request each.
@@ -47,17 +50,6 @@ export function maskEmail(email: string): string {
 	const at = email.lastIndexOf('@');
 	if (at < 1) return '***';
 	return `${email.slice(0, 1)}***${email.slice(at)}`;
-}
-
-/** Comma-separated `STATEMENT_EMAIL_ALLOWLIST`, lower-cased; `null` when unset. */
-export function readAllowlist(
-	env: Readonly<Record<string, string | undefined>> = process.env,
-): Set<string> | null {
-	const entries = (env.STATEMENT_EMAIL_ALLOWLIST ?? '')
-		.split(',')
-		.map((entry) => entry.trim().toLowerCase())
-		.filter(Boolean);
-	return entries.length > 0 ? new Set(entries) : null;
 }
 
 function idempotencyKey(prefix: string, mails: readonly OutgoingMail[]): string {
@@ -336,19 +328,6 @@ function senderAddress(env: Readonly<Record<string, string | undefined>>): strin
 		(isOfficialInstance(env.NEXT_PUBLIC_APP_URL) ? OFFICIAL_FROM : '');
 	if (!from) throw new Error('STATEMENT_EMAIL_FROM is not set');
 	return from;
-}
-
-/** Whether a configured transport can send, including development and fixture dry runs. */
-export function mailAvailable(
-	env: Readonly<Record<string, string | undefined>> = process.env,
-): boolean {
-	return (
-		env.NODE_ENV !== 'production' ||
-		(env.E2E_FIXTURE_MODE === 'true' && env.VERCEL_ENV !== 'production') ||
-		Boolean(env.SMTP_HOST?.trim()) ||
-		(Boolean(env.RESEND_API_KEY?.trim()) &&
-			(env.VERCEL_ENV === 'production' || readAllowlist(env) !== null))
-	);
 }
 
 /**

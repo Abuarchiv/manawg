@@ -728,4 +728,4 @@ starting with `[env]`. For a Docker instance, add the output of `docker compose 
 of the failing service (`docker compose logs <service>`). Remove secrets, connection strings and
 keys first, and never post them.
 
-Without SMTP or a usable Resend configuration, email invitations are hidden and `/api/health` reports `email` as degraded. Invitation links can still be shared.
+Without SMTP or a usable Resend configuration and sender address, email invitations are hidden and `/api/health` reports `email` as degraded. Invitation links can still be shared.

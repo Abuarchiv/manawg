@@ -1,4 +1,4 @@
-import { mailAvailable } from '@/core/mail/transport';
+import { mailAvailable } from '@/core/mail/availability';
 
 /**
  * Startup environment validation.
@@ -159,6 +159,7 @@ function privateImageStorageMissing(env: EnvSource): { missing: string[]; impact
 export function runtimeEnv(): EnvSource {
 	return {
 		...process.env,
+		NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
 		NEXT_PUBLIC_VAPID_PUBLIC_KEY: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
 		NEXT_PUBLIC_SENTRY_DSN: process.env.NEXT_PUBLIC_SENTRY_DSN,
 	};
@@ -214,7 +215,7 @@ export function checkEnv(env: EnvSource): EnvCheckResult {
 	if (!mailAvailable(env)) {
 		degraded.push({
 			feature: 'email',
-			missing: ['SMTP_HOST or usable RESEND_API_KEY'],
+			missing: ['SMTP_HOST or usable RESEND_API_KEY and STATEMENT_EMAIL_FROM'],
 			impact: 'Invitation, welcome, reminder, solo invite and statement emails cannot be sent.',
 		});
 	}

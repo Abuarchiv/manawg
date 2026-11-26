@@ -7,7 +7,7 @@ import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import { conflict, rateLimitResponse } from '@/core/http/api-errors';
 import { requestOrigin } from '@/core/http/request-origin';
-import { mailAvailable } from '@/core/mail/transport';
+import { mailAvailable } from '@/core/mail/availability';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { invitePath } from '@/core/utils/invite-token';
 /** Active invitations of the WG, newest first. The token itself is never listed. */
