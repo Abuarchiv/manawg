@@ -40,8 +40,8 @@ age -r <your public key> -o manawg.tar.gz.age backups/manawg-20261028-031500.tar
 For an automated off-machine copy, check the newest backup available at the source against the
 newest copy at the destination. Report the backup timestamp and age, and alert if the newest source
 backup is missing, a download fails, or the copy is older than your recovery objective; a successful scheduler run alone does not prove a
-recent backup was copied. Verify that downloaded archives can be decrypted and read before
-counting them as usable, and regularly test a restore.
+recent backup was copied. Verify that the newest destination archive can be decrypted and read on each scheduled pull,
+and regularly test a restore.
 
 ### Restore
 
