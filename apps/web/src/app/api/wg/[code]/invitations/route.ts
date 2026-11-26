@@ -12,6 +12,7 @@ import { parseBody } from '@/core/http/parse-body';
 import { requestLocale } from '@/core/i18n/request-locale';
 import { logApiError } from '@/core/infra/observability';
 import { currentSigningSecret } from '@/core/infra/signing-secrets';
+import { mailAvailable } from '@/core/mail/availability';
 import { sendMail } from '@/core/mail/send-mail';
 import { renderInvitationMail } from '@/core/mail/templates';
 import {
@@ -43,6 +44,7 @@ export const POST = withWgRoute('invitations POST', async (req, { code }) => {
 	if (!parsed.ok) return parsed.response;
 	const auth = await requireWgMember(req, code);
 	if (!auth.ok) return auth.response;
+	if (!mailAvailable()) return serviceUnavailable('mail_unavailable', 'mail_unavailable');
 	const wg = auth.wg;
 
 	// Keyed, so the persisted dedupe key and the limiter keys cannot be matched against guessed

@@ -1,3 +1,5 @@
+import { mailAvailable } from '@/core/mail/availability';
+
 /**
  * Startup environment validation.
  *
@@ -32,7 +34,8 @@ interface DegradedFeature {
 		| 'push-notifications'
 		| 'image-uploads'
 		| 'account-deletion'
-		| 'error-reporting';
+		| 'error-reporting'
+		| 'email';
 	missing: string[];
 	impact: string;
 }
@@ -156,6 +159,7 @@ function privateImageStorageMissing(env: EnvSource): { missing: string[]; impact
 export function runtimeEnv(): EnvSource {
 	return {
 		...process.env,
+		NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
 		NEXT_PUBLIC_VAPID_PUBLIC_KEY: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
 		NEXT_PUBLIC_SENTRY_DSN: process.env.NEXT_PUBLIC_SENTRY_DSN,
 	};
@@ -207,6 +211,13 @@ export function checkEnv(env: EnvSource): EnvCheckResult {
 		if (missing.length > 0) {
 			degraded.push({ feature: spec.feature, missing, impact: spec.impact });
 		}
+	}
+	if (!mailAvailable(env)) {
+		degraded.push({
+			feature: 'email',
+			missing: ['SMTP_HOST or usable RESEND_API_KEY and STATEMENT_EMAIL_FROM'],
+			impact: 'Invitation, welcome, reminder, solo invite and statement emails cannot be sent.',
+		});
 	}
 	if (imageStorage.missing.length > 0 && !isProduction) {
 		degraded.push({ feature: 'image-uploads', ...imageStorage });
