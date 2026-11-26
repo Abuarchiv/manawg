@@ -8,6 +8,8 @@ settled.
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-11-26
+
 ### Changed
 
 - Opening an invitation that has expired, been revoked or been used up now tells you to ask the
@@ -299,6 +301,8 @@ image is listed in this file.
 ### Self-hosting
 
 - No manual step. The `setup` service applies all database migrations on start.
+
+[0.3.1]: https://github.com/Abuarchiv/manawg/releases/tag/v0.3.1
 
 [0.3.0]: https://github.com/Abuarchiv/manawg/releases/tag/v0.3.0
 [0.2.0]: https://github.com/Abuarchiv/manawg/releases/tag/v0.2.0
