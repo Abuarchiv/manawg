@@ -75,6 +75,7 @@ export default {
 		copied: 'Invitation copied',
 		failedStatus: 'Sharing failed',
 		sharing: 'Sharing invitation…',
+		createdTapAgain: 'Link created. Tap again to share.',
 		shareAgain: 'Share again',
 		invite: 'Invite flatmates',
 	},

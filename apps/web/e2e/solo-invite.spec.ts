@@ -14,6 +14,7 @@ import {
 	setupMember,
 	skipUnlessFixtures,
 } from './support/helpers';
+import { strictBrowser } from './support/strict-browser';
 
 const SOLO_BASE = `/api/wg/${SOLO_WG.shareCode}`;
 const DUO_BASE = `/api/wg/${FIXTURE_WG.shareCode}`;
@@ -36,76 +37,18 @@ async function open(page: Page, shareCode: string, path = ''): Promise<void> {
 	await dismissOnboarding(page);
 }
 
-interface StrictCall {
-	via: 'share' | 'copy';
-	inClick: boolean;
-	text: string;
-}
-
-/**
- * A strict browser: the share sheet and the clipboard only work inside the tap itself, and an
- * awaited request ends the tap. `ClipboardItem` takes a promise, so a write started inside the tap
- * may resolve later. Every call lands in `window.__strict`.
- */
-async function strictBrowser(page: Page): Promise<() => Promise<StrictCall[]>> {
-	await page.addInitScript(() => {
-		let inClick = false;
-		const calls: StrictCall[] = [];
-		(window as unknown as { __strict: StrictCall[] }).__strict = calls;
-		window.addEventListener('click', () => (inClick = true), true);
-		window.addEventListener('click', () => setTimeout(() => (inClick = false)));
-		// The timer alone races a mocked answer, which can arrive first on a busy runner.
-		const nativeFetch = window.fetch.bind(window);
-		window.fetch = async (...args) => {
-			try {
-				return await nativeFetch(...args);
-			} finally {
-				inClick = false;
-			}
-		};
-		Object.defineProperty(navigator, 'userActivation', {
-			value: {
-				get isActive() {
-					return inClick;
-				},
-			},
-			configurable: true,
-		});
-		Object.defineProperty(navigator, 'share', {
-			value: async (data: { text: string }) =>
-				void calls.push({ via: 'share', inClick, text: data.text }),
-			configurable: true,
-		});
-		Object.defineProperty(navigator, 'canShare', { value: () => true, configurable: true });
-		class FakeClipboardItem {
-			readonly items: Record<string, Promise<Blob> | Blob>;
-			constructor(items: Record<string, Promise<Blob> | Blob>) {
-				this.items = items;
-			}
-		}
-		Object.defineProperty(window, 'ClipboardItem', {
-			value: FakeClipboardItem,
-			configurable: true,
-		});
-		Object.defineProperty(navigator, 'clipboard', {
-			value: {
-				writeText: async (text: string) => {
-					if (!inClick) throw new DOMException('no gesture', 'NotAllowedError');
-					calls.push({ via: 'copy', inClick, text });
-				},
-				write: async (items: FakeClipboardItem[]) => {
-					if (!inClick) throw new DOMException('no gesture', 'NotAllowedError');
-					const blob = await items[0]?.items['text/plain'];
-					calls.push({ via: 'copy', inClick: true, text: (await blob?.text()) ?? '' });
-				},
-			},
-			configurable: true,
-		});
-	});
-	return () => page.evaluate(() => (window as unknown as { __strict: StrictCall[] }).__strict);
-}
-
 const OLD_INVITE_ID = '1f0c4b5e-2a3d-4e6f-8a9b-0c1d2e3f4a5b';
+
+/** Every `POST /invites` of the WG, the request that creates a new link. */
+function createdLinks(page: Page, base: string): string[] {
+	const created: string[] = [];
+	page.on('request', (request) => {
+		if (request.method() === 'POST' && new URL(request.url()).pathname === `${base}/invites`) {
+			created.push(request.url());
+		}
+	});
+	return created;
+}
 
 /** Members route of the solo WG; Mina is in once `joined()` says so. */
 async function mockRoster(page: Page, joined: () => boolean): Promise<void> {
@@ -183,6 +126,41 @@ test.describe('solo invite row', () => {
 		await dismissOnboarding(page);
 		await expect(page.getByText('Putzmittel')).toBeVisible();
 		await expect(page.getByText(SOLO_TEXT)).toBeVisible();
+	});
+
+	test('the row shares the current link inside the tap and never creates one', async ({ page }) => {
+		const readCalls = await strictBrowser(page);
+		await mockEmptyLists(page, SOLO_BASE);
+		// The WG's current link has three days left; a created link would be the fixture one.
+		await page.route(`**${SOLO_BASE}/invites/current`, (route) =>
+			route.fulfill({
+				json: {
+					invite: {
+						id: OLD_INVITE_ID,
+						url: `${new URL(route.request().url()).origin}/invite/old-invite-token-00001`,
+						expiresAt: new Date(Date.now() + 3 * DAY_MS - 60_000).toISOString(),
+					},
+				},
+			}),
+		);
+		const created = createdLinks(page, SOLO_BASE);
+		await open(page, SOLO_WG.shareCode, '/shopping');
+		const invite = page.getByRole('button', { name: 'Mitbewohner einladen', exact: true });
+		const hint = page.getByText('Link geprüft. Tippe nochmal zum Kopieren.');
+		for (const round of [1, 2]) {
+			await invite.click();
+			// The server check spent the tap: nothing went out, and the row asks for one more.
+			await expect(hint).toBeVisible();
+			expect(await readCalls()).toHaveLength(round - 1);
+			await invite.click();
+			await expect.poll(async () => (await readCalls()).length).toBe(round);
+		}
+		for (const call of await readCalls()) {
+			expect(call).toMatchObject({ via: 'copy', inClick: true });
+			expect(call.text).toContain('/invite/old-invite-token-00001');
+			expect(call.text).toContain('(Der Link gilt 3 Tage.)');
+		}
+		expect(created).toEqual([]);
 	});
 });
 
@@ -738,5 +716,70 @@ test.describe('Start card', () => {
 		await page.reload();
 		await dismissOnboarding(page);
 		await expect(page.getByRole('heading', { name: 'Eure WG ist bereit' })).toHaveCount(0);
+	});
+
+	test('with a flatmate a link whose creation spent the tap goes out on the next tap', async ({
+		page,
+	}) => {
+		const readCalls = await strictBrowser(page);
+		await mockEmptyLists(page, DUO_BASE);
+		const created = createdLinks(page, DUO_BASE);
+		await open(page, FIXTURE_WG.shareCode);
+		const invite = page.getByRole('button', { name: 'Mitbewohner einladen', exact: true });
+		await invite.click();
+		await expect(page.getByText('Link erstellt. Tippe nochmal zum Teilen.')).toBeVisible();
+		expect(await readCalls()).toEqual([]);
+		await invite.click();
+		await expect.poll(async () => (await readCalls()).length).toBe(1);
+		const [call] = await readCalls();
+		expect(call).toMatchObject({ via: 'copy', inClick: true });
+		expect(call?.text).toContain('/invite/fixture-invite-token01');
+		// The second tap shared the kept link instead of asking for another one.
+		expect(created).toHaveLength(1);
+	});
+
+	test('a welcome invitation revoked between taps is never shared', async ({ page }) => {
+		const readCalls = await strictBrowser(page);
+		await mockEmptyLists(page, DUO_BASE);
+		const created = createdLinks(page, DUO_BASE);
+		await page.route(`**${DUO_BASE}/invites`, (route) =>
+			route.request().method() === 'GET'
+				? route.fulfill({ json: { invites: [] } })
+				: route.fallback(),
+		);
+		await open(page, FIXTURE_WG.shareCode);
+		const invite = page.getByRole('button', { name: 'Mitbewohner einladen', exact: true });
+		await invite.click();
+		await expect(page.getByText('Link erstellt. Tippe nochmal zum Teilen.')).toBeVisible();
+		await invite.click();
+		await expect(page.getByText('Einladung konnte nicht geteilt werden.')).toBeVisible();
+		expect(await readCalls()).toEqual([]);
+		expect(created).toHaveLength(1);
+	});
+
+	test('an expired welcome invitation is never shared even if it appears in the list', async ({
+		page,
+	}) => {
+		const readCalls = await strictBrowser(page);
+		await mockEmptyLists(page, DUO_BASE);
+		await page.route(`**${DUO_BASE}/invites`, (route) => {
+			if (route.request().method() === 'POST') {
+				return route.fulfill({
+					json: {
+						id: OLD_INVITE_ID,
+						url: 'https://example.test/invite/old',
+						expiresAt: new Date(Date.now() - 1000).toISOString(),
+					},
+				});
+			}
+			return route.fulfill({ json: { invites: [{ id: OLD_INVITE_ID }] } });
+		});
+		await open(page, FIXTURE_WG.shareCode);
+		const invite = page.getByRole('button', { name: 'Mitbewohner einladen', exact: true });
+		await invite.click();
+		await expect(page.getByText('Link erstellt. Tippe nochmal zum Teilen.')).toBeVisible();
+		await invite.click();
+		await expect(page.getByText('Einladung konnte nicht geteilt werden.')).toBeVisible();
+		expect(await readCalls()).toEqual([]);
 	});
 });

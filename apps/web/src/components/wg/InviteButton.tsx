@@ -6,7 +6,14 @@ import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { useToast } from '@/components/ui/Toast';
-import { createInvite, inviteShareMessage, shareInvite } from '@/components/wg/invite-share';
+import {
+	type CreatedInvite,
+	copyWhenReady,
+	createInvite,
+	inviteShareMessage,
+	shareInvite,
+} from '@/components/wg/invite-share';
+import { apiFetch } from '@/core/infra/api-client';
 import { useMessage } from '@/shared/i18n/message';
 import { cn } from '@/shared/lib/cn';
 
@@ -34,6 +41,7 @@ export function InviteButton({
 	const t = useTranslations('home.invite');
 	const [state, setState] = useState<ShareState>('idle');
 	const [sharing, setSharing] = useState(false);
+	const [pending, setPending] = useState<CreatedInvite | null>(null);
 	const timerRef = useRef<number | null>(null);
 	const sharingRef = useRef(false);
 	const toast = useToast();
@@ -62,10 +70,33 @@ export function InviteButton({
 		sharingRef.current = true;
 		setSharing(true);
 		try {
+			if (pending) {
+				const checked = apiFetch<{ invites: { id: string }[] }>(
+					`/api/wg/${encodeURIComponent(code)}/invites`,
+					{ memberId },
+				).then((result) =>
+					result.ok &&
+					new Date(pending.expiresAt).getTime() > Date.now() &&
+					result.data.invites.some((invite) => invite.id === pending.id)
+						? render(inviteShareMessage(wgName, pending.url, pending.expiresAt))
+						: null,
+				);
+				const outcome = await copyWhenReady(checked);
+				setPending(null);
+				if (outcome !== 'copied') {
+					toast.error(t('shareFailed'));
+					flash('failed');
+				} else flash('copied');
+				return;
+			}
 			const created = await createInvite(code, memberId);
 			if (!created.ok) {
 				toast.error(render(created.message));
 				flash('failed');
+				return;
+			}
+			if (!navigator.userActivation?.isActive) {
+				setPending(created.invite);
 				return;
 			}
 			const outcome = await shareInvite(render(inviteShareMessage(wgName, created.invite.url)));
@@ -89,8 +120,8 @@ export function InviteButton({
 
 	return (
 		<>
-			<output aria-live="polite" className="sr-only">
-				{statusMessage}
+			<output aria-live="polite" className={pending ? 'text-muted-foreground text-xs' : 'sr-only'}>
+				{pending ? t('createdTapAgain') : statusMessage}
 			</output>
 			<Button
 				type="button"

@@ -78,6 +78,7 @@ const PRODUCT_EVENTS = [
 	'first_expense_created',
 	'invite_card_shown',
 	'invite_card_shared',
+	'solo_invite_shared',
 	'invite_card_dismissed',
 	'invite_step_shown',
 	'invite_step_shared',
@@ -86,6 +87,7 @@ const PRODUCT_EVENTS = [
 // The share methods each share event may report.
 const SHARE_METHODS = {
 	invite_card_shared: ['share', 'copy'],
+	solo_invite_shared: ['share', 'copy'],
 	invite_step_shared: ['share', 'copy', 'whatsapp'],
 };
 const env = {
