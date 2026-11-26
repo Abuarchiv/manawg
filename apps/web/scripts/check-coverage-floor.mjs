@@ -44,8 +44,6 @@ const FLOORS = {
 	'src/app/invite/[token]/invite-metadata.ts': { lines: 100, branches: 93 },
 	'src/app/invite/[token]/use-invite-join.ts': { lines: 0, branches: 0 },
 	'src/components/wg/invite-share.ts': { lines: 67, branches: 85 },
-	// Moved from InviteCard: the browser fixture suite exercises this React hook.
-	'src/components/wg/use-current-invite-share.ts': { lines: 0, branches: 0 },
 	'src/core/db/invite-preview.ts': { lines: 100, branches: 100 },
 	'src/core/db/schema-invites.ts': { lines: 93, branches: 100 },
 	'src/core/db/wg-invites.ts': { lines: 100, branches: 88 },
